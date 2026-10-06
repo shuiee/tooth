@@ -33,7 +33,7 @@
   const TOOTH_H = { canine: 230, molar: 300 }, GAP = 26, RS = RMAX * 1.1;
   // each record leaves the teeth in its own direction in space: azimuth from the data, elevation here
   const ELEV = { caries: 12, metals: -22, pathogens: 18, wear: -40, interventions: 22 };
-  const COLS = { caries: "#C2611A", metals: "#A67C00", pathogens: "#B0362F", wear: "#16907A", interventions: "#2F55B0" };
+  const COLS = { caries: "#C2611A", metals: "#A67C00", pathogens: "#B0362F", wear: "#1A1A18", interventions: "#2F55B0" };
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
   const yr = v => v < 0 ? Math.abs(v) + " BCE" : v + " CE";
@@ -100,7 +100,8 @@
     const ring = { a: 0, moved: false, touched: false, hover: false };
     let ringDrag = false;
     // the time periods the reader has clicked, on one record's line: up to two at once, to compare them. Each is ringed
-    // on its line and labelled with its years; the last clicked opens the pop-up (opts.onSelect, js/popup.js), sel being
+    // on its line and labelled with its years, and each has its card in the pop-up (opts.onSelect, js/popup.js, gets
+    // every picked period, or null); sel being
     // [record key, index on its line] or null. With two picked on a line whose record changes the molar, the molar loops
     // between the two periods for that record alone (cmp), every other record holding still. Clicking a picked circle
     // lets it go; a third on the same line lets the older go; a circle on another line starts afresh. A click on empty
@@ -108,7 +109,7 @@
     const MOLAR_KEYS = ["caries", "wear", "metals", "pathogens"];
     let sel = null, selKey = null, selIdx = [], cmp = null;
     const pickOf = (k, i) => { const c = DATA.find(c2 => c2.key === k), d = c && c.dens[i]; return d ? { key: k, i, name: c.name, col: COLS[k], from: d[0], to: d[1], n: d[2], unit: c.unit, range: range(d[0], d[1]) } : null; };
-    const setSel = next => { sel = next; if (opts.onSelect) opts.onSelect(sel ? pickOf(sel[0], sel[1]) : null); };
+    const setSel = next => { sel = next; if (opts.onSelect) opts.onSelect(sel && selIdx.length ? selIdx.map(i => pickOf(selKey, i)).filter(Boolean) : null); };
     const clearSel = () => { selKey = null; selIdx = []; cmp = null; setSel(null); if (S && S.read && !S.read.byPtr) S.read.off(); };   // and the picked circle's readout
     const choose = (k, i) => {
       if (selKey === k && selIdx.includes(i)) { selIdx = selIdx.filter(j => j !== i); if (!selIdx.length) { clearSel(); return false; } setSel([k, selIdx[selIdx.length - 1]]); }
@@ -161,7 +162,7 @@
       // band), so the line reads as a gap. The line's place and waves match the particles' (GLT.leh below, lehLine());
       // tint says how far a point was moved, for colouring the gap's edges. Off (uLehOn 0) until the stress lines are set up.
       Object.assign(U, { uLehOn: { value: 0 }, uCx: { value: 0 }, uCz: { value: 0 }, uY0: { value: 0 }, uYt: { value: 1 }, uA0: { value: 0 }, uExt0: { value: 0 }, uExt1: { value: 0 },
-        uLT: { value: 0 }, uLW: { value: new TH.Vector2(0.14, 0.09) }, uLR: { value: new TH.Vector2(0.3, 0.17) }, uLD: { value: new TH.Vector2(0, 0) }, uCShow: { value: 0 }, cL0: { value: new TH.Color(COLS.wear) }, cL1: { value: new TH.Color("#0A4A3F") } });
+        uLT: { value: 0 }, uLW: { value: new TH.Vector2(0.14, 0.09) }, uLR: { value: new TH.Vector2(0.3, 0.17) }, uLD: { value: new TH.Vector2(0, 0) }, uCShow: { value: 0 }, cL0: { value: new TH.Color(COLS.wear) }, cL1: { value: new TH.Color("#000000") } });
       const LEHGL = " uniform float uLehOn, uCx, uCz, uY0, uYt, uA0, uExt0, uExt1, uLT; uniform vec2 uLW, uLR, uLD; uniform vec3 cL0, cL1;" +
         " float lehLine(float lane, float s){ float m = lane < 0.5 ? 0.72 : 0.2, a = lane < 0.5 ? 1.0 : 0.55;" +
         " return m + a * (0.055 * sin(6.2832 * 3.0 * s + 1.7 * lane + 0.22 * uLT) + 0.028 * sin(6.2832 * 7.0 * s + 0.6 + 2.1 * lane - 0.31 * uLT) + 0.012 * sin(6.2832 * 13.0 * s + 4.1 + 0.4 * uLT)); }" +
@@ -443,7 +444,7 @@
         for (let i = 0; i < NP; i++) { vlan[2 * i] = vlan[2 * i + 1] = pl[i]; ph[i] = line(pl[i], ps[i], 0) + po[i]; }
         const sg = new TH.BufferGeometry(); sg.setAttribute("position", new TH.BufferAttribute(vpos, 3)); sg.setAttribute("aN", new TH.BufferAttribute(vnrm, 3));
         sg.setAttribute("aA", new TH.BufferAttribute(valp, 1)); sg.setAttribute("aLane", new TH.BufferAttribute(vlan, 1));
-        const UL = { uShow: { value: 0 }, c0: { value: new TH.Color(COLS.wear) }, c1: { value: new TH.Color("#0A4A3F") } };
+        const UL = { uShow: { value: 0 }, c0: { value: new TH.Color(COLS.wear) }, c1: { value: new TH.Color("#000000") } };
         const streaks = new TH.LineSegments(sg, new TH.ShaderMaterial({ uniforms: UL, transparent: true, depthWrite: false,
           vertexShader: "attribute vec3 aN; attribute float aA, aLane; uniform float uShow; uniform vec3 c0, c1; varying vec3 vC; varying float vA;" +
             " void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float face = dot(normalize(normalMatrix * aN), normalize(-mv.xyz));" +
@@ -543,8 +544,8 @@
       // a legend for the colours a record draws on the molar, shown beside its name while the name is hovered or
       // focused, styled as the circles' pop-up: the pathogens' kinds, the metals' two groups
       const LEG = {
-        pathogens: PD.colours && { title: "Pathogens on the molar, by kind", rows: [["bacteria", "Bacteria", "red"], ["virus", "Viruses", "blue"], ["parasite", "Parasites", "teal"], ["other", "Not disease agents", "grey"]].map(([k, t, w]) => [PD.colours[k], t, w]) },
-        metals: MD.groupColours && { title: "Metals around the molar", rows: [[MD.groupColours.nonindustrial, "Non-industrial", "gold", "zinc, barium, strontium, magnesium"], [MD.groupColours.industrial, "Industrial", "violet", "lead, copper, chromium, nickel"]] } };
+        pathogens: PD.colours && { title: "Pathogens on the molar, by kind", cols: 2, rows: [["bacteria", "Bacteria", "red"], ["virus", "Viruses", "blue"], ["parasite", "Parasites", "teal"], ["other", "Not disease agents", "grey"]].map(([k, t, w]) => [PD.colours[k], t, w]) },
+        metals: MD.groupColours && { title: "Metals around the molar", rows: [[MD.groupColours.nonindustrial, "Non-industrial: Zn, Ba, Sr, Mg", "gold", null, "Non-industrial: zinc, barium, strontium, magnesium"], [MD.groupColours.industrial, "Industrial: Pb, Cu, Cr, Ni", "violet", null, "Industrial: lead, copper, chromium, nickel"]] } };
       const gLeg = el("g", { class: "rd-read rd-leg", "aria-hidden": "true" }, svg), lgLine = el("line", {}, gLeg), lgBg = el("rect", { class: "rd-rbg", rx: 3 }, gLeg), lgT = el("text", { class: "rd-yr" }, gLeg), lgRows = el("g", {}, gLeg);
       const hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
       const opens = typeof opts.onOpen === "function";
@@ -561,19 +562,25 @@
           // one circle hovered at a time: entering one lets the last go first
           const on = () => { if (S.read && S.read !== o) S.read.off(); mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); }; o.off = off;
           hit.addEventListener("mouseenter", () => { o.byPtr = true; on(); }); hit.addEventListener("mouseleave", off); hit.addEventListener("focus", () => { o.byPtr = false; on(); }); hit.addEventListener("blur", off);
-          const fly = () => { const yaw = Math.atan2(d[0], d[2]), k = Math.round((cam.yaw - yaw) / (2 * Math.PI)); cam.tYaw = yaw + (k - 1) * 2 * Math.PI; cam.tPitch = cl(Math.asin(d[1]) + 0.15, -1.2, 1.35); cam.tDist = cl(o.m.w + 620, 780, 3000); lastInput = performance.now() + 5000; on(); };
+          // a picked circle's line seen nearly end-on (running towards or away from the reader, so it lies over the tooth):
+          // the camera turns the least it can, left or right, to see the line from the side (at least about 63 degrees off
+          // the line of sight); its height and distance stay. A line already seen well enough leaves the camera alone.
+          const showLine = () => { const wrap = v => Math.atan2(Math.sin(v), Math.cos(v)), dl = wrap(cam.tYaw - Math.atan2(d[0], d[2])), MIN = 1.1;
+            if (Math.abs(Math.sin(dl)) >= Math.sin(MIN) - 1e-3) return;
+            cam.tYaw += [MIN, Math.PI - MIN, -MIN, MIN - Math.PI].map(t2 => wrap(t2 - dl)).reduce((p2, q2) => Math.abs(q2) < Math.abs(p2) ? q2 : p2);
+            lastInput = performance.now() + 5000; };
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
           // which can cancel a click between press and release. The press picks the period (or lets it go, see choose()).
           // On a record the molar shows, it also moves the timeline to the first picked period and pauses it there, so the
           // molar shows that period (and, with two picked, loops between them).
-          const pick = () => { const now2 = choose(c.key, mi); if (!MOLAR_KEYS.includes(c.key)) { if (now2) fly(); return; }
+          const pick = () => { const now2 = choose(c.key, mi); if (now2) showLine(); if (!MOLAR_KEYS.includes(c.key)) { if (now2) { on(); lastInput = performance.now() + 5000; } return; }
             if (!selIdx.length) return; if (now2) on(); lastInput = performance.now() + 5000; const d0 = c.dens[selIdx[0]]; seekYear((d0[0] + d0[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
         });
         const leg = LEG[c.key];
         const card = el("g", { class: "rd-card" + (opens ? " go" : ""), style: "--c:" + col, tabindex: opens || leg ? 0 : null, role: opens ? "link" : null,
-          "aria-label": opens ? c.name + ": open this section" : leg ? c.name + ". Colours on the molar: " + leg.rows.map(r => r[2] + ", " + r[1] + (r[3] ? " (" + r[3] + ")" : "")).join("; ") : null }, gCards);
+          "aria-label": opens ? c.name + ": open this section" : leg ? c.name + ". Colours on the molar: " + leg.rows.map(r => r[2] + ", " + (r[4] || r[1] + (r[3] ? " (" + r[3] + ")" : ""))).join("; ") : null }, gCards);
         const sub = range(c.segs[0][0], c.segs[c.segs.length - 1][1]), cw = Math.max(c.name.length * 10.2, sub.length * 6.9) + 6;
         const lead = el("line", { class: "rd-lead" }, gCards), rect = el("rect", { width: cw, height: 46, class: "rd-cbox" }, card);   // no box drawn: an invisible hit area for the name
         const t1 = el("text", { class: "rd-cname", x: 0, y: 19 }, card), t2 = el("text", { class: "rd-csub", x: 0, y: 36 }, card); t1.textContent = c.name.toUpperCase(); t2.textContent = sub;
@@ -618,6 +625,7 @@
       // of two compared periods, the one the molar shows now: each held a while (the particles' records longer, since their
       // streams take a few seconds to thin or thicken), then the other, in a loop
       const cmpI = cmp ? cmp.eras[Math.floor((now - cmp.t0) / 1000 / ({ caries: 2.4, wear: 2.4, metals: 5, pathogens: 5 }[cmp.key] || 3)) % 2] : -1;
+      { const id = cmp ? cmp.key + ":" + cmpI : null; if (id !== s.cmpShown) { s.cmpShown = id; if (opts.onCompare) opts.onCompare(id); } }
       if (!REDUCED && !dragging && now - lastInput > 4000 && (!s.anim || t > 3)) cam.tYaw += dt * 0.02;
       const kc = Math.min(1, dt * (dragging ? 9 : s.anim && t < 3.2 ? 1.3 : 3.5));
       cam.yaw += (cam.tYaw - cam.yaw) * kc; cam.pitch += (cam.tPitch - cam.pitch) * kc; cam.dist += (cam.tDist - cam.dist) * kc;
@@ -629,9 +637,15 @@
       const inBx = (q, x, y, w, h) => !!q && x < q.x + q.w + 6 && q.x - 6 < x + w && y < q.y + q.h + 6 && q.y - 6 < y + h, inCv = (x, y, w, h) => inBx(cv, x, y, w, h) || inBx(mb, x, y, w, h);
       const ctl = opts.controls ? opts.controls() : null;   // the page's own buttons (Pause, Replay), which the names keep clear of too
       // while the pop-up is open, the diagram moves over and shrinks into the space beside it (left of it, or above it on
-      // narrow pages), so no circle lies under it and the reader can still pick a second period to compare
+      // narrow pages), so no circle lies under it and the reader can still pick a second period to compare. Beside it, the
+      // diagram's scale comes from the pop-up's usual width (so widening the pop-up does not shrink it again), and it is
+      // moved further left (s.shiftX) until its content keeps the same margin from the page's left edge as the pop-up keeps
+      // from the right (measured below, once the names are placed)
+      const sideM = Math.max(16, Math.min(40, s.W * 0.024)), onRight = !!cv && cv.side === "right" && cv.x > s.W * 0.3;
       { let cx = s.C0[0], cy = s.C0[1], f = s.F0;
-        if (cv && cv.side === "right" && cv.x > s.W * 0.3) { const fw = cv.x - 16; cx = fw / 2; f = Math.min(s.F0, fw * 1.1); }
+        if (!onRight) s.shiftT = 0;
+        s.shiftX = (s.shiftX || 0) + ((s.shiftT || 0) - (s.shiftX || 0)) * (REDUCED ? 1 : Math.min(1, dt * 3));
+        if (onRight) { const fw2 = s.W - sideM - Math.min(460, Math.max(300, s.W * 0.25)) - 16; cx = fw2 / 2 + s.shiftX; f = Math.min(s.F0, fw2 * 1.1); }
         else if (cv && cv.side !== "right" && cv.y > s.pt + 140) { const fh = cv.y - 10 - s.pt; cy = s.pt + fh / 2; f = Math.min(s.F0, (fh - 40) * 1.95); }
         const e = REDUCED ? 1 : Math.min(1, dt * 4); s.C = [s.C[0] + (cx - s.C[0]) * e, s.C[1] + (cy - s.C[1]) * e]; s.F += (f - s.F) * e; }
       const { C, F } = s, U = F / D; s.cb = { pos, fw, rt, up };   // the camera, kept for dragging the timeline's handle
@@ -774,7 +788,7 @@
       // cards: keep inside the safe area (clear of the page edges, the pop-up and the year readout) and push overlapping ones apart
       const cards = s.lines.map(L => L._b).filter(b => b.vis), yMin = s.pt + 6, yMax = s.H - 60;
       cards.forEach(b => { const bb = b.L._bb; if (bb) b.w = Math.max(b.w, bb.x + bb.width); });   // a name's measured width, once known (its letter-spaced capitals run past the estimate)
-      const keep = b => { b.x = cl(b.x, 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46);
+      const keep = b => { b.x = cl(b.x, onRight ? sideM : 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46);
         if (inBx(cv, b.x, b.y, b.w, 46)) { if (cv.side === "right") b.x = Math.max(16, cv.x - b.w - 16); else b.y = cv.y - 52; }
         if (inBx(mb, b.x, b.y, b.w, 46)) b.y = mb.y + mb.h + 10;
         if (ctl && b.x < ctl.x + ctl.w + 8 && ctl.x - 8 < b.x + b.w && b.y + 46 > ctl.y - 6) b.y = ctl.y - 52; };
@@ -805,6 +819,19 @@
         if (!b.vis) { L.card.style.opacity = 0; L.lead.setAttribute("visibility", "hidden"); return; }
         L.card.setAttribute("transform", "translate(" + fx(b.x) + "," + fx(b.y) + ")"); L.card.style.opacity = b.op.toFixed(2);
         seg(L.lead, b.ne, [b.ux < 0 ? b.x + b.w : b.x, b.y + 23, 1, b.ne[3]]); L.lead.style.opacity = L.card.style.opacity; });
+      // the pop-up open at the right: the diagram's content (its names, lines and circles) is moved to keep the pop-up's
+      // margin from the page's left edge, measured while the pop-up opens; once it has settled, the move is held (so the
+      // diagram does not wander as the tooth turns) and the pop-up widens leftwards (opts.onRoom) to the same gap from the
+      // content's right edge. Both hold while the pop-up stays open, and go back once it closes. The scale never changes here.
+      if (onRight && !s.roomSent) { const xs = [];
+        cards.forEach(b2 => { if (!b2.vis) return; const k2 = b2.L._bb || (b2.L._bb = b2.L.card.getBBox()); xs.push(b2.x + k2.x, b2.x + k2.x + k2.width); });
+        all.forEach(o => { if (o.top) xs.push(o.top[0] - (o.r || 3) * 2.6, o.top[0] + (o.r || 3) * 2.6); });
+        s.lines.forEach(L => { if (L._s) xs.push(L._s[0][0], L._s[1][0]); });
+        if (xs.length) { const lo = Math.min(...xs), hi = Math.max(...xs);
+          s.shiftT = s.shiftX + (sideM - lo);
+          if (s.cvAt == null) s.cvAt = now;
+          if (now - s.cvAt > 1100) { s.roomSent = true; if (opts.onRoom) { const usual = Math.min(460, Math.max(300, s.W * 0.25)), w = Math.round(cl(s.W - sideM - (hi + s.shiftT - s.shiftX) - sideM, usual, 680)); opts.onRoom(w > usual + 4 ? w : null); } } } }   // only ever wider than usual
+      else if (!onRight) { s.cvAt = null; if (s.roomSent && opts.onRoom) opts.onRoom(null); s.roomSent = false; }
       // the clicked period's years, in a box beside its circle: right of it, else left, below or above, whichever is first
       // clear of the names, the pop-up, the buttons, the timeline's handle and the page's edges; hidden if none is, or while its circle is hovered (the
       // readout says the same) or under the pop-up
@@ -852,8 +879,12 @@
           if (s.legKey !== key) { s.legKey = key; s.legRel = null; s.lgT.textContent = lg.title; while (s.lgRows.firstChild) s.lgRows.firstChild.remove();
             lg.rows.forEach(([col, txt, , sub]) => { const rg = el("g", {}, s.lgRows); el("circle", { class: "rd-lsw", r: 5, style: "fill:" + col }, rg); el("text", { class: "rd-ct rd-lrow" }, rg).textContent = txt;
               if (sub) el("text", { class: "rd-ct rd-lsub" }, rg).textContent = sub; });
-            s.lgW = Math.max(s.lgT.getComputedTextLength(), ...[...s.lgRows.querySelectorAll("text")].map(t => t.getComputedTextLength() + 16)) + 20;
-            s.lgH = 30 + lg.rows.reduce((a2, r) => a2 + (r[3] ? 35 : 19), 0); }
+            // in columns (lg.cols, filled row by row): each column as wide as its widest entry, with a gap between
+            const nc = lg.cols || 1, rgs = [...s.lgRows.children], cw2 = Array.from({ length: nc }, () => 0);
+            rgs.forEach((rg, k) => { cw2[k % nc] = Math.max(cw2[k % nc], ...[...rg.querySelectorAll("text")].map(t => t.getComputedTextLength() + 16)); });
+            s.lgCx = cw2.map((_, c) => cw2.slice(0, c).reduce((a2, b2) => a2 + b2 + 22, 0));
+            s.lgW = Math.max(s.lgT.getComputedTextLength(), s.lgCx[nc - 1] + cw2[nc - 1]) + 20;
+            s.lgH = 30 + Array.from({ length: Math.ceil(lg.rows.length / nc) }, (_, r) => lg.rows.slice(r * nc, r * nc + nc).some(e => e[3]) ? 35 : 19).reduce((a2, b2) => a2 + b2, 0); }
           const bb = L._bb || (L._bb = L.card.getBBox()), cx0 = b.x + bb.x, cy0 = b.y + bb.y, cw = bb.width, ch = bb.height, h = s.lgH, w = s.lgW;
           // what it keeps clear of, as screen rectangles [x0, y0, x1, y1], points with a radius, and segments
           // (boxes carry a weight: the molar and the streams count most if the legend must cover something; hard boxes it never covers)
@@ -907,9 +938,10 @@
           const [x, y] = pos;
           s.lgBg.setAttribute("x", fx(x)); s.lgBg.setAttribute("y", fx(y)); s.lgBg.setAttribute("width", fx(w)); s.lgBg.setAttribute("height", fx(h));
           s.lgT.setAttribute("x", fx(x + 10)); s.lgT.setAttribute("y", fx(y + 20));
-          { let ry = y + 20; [...s.lgRows.children].forEach(rg => { ry += 19; const [c0, t0, t1] = rg.children;
-            c0.setAttribute("cx", fx(x + 15)); c0.setAttribute("cy", fx(ry - 4)); t0.setAttribute("x", fx(x + 26)); t0.setAttribute("y", fx(ry));
-            if (t1) { ry += 16; t1.setAttribute("x", fx(x + 26)); t1.setAttribute("y", fx(ry)); } }); }
+          { const nc = lg.cols || 1; let ry = y + 20, rowH = 0;
+            [...s.lgRows.children].forEach((rg, k) => { const c = k % nc; if (!c) { ry += rowH + 19; rowH = 0; } const [c0, t0, t1] = rg.children, x2 = x + s.lgCx[c];
+              c0.setAttribute("cx", fx(x2 + 15)); c0.setAttribute("cy", fx(ry - 4)); t0.setAttribute("x", fx(x2 + 26)); t0.setAttribute("y", fx(ry));
+              if (t1) { rowH = 16; t1.setAttribute("x", fx(x2 + 26)); t1.setAttribute("y", fx(ry + 16)); } }); }
           // the leader: from the name's box to the legend's, between their nearest points
           const lx = cl(x + w / 2, cx0, cx0 + cw), ly = cl(y + h / 2, cy0, cy0 + ch), gx = cl(lx, x, x + w), gy = cl(ly, y, y + h);
           // drawn only while the legend is close to its name: a long leader would cross the drawing it keeps clear of
@@ -972,6 +1004,9 @@
       play(on) { setPlaying(on); },
       // the clicked period: select({ key, i }) sets it, select(null) lets it go; either way opts.onSelect hears
       select(q) { if (!q) clearSel(); else { selKey = q.key; selIdx = [q.i]; cmp = null; setSel([q.key, q.i]); } },
+      // let one picked period go (its card's X), keeping the other: the molar then shows the one left
+      unpick(q) { if (!q || selKey !== q.key || !selIdx.includes(q.i)) return; choose(q.key, q.i); if (S && S.read && !S.read.byPtr) S.read.off();
+        const L = S && S.lines.find(L2 => L2.c.key === q.key); if (L && selIdx.length && MOLAR_KEYS.includes(q.key)) { const d0 = L.c.dens[selIdx[0]]; seekYear((d0[0] + d0[1]) / 2); } },
       // the filter: hide (on = false) or show a record's line, circles, name and what it draws on the molar
       show(key, on) { if (on) off.delete(key); else off.add(key); if (!on && selKey === key) clearSel(); applyOff(); },
       hidden() { return [...off]; },

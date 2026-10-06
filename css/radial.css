@@ -22,9 +22,6 @@ button{font:inherit;color:inherit}
 .btn{font-family:var(--label);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);background:var(--bg);padding:6px 12px;cursor:pointer}
 .btn:hover{background:var(--ink);color:var(--bg)}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-#again{position:fixed;right:28px;bottom:26px;z-index:6}
-#pause{position:fixed;right:28px;bottom:64px;z-index:6;min-width:86px}   /* above Replay, clear of the hint line */
-#again{min-width:86px}
 
 /* ---- the radial (radial.js) */
 #radial{position:fixed;inset:0;z-index:3;background:var(--bg)}
@@ -145,8 +142,8 @@ button{font:inherit;color:inherit}
 /* only a circle's hit area takes the pointer: the soft halos are wider and, re-stacked by depth, can sit over a neighbour's hit area */
 .rd-bokeh,.rd-core{pointer-events:none}
 /* a Wear and LEH point's readout: its two stress lines, in the colours they have on the molar */
-.rd3 .rd-lh .a{fill:#16907A}
-.rd3 .rd-lh .b{fill:#0A4A3F}
+.rd3 .rd-lh .a{fill:#1A1A18}
+.rd3 .rd-lh .b{fill:#000}
 /* the legend beside a hovered record name (Pathogens, Metals): the circles' pop-up, with a swatch per colour */
 .rd3 .rd-lrow{font-style:normal}
 .rd-lsw{stroke:var(--bg);stroke-width:1}
@@ -173,8 +170,8 @@ button{font:inherit;color:inherit}
 .rd-pin.cur text{font-weight:600}
 /* comparing: the other records' lines, circles and names fade and grey */
 .rd3 .rd-fade{filter:opacity(.3) saturate(.2)}
-/* the filter menu, top right (js/main.js): a button that opens a list of the records, each with a checkbox in its colour */
-.flt{position:fixed;top:20px;right:28px;z-index:7;font-family:var(--label);width:236px}
+/* the filter menu, top left (js/main.js): a button that opens a list of the records, each with a checkbox in its colour */
+.flt{position:fixed;top:20px;left:28px;z-index:7;font-family:var(--label);width:236px}
 .flt-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;cursor:pointer;box-shadow:0 2px 10px rgba(26,26,24,.06)}
 .flt-btn:hover{border-color:var(--ink-3)}
 .flt-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -189,5 +186,13 @@ button{font:inherit;color:inherit}
 .flt-row input:checked + .flt-box::after{content:"";position:absolute;left:5.5px;top:1.5px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
 .flt-row input:focus-visible + .flt-box{outline:2px solid var(--ink);outline-offset:2px}
 @media (prefers-reduced-motion: reduce){.flt-chev,.flt-box{transition:none}}
-@media (max-width:760px){.flt{top:12px;right:16px;width:200px}}
-
+@media (max-width:760px){.flt{top:12px;left:16px;width:200px}}
+/* Play / Pause and Replay: icons, side by side, centred at the foot of the page */
+.ctrls{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:6;display:flex;gap:16px}
+.btn.ico{width:66px;height:30px;padding:0;display:grid;place-items:center;color:var(--ink)}
+.btn.ico:hover{color:#fff}   /* white on the black of a hovered button */
+.btn.ico svg{width:18px;height:18px;fill:currentColor}
+.btn.ico svg .ln{fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
+/* text in the hover pop-ups (a circle's readout, a record name's legend) sits on its own box: no halo behind the letters,
+   which read there as a faint dark shadow */
+.rd3 .rd-read .rd-yr,.rd3 .rd-read .rd-ct{stroke:none;stroke-width:0}

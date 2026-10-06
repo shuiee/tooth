@@ -16,8 +16,10 @@
   <button class="flt-btn" id="filter-btn" type="button" aria-expanded="false" aria-controls="filter-list">Filter by record<svg class="flt-chev" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5 6 6.5 11 1.5"/></svg></button>
   <ul class="flt-list" id="filter-list" hidden></ul>
 </div>
-<button class="btn" id="pause" type="button" aria-pressed="false">Pause</button>
-<button class="btn" id="again" type="button">Replay</button>
+<div class="ctrls">
+  <button class="btn ico" id="pause" type="button" aria-pressed="false" aria-label="Pause"></button>
+  <button class="btn ico" id="again" type="button" aria-label="Replay"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ln" d="M5.3 14.5A7.2 7.2 0 1 0 6.9 7.1"/><path d="M4.4 3.9 4.6 9.3 9.9 8.6z"/></svg></button>
+</div>
 
 <script src="vendor/three.min.js"></script>
 <script src="data/molar-cloud.js"></script>

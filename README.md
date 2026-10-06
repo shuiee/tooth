@@ -14,7 +14,7 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a circle opens that time period's pop-up (and, on a caries, pathogens, wear or metals circle, shows that period on the molar), a second click on the same line compares the two on the molar, a click on empty space lets them go; the menu at the top right hides or shows records; **Replay** runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Play/Pause** (the icons at the foot of the page) holds the timeline, a click on a circle opens that time period's pop-up (and, on a caries, pathogens, wear or metals circle, shows that period on the molar), a second click on the same line compares the two on the molar, a click on empty space lets them go; the menu at the top right hides or shows records; **Replay** (the curved arrow) runs the opening again.
 
 ## Structure
 

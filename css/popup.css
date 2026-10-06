@@ -2,17 +2,17 @@
    quarter of it, or along the bottom, above Pause and Replay, on narrow pages. Square corners throughout, like the crop
    marks it opens with. Uses radial.css's tokens. */
 
-.pp-box{--side:right;position:fixed;z-index:5;top:50%;right:clamp(16px,2.4vw,40px);width:clamp(300px,25vw,460px);translate:0 -50%;pointer-events:none}
+.pp-box{--side:right;position:fixed;z-index:5;top:50%;right:clamp(16px,2.4vw,40px);width:clamp(300px,25vw,460px);translate:0 -50%;pointer-events:none;display:flex;flex-direction:column;gap:30px;transition:width .45s cubic-bezier(.2,.7,.2,1)}   /* two compared periods: two cards, stacked, each as tall as its content */
 .pp-box:not(.on){visibility:hidden}
 .pp-live{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
 
 .pp{position:relative;pointer-events:auto;padding:18px 20px 18px;color:var(--ink);font-family:var(--serif)}
-.pp.out{position:absolute;top:0;left:0;right:0;pointer-events:none}   /* the one going, over the one coming */
-.pp-sur{position:absolute;inset:0;background:rgba(243,242,238,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 10px 30px -18px rgba(60,55,45,.35);clip-path:inset(50% 0 50% 0)}
+.pp.out{position:absolute;left:0;right:0;pointer-events:none}   /* the one going, where it was (top set as it goes), over the one coming */
+.pp-sur{position:absolute;inset:0;border:1px solid rgba(26,26,24,.16);transition:border-color .3s ease;background:rgba(243,242,238,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 10px 30px -18px rgba(60,55,45,.35);clip-path:inset(50% 0 50% 0)}
 .pp-body{position:relative}
 
-/* the corners: brackets on the pop-up's corners, and small marks just outside them */
-.pp-br{position:absolute;width:18px;height:18px;border:0 solid var(--ink);opacity:0}
+/* the corners: small marks just outside them (the card's faint outline, on its paper, replaces the corner brackets) */
+.pp-br{display:none}
 .pp-br.tl{top:0;left:0;border-width:1.5px 0 0 1.5px;--bx:-10px;--by:-10px}
 .pp-br.tr{top:0;right:0;border-width:1.5px 1.5px 0 0;--bx:10px;--by:-10px}
 .pp-br.bl{bottom:0;left:0;border-width:0 0 1.5px 1.5px;--bx:-10px;--by:10px}
@@ -24,9 +24,9 @@
 .pp-tk.br{bottom:-12px;right:-12px;clip-path:polygon(0 0,100% 0,0 100%)}
 
 /* the text */
-.pp-when{margin:0 60px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-size:12px;line-height:1.4}
+.pp-when{margin:0 36px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-size:12px;line-height:1.4}
 .pp-rec{color:var(--c);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
-.pp-x{position:absolute;top:-10px;right:-4px;border:0;background:none;padding:2px 6px;font-family:var(--serif);font-size:22px;font-weight:400;line-height:1;color:var(--ink-2);cursor:pointer}
+.pp-x{position:absolute;z-index:1;top:1px;right:3px;border:0;background:none;padding:2px 7px;font-family:var(--serif);font-size:32px;font-weight:400;line-height:1;color:var(--ink-2);cursor:pointer}
 .pp-x:hover{color:var(--ink)}
 .pp-x:focus-visible{outline:1.5px solid var(--ink);outline-offset:-1px}
 .pp-x:active{translate:0 1px}
@@ -69,6 +69,7 @@
 @keyframes ppGone{from{opacity:1}to{opacity:0}}
 
 @media (prefers-reduced-motion: reduce){
+  .pp-box{transition:none}
   .pp-sur{clip-path:none}
   .pp.go .pp-in,.pp.go .pp-sur,.pp.go .pp-br,.pp.go .pp-tk{animation:ppFade .2s ease both}
 }
@@ -79,4 +80,12 @@
   .pp-box{--side:bottom;top:auto;bottom:100px;left:16px;right:16px;width:auto;translate:none}
   .pp-body{max-height:calc(38vh - 36px);overflow:hidden auto;scrollbar-width:thin}
   .pp-grid{grid-template-rows:40px 40px 34px}
+}
+
+/* of two compared periods, the card for the one the molar shows now: its outline a little stronger */
+.pp.now .pp-sur{border-color:rgba(26,26,24,.42)}
+/* narrow pages, two cards: each shorter, so both fit above the buttons */
+@media (max-width:899px){
+  .pp-box{gap:22px}
+  .pp-box.two .pp-body{max-height:calc(19vh - 30px)}
 }

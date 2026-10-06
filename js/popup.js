@@ -14,7 +14,11 @@
    pop-up's middle and part to its top and bottom edges, opening its paper between them, while hairlines run down its
    sides; its corners close in, small marks settle outside them, and the text resolves line by line out of a blur. The
    hairlines then fade, leaving the corners. Clicking another circle closes this pop-up as the next one opens in its
-   place. With reduced motion, it fades in. */
+   place. With reduced motion, it fades in.
+
+   Two periods picked on one line, to compare them, show two cards, stacked, the earlier period on top, each as tall
+   as its content. Each card's X lets its own period go; Escape lets them all go. The card for the period the molar
+   shows now (mark()) has a stronger outline. */
 (function () {
   "use strict";
   const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -36,12 +40,12 @@
     const live = document.createElement("p"); live.className = "pp-live"; live.setAttribute("aria-live", "polite");
     const guides = document.createElement("div"); guides.className = "pp-guides"; guides.setAttribute("aria-hidden", "true");
     box0.appendChild(live); document.body.append(guides, box0);
-    let cur = null, box = null;   // the pop-up showing: { id, panel }; the page area it covers
-    const measure = () => { if (!cur) { box = null; return; } const r = cur.panel.getBoundingClientRect();
+    let cur = [], box = null;   // the cards showing, earliest period first: [{ id, panel }]; the page area they cover
+    const measure = () => { if (!cur.length) { box = null; return; } const r = box0.getBoundingClientRect();
       box = { side: getComputedStyle(box0).getPropertyValue("--side").trim() || "right", x: r.left, y: r.top, w: r.width, h: r.height }; };
     if (window.ResizeObserver) new ResizeObserver(measure).observe(box0);
     addEventListener("resize", measure);
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && cur && opts.onClose) opts.onClose(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && cur.length && opts.onClose) opts.onClose(null); });
 
     // the crop marks: hairlines along the pop-up's edges across the whole page, drawn once as it opens
     function marks(panel) {
@@ -56,10 +60,11 @@
       const c = (CONTENT[pick.key] || placeholder)(pick), panel = document.createElement("section");
       panel.className = "pp"; panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
-        "<div class='pp-body'><p class='pp-when pp-in' style='--i:0'><span>Selected time: " + esc(pick.range) + "</span><span class='pp-rec'>" + esc(pick.name) + "</span></p>" +
+        // the X on the card itself, not in its body (which scrolls, and clips, on narrow pages)
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
+        "<div class='pp-body'><p class='pp-when pp-in' style='--i:0'><span>Selected time: " + esc(pick.range) + "</span><span class='pp-rec'>" + esc(pick.name) + "</span></p>" +
         "<p class='pp-lead pp-in' style='--i:1'>" + esc(c.lead) + "</p>" + c.body + "</div>";
-      panel.querySelector(".pp-x").addEventListener("click", () => opts.onClose && opts.onClose());
+      panel.querySelector(".pp-x").addEventListener("click", () => opts.onClose && opts.onClose(pick));   // this card's period only
       box0.appendChild(panel); live.textContent = pick.name + ", " + pick.range + ". " + c.lead;
       if (REDUCED) panel.classList.add("go"); else requestAnimationFrame(() => { marks(panel); panel.classList.add("go"); });
       return panel;
@@ -68,18 +73,24 @@
     // the pop-up going: its text blurs away and its paper shuts to a line, over the next one if there is one
     function close(panel) {
       if (REDUCED) { panel.remove(); return; }
-      panel.classList.add("out"); setTimeout(() => panel.remove(), 460);
+      panel.style.top = panel.offsetTop + "px"; panel.classList.add("out"); setTimeout(() => panel.remove(), 460);
     }
 
     return {
-      // pick: the period clicked ({ key, i, name, col, from, to, n, unit, range }), or null for none
-      show(pick) {
-        const id = pick ? pick.key + ":" + pick.i : null; if ((cur && cur.id) === id) return;
-        if (cur) close(cur.panel);
-        cur = pick ? { id, panel: open(pick) } : null;
-        box0.classList.toggle("on", !!cur); if (!cur) live.textContent = "";
+      // picks: the periods clicked ({ key, i, name, col, from, to, n, unit, range }), one or two (or a single pick), or null
+      show(picks) {
+        const want = (picks ? [].concat(picks) : []).slice().sort((p1, p2) => p1.from - p2.from), ids = want.map(p2 => p2.key + ":" + p2.i);
+        if (ids.join("|") === cur.map(c => c.id).join("|")) return;
+        cur.filter(c => !ids.includes(c.id)).forEach(c => close(c.panel));
+        cur = want.map((p2, k) => cur.find(c => c.id === ids[k]) || { id: ids[k], panel: open(p2) });
+        cur.forEach(c => box0.appendChild(c.panel));   // in order, earliest on top
+        box0.classList.toggle("on", cur.length > 0); box0.classList.toggle("two", cur.length > 1); if (!cur.length) live.textContent = "";
         measure();
       },
+      // the width the diagram leaves it (px), or null for its usual width; its cards stretch, their margins stay
+      width(px) { box0.style.width = px ? px + "px" : ""; measure(); },
+      // the card for the period the molar shows now, of two compared ("key:i"), or null
+      mark(id) { cur.forEach(c => c.panel.classList.toggle("now", cur.length > 1 && c.id === id)); },
       // the page area the pop-up covers, for the diagram's labels to keep clear of: { side: "right" | "bottom", x, y, w, h }, or null
       cover() { return box; },
     };
