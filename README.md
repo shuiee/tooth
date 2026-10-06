@@ -1,8 +1,10 @@
 **[Open the visualisation →](https://shuiee.github.io/tooth/)**
 
-# Radial timeline
+# The Tooth Untold
 
-A 3D radial timeline of dental evidence, starting from Plate II of *The Tooth Untold* (Harvard MDE). A first molar sits at the centre as a point cloud, and five records leave it as lines: caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. The further a circle sits from the tooth, the longer ago its period; as the timeline plays, the molar shows each period's evidence.
+By Lily Liu, Elina Lee and Ali Qureshi.
+
+A 3D radial timeline of dental evidence (Harvard MDE). A first molar sits at the centre as a point cloud, and five records leave it as lines: caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. The further a circle sits from the tooth, the longer ago its period; as the timeline plays, the molar shows each period's evidence.
 
 ## Run
 
@@ -16,4 +18,4 @@ The whole prototype is one self-contained file, `index.html`: its code, images a
 
 ## Credits
 
-Data from the Global History of Health Project (European module); AncientMetagenomeDir (SPAAM community, CC-BY 4.0); Montgomery et al. 2010 and Kamenov et al. 2018; Monaco et al. 2022, Dittmar et al. 2026, Waters-Rist et al. 2013 and the Adult Dental Health Survey 2009. The 3D version is by Ali Qureshi; three.js is MIT-licensed. Sources, the file structure and the working rules are in `CLAUDE.md`.
+Data from the Global History of Health Project (European module); AncientMetagenomeDir (SPAAM community, CC-BY 4.0); Montgomery et al. 2010 and Kamenov et al. 2018; Monaco et al. 2022, Dittmar et al. 2026, Waters-Rist et al. 2013 and the Adult Dental Health Survey 2009. Sources, the file structure and the working rules are in `CLAUDE.md`.
