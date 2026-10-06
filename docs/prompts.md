@@ -39,10 +39,12 @@ GEOMETRY.
   with its year range under it ("100 – 1900 CE"), on a thin dashed leader. Names are pushed apart so they never
   overlap, and stay inside the page.
 - At the hub, the 3D tooth model in the journal's ink: transparent, rim-lit, finely hatched in horizontal lines,
-  turning with the camera. A small dot and slowly turning dashed rings mark the hub.
+  turning with the camera. Slowly turning dashed rings mark the hub (no dot).
 - A "reading wave", the timeline: a ring that sweeps in from the oldest record to today about every 22 seconds (pausable), labelled with
-  the year it has reached. Circles swell as it passes them. A knob on the ring can be dragged around it and in or out
-  to a year, which pauses the timeline there; the label sits just outside the knob.
+  the year it has reached, drawn as a soft, blurred band (stacked strokes, widest faintest). A diamond handle on it can be dragged
+  around it and in or out to a year, which pauses the timeline there; the label sits just outside the handle. Circles
+  light up only while the reader hovers a time period: a circle's own years, or the year under the pointer on a line
+  or at the handle lights every circle covering it, on every line.
 
 LOOK. Light journal paper (#e9e8e4) with a soft radial vignette, ink #1a1a18, greys #55544f and #8a8983, and one
 serif (Lora) for everything. The wireframe is very faint so the data reads first. Nearer lines and circles are
@@ -54,6 +56,10 @@ CAMERA AND INTERACTION.
 - Hovering a circle shows its years and amount ("1300 – 1400 CE, 51 genomes sequenced", or "count not in the
   data") and dims the other records. Hovering a line or a name lights that record alone. Clicking a name calls
   onOpen(key), so the host page can open that record's section.
+- Clicking a circle opens that time period's pop-up, one at a time, at the right of the page and about a quarter of
+  it, over the diagram: "Selected time: [years]", the record, a key datapoint, and slots for a picture and figures.
+  It opens like a card between crop marks: hairlines draw across the page and part to its edges, its corners close
+  in, its text resolves out of a blur. Close, Escape or the same circle again closes it.
 - On load the camera swings in from far away and higher up, and the names fade in last. A Replay button runs it
   again.
 - A small readout bottom-left showing only the year under the pointer, in that record's colour: a hovered circle's
@@ -71,6 +77,7 @@ Use these in this repository, so the agent works on its files.
 - **Add a record.** "Add a sixth record to `js/radial-data.js`: [name], key [key], colour [hex] (add it to `COLS` in `js/radial.js`), unit [unit], periods [list]. Respread the angles evenly (60° apart), give it an elevation in `ELEV` that keeps its name clear of the others, and check with `tools/overlap-audit.js` at 1440, 1024 and 760 px."
 - **Recolour.** "Change the record colours (`COLS` in `js/radial.js`) to [list], keeping the paper background and the ink tooth. Every name must stay readable against the wireframe."
 - **Dark version.** "Make a dark variant: in `css/radial.css`, remove the paper theme section, the last one, so the original dark scene rules apply. Check that the tooth's ink shader still reads on the dark ground."
+- **Fill a pop-up.** "In `js/popup.js`, give `CONTENT.[record]` its lead (one sentence, the key datapoint) and body (HTML) for the period clicked, from [data file]. Every number must come from a data file; keep the placeholders for slots still to come, and check with `tools/overlap-audit.js` at 1440, 1024 and 760 px with a pop-up open."
 - **Wire the names.** "Set `onOpen` in `js/main.js` so clicking a record's name [opens a panel with that record's periods and counts / scrolls to its section]. The names should look like links only once this works."
 - **A still for Figma or print.** "Add an Export button that stops the motion at the home view and downloads an SVG of the diagram. Rasterise the tooth canvas into the SVG as an image, and keep the text as live text in Lora."
 

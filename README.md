@@ -14,14 +14,16 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries, pathogens, wear or metals circle shows that period on the molar; **Replay** runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a circle opens that time period's pop-up (and, on a caries, pathogens, wear or metals circle, shows that period on the molar); **Replay** runs the opening again.
 
 ## Structure
 
 ```text
 index.html            the page
 css/radial.css        theme tokens and the diagram's styles
-js/main.js            mounts the diagram; Pause, Replay, resize, the onOpen hook
+css/popup.css         the pop-up's styles and motion
+js/main.js            mounts the diagram; Pause, Replay, resize, the pop-up, the onOpen hook
+js/popup.js           the pop-up for a clicked time period (placeholders for now)
 js/caries-data.js     caries per period, for the molar
 js/wear-data.js       molar wear per period and age, for the molar's height
 js/metals-data.js     metals in childhood enamel per period, for the particles flowing down to the molar

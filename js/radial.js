@@ -15,6 +15,8 @@
    timeline: it runs from the oldest record in to today (pausable, see play()), and the molar shows the caries of
    the period it is in; clicking a caries point moves the wave to that period and pauses it (js/caries-data.js, cariesShares()).
    A knob on the wave can be dragged around it and in or out to a year, which also pauses it there.
+   Clicking a circle picks its time period for the pop-up (opts.onSelect, js/popup.js): one at a time, ringed on its
+   line and labelled with its years; the labels keep clear of the pop-up (opts.cover) and the buttons (opts.controls).
 
    Hand-built SVG, no libraries. The teeth arrive as pictures from the page's own renderer (app.js, radialTeeth()),
    each with a white and a black silhouette for the blur and the mask. Styles are the .rd-* rules in index.html. */
@@ -97,6 +99,13 @@
     // the ring); touched once the reader has moved it, which also brings the ring out under reduced motion
     const ring = { a: 0, moved: false, touched: false, hover: false };
     let ringDrag = false;
+    // the time period the reader has clicked, as [record key, index on its line], or null: it opens the pop-up
+    // (opts.onSelect, js/popup.js) and is ringed on its line and labelled with its years. Clicking another circle moves
+    // it there; clicking it again lets it go, as do the pop-up's Close and Escape (select()).
+    let sel = null;
+    const pickOf = (k, i) => { const c = DATA.find(c2 => c2.key === k), d = c && c.dens[i]; return d ? { key: k, i, name: c.name, col: COLS[k], from: d[0], to: d[1], n: d[2], unit: c.unit, range: range(d[0], d[1]) } : null; };
+    const setSel = next => { sel = next; if (opts.onSelect) opts.onSelect(sel ? pickOf(sel[0], sel[1]) : null); };
+    const choose = (k, i) => { const same = !!sel && sel[0] === k && sel[1] === i; setSel(same ? null : [k, i]); return !same; };
     const HOME = { yaw: -0.5, pitch: 0.3, dist: 1480 };
     const intro = !!opts.animate && !REDUCED;
     const cam = { yaw: HOME.yaw - (intro ? 1.1 : 0), pitch: intro ? 0.9 : HOME.pitch, dist: intro ? 2300 : HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist };
@@ -511,7 +520,10 @@
       const AGES = [300, 1000, 2000, 4000, 6000].filter(a => a <= MAX_AGE * 1.02);
       const shells = AGES.map((a, i) => ({ w: rAge(a), a, el: el("polyline", { class: "rd-shell", style: "animation-delay:" + (-i * 1.1) + "s" }, gSphere), lab: el("text", { class: "rd-slab" }, gSphere) }));
       shells.forEach(r => r.lab.textContent = r.a.toLocaleString("en-GB") + " years ago");
-      const wave = el("polyline", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere);
+      // the timeline's ring, drawn as a soft, blurred band so it reads apart from the records' crisp lines: the same ring
+      // stroked five times over, widest faintest (stacked strokes, not a blur filter, which would be redrawn every frame)
+      const wave = el("g", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere),
+        waveL = [[14, 0.06], [9, 0.09], [6, 0.13], [3.5, 0.2], [1.6, 0.3]].map(([sw, so]) => el("polyline", { "stroke-width": sw, "stroke-opacity": so }, wave));
       const gAmb = el("g", { "aria-hidden": "true" }, svg), gLines = el("g", {}, svg), gArrows = el("g", { "aria-hidden": "true" }, svg), gBack = el("g", {}, svg), gTeeth = el("g", { class: "rd-teeth", "aria-hidden": "true" }, svg), gHub = el("g", { "aria-hidden": "true" }, svg), gFront = el("g", {}, svg), gCards = el("g", {}, svg), gRead = el("g", { class: "rd-read", "aria-hidden": "true" }, svg);
       // a legend for the colours a record draws on the molar, shown beside its name while the name is hovered or
       // focused, styled as the circles' pop-up: the pathogens' kinds, the metals' two groups
@@ -533,12 +545,13 @@
           const arrow = el("line", { class: "rd-arw", "data-cat": c.key, style: "--c:" + col }, gArrows); const o = { c, m, mi, ci, arrow, mg: mgp, halo, dot, hit, col, ph: mi * 1.9 + ci, sz: m.d[2] == null ? 0.35 : 0.3 + 0.7 * Math.sqrt(m.d[2] / mx), blur: -1 };
           const on = () => { mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); }; o.off = off;
           hit.addEventListener("mouseenter", () => { o.byPtr = true; on(); }); hit.addEventListener("mouseleave", off); hit.addEventListener("focus", () => { o.byPtr = false; on(); }); hit.addEventListener("blur", off);
-          const fly = () => { const yaw = Math.atan2(d[0], d[2]), k = Math.round((cam.yaw - yaw) / (2 * Math.PI)); cam.tYaw = yaw + (k - 1) * 2 * Math.PI; cam.tPitch = cl(Math.asin(d[1]) + 0.15, -1.2, 1.35); cam.tDist = cl(o.m.w + 620, 780, 3000); lastInput = performance.now() + 5000; S.pin = o; on(); };
+          const fly = () => { const yaw = Math.atan2(d[0], d[2]), k = Math.round((cam.yaw - yaw) / (2 * Math.PI)); cam.tYaw = yaw + (k - 1) * 2 * Math.PI; cam.tPitch = cl(Math.asin(d[1]) + 0.15, -1.2, 1.35); cam.tDist = cl(o.m.w + 620, 780, 3000); lastInput = performance.now() + 5000; on(); };
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
-          // which can cancel a click between press and release. A caries point also moves the timeline to its period and
-          // pauses it there, so the molar shows that period's caries.
-          const pick = () => { if (c.key !== "caries" && c.key !== "wear" && c.key !== "metals" && c.key !== "pathogens") { fly(); return; }
-            S.pin = o; on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
+          // which can cancel a click between press and release. The press picks the period for the pop-up, or lets it go
+          // if it was picked. A caries point also moves the timeline to its period and pauses it there, so the molar shows
+          // that period's caries.
+          const pick = () => { if (!choose(c.key, mi)) return; if (c.key !== "caries" && c.key !== "wear" && c.key !== "metals" && c.key !== "pathogens") { fly(); return; }
+            on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
         });
@@ -567,14 +580,18 @@
       // the timeline's handle: drag it around the ring, or in and out to a year (which pauses the timeline there); the
       // arrow keys step it in and out
       const grip = el("g", { class: "rd-grip", tabindex: 0, role: "slider", "aria-label": "Timeline: drag to choose a year", "aria-valuemin": 0, "aria-valuemax": MAX_AGE }); svg.insertBefore(grip, gRead);
-      const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), kRing = el("circle", { class: "rd-kring" }, grip), knob = el("circle", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
-      grip.addEventListener("pointerdown", e => { ringDrag = true; ring.touched = true; if (!ring.moved) { ring.moved = true; ring.a = S.ringA; } S.pin = null; setPlaying(false);
+      const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), knob = el("g", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
+      // the clicked period's years, in a box beside its circle
+      const gPin = el("g", { class: "rd-pin", "aria-hidden": "true" }); svg.insertBefore(gPin, grip);
+      const pin = { g: gPin, ln: el("line", {}, gPin), bx: el("rect", { height: 26 }, gPin), t: el("text", {}, gPin), o: null, w: 0 };
+      el("path", { class: "rd-kbody", d: "M-10 0L0 -7L10 0L0 7Z" }, knob); el("path", { class: "rd-kfacet", d: "M-4.5 0L0 -3.2L4.5 0L0 3.2Z" }, knob);   // a diamond lying along the ring, with a small facet
+      grip.addEventListener("pointerdown", e => { ringDrag = true; ring.touched = true; if (!ring.moved) { ring.moved = true; ring.a = S.ringA; } setPlaying(false);
         try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("ringgrab"); lastInput = performance.now(); });
       grip.addEventListener("keydown", e => { const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]; if (!k) return; e.preventDefault();   // up: further back
-        ring.touched = true; S.pin = null; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
+        ring.touched = true; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, pin, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -586,6 +603,10 @@
       cam.yaw += (cam.tYaw - cam.yaw) * kc; cam.pitch += (cam.tPitch - cam.pitch) * kc; cam.dist += (cam.tDist - cam.dist) * kc;
       const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), D = cam.dist;
       const pos = [D * cp * sy, D * sp, D * cp * cy], fw = [-pos[0] / D, -pos[1] / D, -pos[2] / D], rt = [cy, 0, -sy], up = cross(rt, fw);
+      // the pop-up, laid over the diagram (opts.cover(): the box it covers, at the right of the page or, on narrow pages,
+      // along the bottom): the names, the time labels, the timeline's year and the readouts keep clear of it
+      const cv = opts.cover ? opts.cover() : null, inCv = (x, y, w, h) => !!cv && x < cv.x + cv.w + 6 && cv.x - 6 < x + w && y < cv.y + cv.h + 6 && cv.y - 6 < y + h;
+      const ctl = opts.controls ? opts.controls() : null;   // the page's own buttons (Pause, Replay), which the names keep clear of too
       const { C, F } = s, U = F / D; s.cb = { pos, fw, rt, up };   // the camera, kept for dragging the timeline's handle
       const pj = (x, y, z) => { const d0 = x - pos[0], d1 = y - pos[1], d2 = z - pos[2], zc = d0 * fw[0] + d1 * fw[1] + d2 * fw[2], q = F / Math.max(30, zc);
         return [C[0] + (d0 * rt[0] + d1 * rt[1] + d2 * rt[2]) * q, C[1] - (d0 * up[0] + d1 * up[1] + d2 * up[2]) * q, q, zc]; };
@@ -637,7 +658,8 @@
       // reader moves the knob.
       { const hold = ring.hover || ringDrag, shown = !REDUCED || ring.touched;
         if (playing && !hold && !REDUCED && (!s.anim || t > 2.4)) waveU = (waveU + dt * 0.045) % 1;
-        const u = waveU, w = RMAX - u * (RMAX - R0); s.wW = shown ? w : 0; poly(s.wave, a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
+        const u = waveU, w = RMAX - u * (RMAX - R0); poly(s.waveL[0], a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
+        { const pts = s.waveL[0].getAttribute("points"); for (let i = 1; i < s.waveL.length; i++) s.waveL[i].setAttribute("points", pts); }
         const op = shown ? appear * (playing && !hold ? Math.max(0.25, Math.sin(Math.PI * u)) : 1) * 0.9 : 0; s.wave.style.opacity = op.toFixed(2);
         const age = Math.pow((w - R0) / (RMAX - R0), 2) * MAX_AGE, y0 = Math.round(NOW - age); s.ringY = y0 < 0 ? Math.round(y0 / 10) * 10 : y0; s.waveYear = y0;
         // the knob on the ring; its year is placed once the names are (below)
@@ -645,7 +667,9 @@
         const q = pj(w * Math.cos(A), 0, w * Math.sin(A)), vis = q[3] > 60, ox = q[0] - hb[0], oy = q[1] - hb[1], ol = Math.hypot(ox, oy) || 1;
         s.waveLab.textContent = yr(s.ringY); s.wl = { q, nx: ox / ol, ny: oy / ol, op: vis ? op : 0 };
         const hot = hold || s.grip.matches(":focus-visible"); s.grip.classList.toggle("on", hot);
-        [s.kHalo, s.kRing, s.knob, s.kHit].forEach(e => { e.setAttribute("cx", fx(q[0])); e.setAttribute("cy", fx(q[1])); }); s.knob.setAttribute("r", hot ? 7 : 5.5); s.kRing.setAttribute("r", hot ? 11 : 9.5);
+        [s.kHalo, s.kHit].forEach(e => { e.setAttribute("cx", fx(q[0])); e.setAttribute("cy", fx(q[1])); });
+        { const q2 = pj(w * Math.cos(A + 0.02), 0, w * Math.sin(A + 0.02)); let ang = Math.atan2(q2[1] - q[1], q2[0] - q[0]) * 57.2958; if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;   // along the ring, never upside down
+          s.knob.setAttribute("transform", "translate(" + fx(q[0]) + "," + fx(q[1]) + ") rotate(" + ang.toFixed(1) + ") scale(" + (hot ? 1.18 : 1) + ")"); }
         s.grip.style.opacity = vis ? Math.max(op, 0.65 * appear).toFixed(2) : 0; s.grip.style.pointerEvents = vis && appear > 0.5 ? "" : "none";
         if (s.grip._y !== s.ringY) { s.grip._y = s.ringY; s.grip.setAttribute("aria-valuenow", Math.round(age)); s.grip.setAttribute("aria-valuetext", yr(s.ringY)); }
         // hover is set when the pointer moves onto the knob (pointermove below), and cleared here once they part, so a
@@ -665,8 +689,7 @@
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
         if (key === "metals") s.met.era = era;
         if (key === "pathogens") s.pat.era = era;
-        L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
-        L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); });
+        L.g.classList.toggle("rd-nodata", !inData && !REDUCED); });   // with reduced motion there is no wave: the latest period, undimmed
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
       const ay = REDUCED ? 0 : t * 0.025;
       s.amb.forEach(o => { const ca = Math.cos(ay), sa = Math.sin(ay), x = o.p[0] * ca - o.p[2] * sa, z = o.p[0] * sa + o.p[2] * ca, y = o.p[1] + (REDUCED ? 0 : Math.sin(t * 0.4 + o.ph) * 10);
@@ -676,18 +699,22 @@
         o.c.style.opacity = (appear * cl(1.2 - (p[3] - D) / (RMAX * 1.8), 0.25, 0.9)).toFixed(2);
         if (o.t) { o.t.removeAttribute("visibility"); o.t.setAttribute("x", fx(p[0] + r + 6)); o.t.setAttribute("y", fx(p[1] + 3)); o.t.style.opacity = (appear * 0.8).toFixed(2); } });
       // records
-      const all = [];
+      const all = [], so = sel && (s.lines.find(L2 => L2.c.key === sel[0]) || { ms: [] }).ms[sel[1]];   // the clicked circle
       s.lines.forEach(L => {
         // the line grows out to its oldest record; its front runs 60 further, so the oldest circle swells to full size too
         const g = s.anim ? ease(cl((t - 0.7 - L.ci * 0.18) / 1.6, 0, 1)) : 1, wFront = R0 + (L.wEnd + 60 - R0) * g, wNow = Math.min(L.wEnd, wFront), at = w => pj(L.d[0] * w, L.d[1] * w, L.d[2] * w);
         const p0 = at(R0 * 0.6), pe = at(wNow); seg(L.base, p0, pe); L._s = p0[3] > 60 && pe[3] > 60 ? [p0, pe] : null; L._w = wNow;
         L.spans.forEach(spn => { const a = Math.min(spn.a, wNow), b = Math.min(spn.b, wNow); if (b - a < 0.5) { spn.el.setAttribute("visibility", "hidden"); return; }
           const p = at(a), q = at(b); if (seg(spn.el, p, q)) spn.el.setAttribute("stroke-width", fx(cl(3.6 * (p[2] + q[2]) / 2 / U, 2, 6.5))); });
-        L.ms.forEach(o => { o.arrow.setAttribute("visibility", "hidden"); if (o.m.w > wNow + 0.5) { o.mg.setAttribute("visibility", "hidden"); return; }
+        L.ms.forEach(o => { o.arrow.setAttribute("visibility", "hidden"); if (o.m.w > wNow + 0.5) { o.mg.setAttribute("visibility", "hidden"); o.top = null; return; }
           const pop = s.anim ? ease(cl((wFront - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
           const x = L.d[0] * o.m.w + (L.n1[0] * Math.cos(ph) + L.n2[0] * Math.sin(ph)) * hrx, y = L.d[1] * o.m.w + (L.n1[1] * Math.cos(ph) + L.n2[1] * Math.sin(ph)) * hrx, z = L.d[2] * o.m.w + (L.n1[2] * Math.cos(ph) + L.n2[2] * Math.sin(ph)) * hrx;
-          const p = pj(x, y, z); if (p[3] < 60) { o.mg.setAttribute("visibility", "hidden"); return; } o.mg.removeAttribute("visibility");
-          const bo = s.wW ? Math.exp(-Math.pow((o.m.w - s.wW) / 16, 2)) : 0, r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.5 * bo); o.top = p; o.r = r; o.z = p[3];
+          const p = pj(x, y, z); if (p[3] < 60) { o.mg.setAttribute("visibility", "hidden"); o.top = null; return; } o.mg.removeAttribute("visibility");
+          // a circle lights up only while the reader hovers a time period that it covers (s.hotP, set by the readout below)
+          const hp = s.hotP, d0 = o.m.d[0], d1 = o.m.d[1], want = hp && ((d0 < hp[1] && d1 > hp[0]) || (d0 === d1 && d0 >= hp[0] && d0 <= hp[1]) || (hp[0] === hp[1] && d0 <= hp[0] && hp[0] <= d1)) ? 1 : 0;
+          o.hz = (o.hz || 0) + (want - (o.hz || 0)) * (REDUCED ? 1 : Math.min(1, dt * 9)); if ((o.hz > 0.5) !== !!o.hot) { o.hot = o.hz > 0.5; o.mg.classList.toggle("hot", o.hot); }
+          const isSel = so === o; if (isSel !== !!o.sel) { o.sel = isSel; o.mg.classList.toggle("sel", isSel); }   // a picked circle: ringed in ink, a little larger
+          const r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.45 * o.hz) * (o.sel ? 1.3 : 1); o.top = p; o.r = r; o.z = p[3];
           [o.halo, o.dot, o.hit].forEach((e, j) => { e.setAttribute("cx", fx(p[0])); e.setAttribute("cy", fx(p[1])); e.setAttribute("r", fx(j === 0 ? r * 2.6 : j === 2 ? r + 6 : r)); });
           const bl = 0;
           if (bl !== o.blur) { o.blur = bl; if (bl) o.mg.setAttribute("filter", "url(#rd-b" + bl + ")"); else o.mg.removeAttribute("filter"); }
@@ -702,15 +729,19 @@
         L._b = { L, x: ne[0] + ux * 30 - (ux < 0 ? L.cw : 0), y: ne[1] + uy * 30 - 23, w: L.cw, ux, uy, ne, vis: ne[3] > 60,
           op: (s.anim ? cl((t - 2 - L.ci * 0.18) / 0.6, 0, 1) : 1) * cl(1.3 - (ne[3] - D) / (RMAX * 2), 0.45, 1) };
       });
-      // cards: keep inside the safe area (clear of the page edges and the year readout) and push overlapping ones apart
+      // cards: keep inside the safe area (clear of the page edges, the pop-up and the year readout) and push overlapping ones apart
       const cards = s.lines.map(L => L._b).filter(b => b.vis), yMin = s.pt + 6, yMax = s.H - 60;
+      cards.forEach(b => { const bb = b.L._bb; if (bb) b.w = Math.max(b.w, bb.x + bb.width); });   // a name's measured width, once known (its letter-spaced capitals run past the estimate)
+      const keep = b => { b.x = cl(b.x, 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46);
+        if (inCv(b.x, b.y, b.w, 46)) { if (cv.side === "right") b.x = Math.max(16, cv.x - b.w - 16); else b.y = cv.y - 52; }
+        if (ctl && b.x < ctl.x + ctl.w + 8 && ctl.x - 8 < b.x + b.w && b.y + 46 > ctl.y - 6) b.y = ctl.y - 52; };
       // the teeth at the centre: a circle around the hub, roughly the height of the molar on screen
       const tTop = pj(0, 170, 0), tR = Math.max(60, Math.hypot(tTop[0] - hb[0], tTop[1] - hb[1]) * 1.15);
       const onTooth = b => { const nx = cl(hb[0], b.x - 6, b.x + b.w + 6), ny = cl(hb[1], b.y - 6, b.y + 52); return Math.hypot(nx - hb[0], ny - hb[1]) < tR; };
       // re-anchor each name beside its own line's far end, on the outside, before resolving collisions
       cards.forEach(b => { b.x = b.ne[0] + b.ux * 18 - (b.ux < 0 ? b.w : 0); b.y = b.ne[1] + b.uy * 18 - 23; });
       for (let it = 0; it < 24; it++) {
-        cards.forEach(b => { b.x = cl(b.x, 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46); });
+        cards.forEach(keep);
         cards.sort((a, b) => a.y - b.y);
         for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) { const a = cards[i], c = cards[j];
           if (a.x < c.x + c.w + 10 && c.x < a.x + a.w + 10 && a.y < c.y + 54 && c.y < a.y + 54) { const push = (a.y + 54 - c.y) / 2 + 0.5; a.y -= push; c.y += push; } }
@@ -726,14 +757,29 @@
           if (b.y + 46 > s.H - 84 && b.x < 230) b.x += 14;
         });
       }
+      cards.forEach(keep);   // the last pushes, too, stay on the page and clear of the pop-up
       s.lines.forEach(L => { const b = L._b;
         if (!b.vis) { L.card.style.opacity = 0; L.lead.setAttribute("visibility", "hidden"); return; }
         L.card.setAttribute("transform", "translate(" + fx(b.x) + "," + fx(b.y) + ")"); L.card.style.opacity = b.op.toFixed(2);
         seg(L.lead, b.ne, [b.ux < 0 ? b.x + b.w : b.x, b.y + 23, 1, b.ne[3]]); L.lead.style.opacity = L.card.style.opacity; });
+      // the clicked period's years, in a box beside its circle: right of it, else left, below or above, whichever is first
+      // clear of the names, the pop-up, the buttons, the timeline's handle and the page's edges; hidden if none is, or while its circle is hovered (the
+      // readout says the same) or under the pop-up
+      const pinB = [], P = s.pin, o0 = so; let pinAt = null;
+      if (o0 && o0.top && s.read !== o0 && !inCv(o0.top[0] - o0.r, o0.top[1] - o0.r, 2 * o0.r, 2 * o0.r)) {
+        if (P.o !== o0) { P.o = o0; P.t.textContent = range(o0.m.d[0], o0.m.d[1]); P.w = (P.t.getComputedTextLength() || 90) + 20; }
+        const q = o0.top, r = o0.r, w = P.w, names = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; });
+        pinAt = [[q[0] + r + 12, q[1] - 13, q[0] + r, q[1]], [q[0] - r - 12 - w, q[1] - 13, q[0] - r, q[1]], [q[0] - w / 2, q[1] + r + 10, q[0], q[1] + r], [q[0] - w / 2, q[1] - r - 36, q[0], q[1] - r]]
+          .find(([x, y]) => x > 8 && x + w < s.W - 8 && y > 8 && y + 26 < s.H - 8 && !inCv(x, y, w, 26) && !(ctl && x - 6 < ctl.x + ctl.w && ctl.x < x + w + 6 && y - 6 < ctl.y + ctl.h && ctl.y < y + 32) && !(s.kxy && x - 14 < s.kxy[0] && s.kxy[0] < x + w + 14 && y - 12 < s.kxy[1] && s.kxy[1] < y + 38) && !names.some(n => x - 6 < n[0] + n[2] && n[0] < x + w + 6 && y - 4 < n[1] + n[3] && n[1] < y + 30)) || null; }
+      if (!pinAt) P.g.classList.remove("on");
+      else { const [x, y, ax, ay] = pinAt; pinB.push({ x, y, w: P.w, h: 26 });
+        P.bx.setAttribute("x", fx(x)); P.bx.setAttribute("y", fx(y)); P.bx.setAttribute("width", fx(P.w)); P.t.setAttribute("x", fx(x + 10)); P.t.setAttribute("y", fx(y + 17.5));
+        seg(P.ln, [ax, ay, 1, 999], [cl(ax, x, x + P.w), cl(ay, y, y + 26), 1, 999]); P.g.classList.add("on"); }
       { // shell labels: pick the ray, in screen space, that keeps them clear of every record line and mark; hide any that still collide
         const segs = s.lines.map(L => L._s).filter(Boolean), dts = all.map(o => o.top), cards2 = cards;
         const dseg = (q, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], l2 = vx * vx + vy * vy || 1, u = cl(((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / l2, 0, 1); return Math.hypot(q[0] - a[0] - u * vx, q[1] - a[1] - u * vy); };
-        const bad = q => { const c = [q[0] + 46, q[1] - 9]; return segs.some(sg => dseg(c, sg[0], sg[1]) < 24 || dseg([q[0] + 6, c[1]], sg[0], sg[1]) < 12 || dseg([q[0] + 86, c[1]], sg[0], sg[1]) < 12) || dts.some(d => Math.abs(d[0] - c[0]) < 56 && Math.abs(d[1] - c[1]) < 20) || cards2.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + 46); };
+        const bad = q => { const c = [q[0] + 46, q[1] - 9]; return segs.some(sg => dseg(c, sg[0], sg[1]) < 24 || dseg([q[0] + 6, c[1]], sg[0], sg[1]) < 12 || dseg([q[0] + 86, c[1]], sg[0], sg[1]) < 12) || dts.some(d => Math.abs(d[0] - c[0]) < 56 && Math.abs(d[1] - c[1]) < 20) || cards2.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + 46)
+          || c[0] - 44 < 4 || c[0] + 46 > s.W - 4 || inCv(c[0] - 52, c[1] - 12, 104, 24) || pinB.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + b.h); };
         let bestA = A0, bestN = 1e9;
         for (let n = 0; n < 36; n++) { const A = Ab + 0.5 + n / 36 * Math.PI * 2; let c = 0; s.shells.forEach(r => { const q = pj(r.w * Math.cos(A), 0, r.w * Math.sin(A)); if (q[3] > 60 && bad(q)) c++; }); if (c < bestN) { bestN = c; bestA = A; if (!c) break; } }
         let lp = null;
@@ -745,7 +791,7 @@
         const L = s.wl, lab = s.waveLab;
         if (L) { if (lab._t !== lab.textContent) { lab._t = lab.textContent; lab._w = lab.getComputedTextLength() || 60; }
           // each name's real extent (its letter-spaced capitals can run past the estimated width), measured once per build
-          const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14]));
+          const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14])).concat(pinB.map(b => [b.x, b.y, b.w, b.h])).concat(cv ? [[cv.x, cv.y, cv.w, cv.h]] : []);
           const pick = [[L.nx, L.ny], [-L.nx, -L.ny], [0, 1], [0, -1]].map(([dx, dy]) => {
             const x = L.q[0] + dx * 20, y = L.q[1] + dy * 20 + 4 + (dy > 0.35 ? 6 : 0), anchor = dx > 0.35 ? "start" : dx < -0.35 ? "end" : "middle", x0 = anchor === "start" ? x : anchor === "end" ? x - tw : x - tw / 2;
             return { x, y, anchor, clear: x0 > 4 && x0 + tw < s.W - 4 && y > 16 && y < s.H - 6 && !boxes.some(b => x0 - 4 < b[0] + b[2] && b[0] < x0 + tw + 4 && y - 15 < b[1] + b[3] && b[1] < y + 5) }; }).find(c => c.clear);
@@ -754,7 +800,7 @@
       }
       { // the legend beside a hovered (or focused) name, in empty space: never over the molar and what hangs about it (the
         // worn-away cloud above, the pathogens' ways in below, the metals), the record lines, their circles, the names and
-        // labels, the metals' streams, the timeline's knob and year, or the page's readout and buttons; it may lie over the sphere's rings. It
+        // labels, the metals' streams, the timeline's knob and year, the pop-up, or the page's readout and buttons; it may lie over the sphere's rings. It
         // keeps its place beside its name while that stays clear, and moves only when the tooth or the camera brings
         // something under it: then to the nearest clear place, trying rings of places further and further from the name.
         const key = s.leg, L = key && s.lines.find(L2 => L2.c.key === key), b = L && L._b, lg = key && s.LEG[key];
@@ -766,30 +812,37 @@
             s.lgH = 30 + lg.rows.reduce((a2, r) => a2 + (r[3] ? 35 : 19), 0); }
           const bb = L._bb || (L._bb = L.card.getBBox()), cx0 = b.x + bb.x, cy0 = b.y + bb.y, cw = bb.width, ch = bb.height, h = s.lgH, w = s.lgW;
           // what it keeps clear of, as screen rectangles [x0, y0, x1, y1], points with a radius, and segments
-          const boxes = [], dots = [], segs2 = s.lines.map(L2 => L2._s).filter(Boolean);
+          // (boxes carry a weight: the molar and the streams count most if the legend must cover something; hard boxes it never covers)
+          const boxes = [], hard = [], dots = [], segs2 = s.lines.map(L2 => L2._s).filter(Boolean);
           // the molar and what hangs about it: bands round its axis, from the pathogens' ways in to the top of the cloud
           const RINGS = [[-295, 220], [-150, 215], [0, 135], [150, 135], [300, 145]], ring = (y, r) => Array.from({ length: 12 }, (_, i) => pj(r * Math.cos(i * Math.PI / 6), y, r * Math.sin(i * Math.PI / 6)));
           const rp = RINGS.map(([y, r]) => ring(y, r));
           for (let i = 0; i < rp.length - 1; i++) { const q = rp[i].concat(rp[i + 1]).filter(v => v[3] > 60); if (!q.length) continue;
-            boxes.push([Math.min(...q.map(v => v[0])), Math.min(...q.map(v => v[1])), Math.max(...q.map(v => v[0])), Math.max(...q.map(v => v[1]))]); }
+            boxes.push([Math.min(...q.map(v => v[0])), Math.min(...q.map(v => v[1])), Math.max(...q.map(v => v[0])), Math.max(...q.map(v => v[1])), 4]); }
           // the metals' two streams beside the tooth, while they flow: each side's lanes, through the camera-facing frame they turn in
           if (GLT && GLT.met && GLT.met.want && GLT.met.want.some(v => v > 0)) { const mg2 = GLT.met.mgrp, cy2 = Math.cos(mg2.rotation.y), sy2 = Math.sin(mg2.rotation.y);
             [0, 1].forEach(g2 => { const q = []; GLT.met.lanes.forEach(pa => { if (pa.g !== g2) return; for (let i = 0; i < pa.P.length / 3; i += 4) { const lx = pa.P[3 * i], ly = pa.P[3 * i + 1], lz = pa.P[3 * i + 2];
               const v = pj(lx * cy2 + lz * sy2, ly + mg2.position.y, -lx * sy2 + lz * cy2); if (v[3] > 60) q.push(v); } });
-              if (q.length) boxes.push([Math.min(...q.map(v => v[0])) - 8, Math.min(...q.map(v => v[1])) - 8, Math.max(...q.map(v => v[0])) + 8, Math.max(...q.map(v => v[1])) + 8]); }); }
+              if (q.length) boxes.push([Math.min(...q.map(v => v[0])) - 8, Math.min(...q.map(v => v[1])) - 8, Math.max(...q.map(v => v[0])) + 8, Math.max(...q.map(v => v[1])) + 8, 4]); }); }
           cards.forEach(b2 => { if (!b2.vis) return; const k2 = b2.L._bb || (b2.L._bb = b2.L.card.getBBox()); boxes.push([b2.x + k2.x, b2.y + k2.y, b2.x + k2.x + k2.width, b2.y + k2.y + k2.height]); });
           s.shells.forEach(r => { if (+r.lab.style.opacity > 0.05) { const x = +r.lab.getAttribute("x"), y = +r.lab.getAttribute("y"); boxes.push([x, y - 12, x + 96, y + 3]); } });
           if (+s.waveLab.style.opacity > 0.05) { const k2 = s.waveLab.getBBox(); boxes.push([k2.x, k2.y, k2.x + k2.width, k2.y + k2.height]); }
           if (s.kxy) dots.push([s.kxy[0], s.kxy[1], 18]);
           all.forEach(o => { if (o.top && o.mg.getAttribute("visibility") !== "hidden") dots.push([o.top[0], o.top[1], (o.r || 3) + 5]); });
-          boxes.push([0, s.H - 58, 170, s.H], [s.W - 160, s.H - 120, s.W, s.H]);   // the year readout; Pause and Replay
-          const M = 6, clear = (x, y) => { if (x < 8 || y < 8 || x + w > s.W - 8 || y + h > s.H - 8) return false; const X0 = x - M, Y0 = y - M, X1 = x + w + M, Y1 = y + h + M;
-            if (boxes.some(q => q[0] < X1 && X0 < q[2] && q[1] < Y1 && Y0 < q[3])) return false;
-            if (dots.some(d => { const nx = cl(d[0], X0, X1), ny = cl(d[1], Y0, Y1); return Math.hypot(nx - d[0], ny - d[1]) < d[2]; })) return false;
-            return !segs2.some(([a1, a2]) => { for (let k = 0; k <= 24; k++) { const qx = a1[0] + (a2[0] - a1[0]) * k / 24, qy = a1[1] + (a2[1] - a1[1]) * k / 24; if (qx > X0 && qx < X1 && qy > Y0 && qy < Y1) return true; } return false; }); };
-          // keep the last place, relative to the name, while it is clear; else search outwards from the name
-          let pos = s.legRel && clear(cx0 + s.legRel[0], cy0 + s.legRel[1]) ? [cx0 + s.legRel[0], cy0 + s.legRel[1]] : null;
-          if (!pos) {
+          hard.push([0, s.H - 58, 170, s.H]);   // the year readout
+          if (ctl) hard.push([ctl.x, ctl.y, ctl.x + ctl.w, ctl.y + ctl.h]); else hard.push([s.W - 160, s.H - 120, s.W, s.H]);   // Pause and Replay
+          if (cv) hard.push([cv.x, cv.y, cv.x + cv.w, cv.y + cv.h]);   // the time period's pop-up, while it is open
+          // what a place would cover: 0 when clear; never off the page or over a hard box
+          const M = 6, cost = (x, y) => { if (x < 8 || y < 8 || x + w > s.W - 8 || y + h > s.H - 8) return Infinity; const X0 = x - M, Y0 = y - M, X1 = x + w + M, Y1 = y + h + M;
+            if (hard.some(q => q[0] < X1 && X0 < q[2] && q[1] < Y1 && Y0 < q[3])) return Infinity;
+            let c = 0; boxes.forEach(q => { const ox = Math.min(X1, q[2]) - Math.max(X0, q[0]), oy = Math.min(Y1, q[3]) - Math.max(Y0, q[1]); if (ox > 0 && oy > 0) c += ox * oy * (q[4] || 1); });
+            dots.forEach(d => { const nx = cl(d[0], X0, X1), ny = cl(d[1], Y0, Y1); if (Math.hypot(nx - d[0], ny - d[1]) < d[2]) c += 150; });
+            segs2.forEach(([a1, a2]) => { for (let k = 0; k <= 24; k++) { const qx = a1[0] + (a2[0] - a1[0]) * k / 24, qy = a1[1] + (a2[1] - a1[1]) * k / 24; if (qx > X0 && qx < X1 && qy > Y0 && qy < Y1) c += 40; } });
+            return c; }, clear = (x, y) => cost(x, y) === 0;
+          // keep the last place, relative to the name, while it is clear (or, where nothing was, no worse); else search outwards
+          const kept = s.legRel ? cost(cx0 + s.legRel[0], cy0 + s.legRel[1]) : Infinity;
+          let pos = kept <= (s.legCost || 0) * 1.25 ? [cx0 + s.legRel[0], cy0 + s.legRel[1]] : null;
+          if (!pos) { s.legCost = 0;
             const mx = cx0 + cw / 2, my = cy0 + ch / 2;
             search: for (const d of [16, 44, 80, 125, 180, 240, 310, 390]) {
               const cand = [[cx0 + cw + d, my - h / 2], [cx0 - d - w, my - h / 2], [cx0 + cw + d, cy0 - 4], [cx0 - d - w, cy0 - 4], [cx0 + cw + d, cy0 + ch - h + 4], [cx0 - d - w, cy0 + ch - h + 4],
@@ -799,8 +852,11 @@
             // none of those clear: the clear place on the whole page nearest the name
             if (!pos) { let best = 1e9; for (let gy = 8; gy <= s.H - h - 8; gy += 18) for (let gx = 8; gx <= s.W - w - 8; gx += 18) {
               const dd = Math.hypot(gx + w / 2 - mx, gy + h / 2 - my); if (dd < best && clear(gx, gy)) { best = dd; pos = [gx, gy]; } } }
-            // nowhere clear at all (the reader has zoomed far in): beside the name, on the side away from the tooth
-            if (!pos) { const away = mx < hb[0]; pos = [cl(away ? cx0 - 16 - w : cx0 + cw + 16, 8, s.W - 8 - w), cl(my - h / 2, 8, s.H - 8 - h)]; }
+            // nowhere clear at all (zoomed far in, or the pop-up open on a small page): the place on the page that covers least,
+            // the molar and the streams counting most, never the pop-up or the buttons
+            if (!pos) { let best = Infinity; for (let gy = 8; gy <= s.H - h - 8; gy += 18) for (let gx = 8; gx <= s.W - w - 8; gx += 18) {
+              const c = cost(gx, gy); if (c === Infinity) continue; const sc3 = c + 0.5 * Math.hypot(gx + w / 2 - mx, gy + h / 2 - my); if (sc3 < best) { best = sc3; pos = [gx, gy]; s.legCost = c; } } }
+            if (!pos) pos = [cl(cx0 + cw + 16, 8, s.W - 8 - w), cl(my - h / 2, 8, s.H - 8 - h)];
             s.legRel = [pos[0] - cx0, pos[1] - cy0];
           }
           const [x, y] = pos;
@@ -819,13 +875,13 @@
       // a circle hovered by the pointer is let go once the pointer is off it: the circles are re-stacked by depth every frame
       // (above), and moving a hovered node can swallow the browser's mouseleave, leaving its tooltip up and the rest dimmed
       if (s.read && s.read.byPtr && (!ptr.in || !s.read.top || Math.hypot(ptr.x - s.read.top[0], ptr.y - s.read.top[1]) > s.read.r + 6)) s.read.off();
-      const o = s.read || s.pin;
+      const o = s.read;
       if (o && o.top) {
         s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "metals" && MD.lead && MD.lead[o.mi] != null ? " · lead " + MD.lead[o.mi] + " ppm" : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "");
         const lh = o.c.key === "wear" && LR[o.mi]; s.rLa.textContent = lh ? LR[o.mi].any.toFixed(1) + "% with a stress line" : ""; s.rLb.textContent = lh ? " · " + LR[o.mi].multi.toFixed(1) + "% with two or more" : "";
         // the side with room for the text, measured (the caries and wear readouts run long); if neither side has room,
         // the right, pulled back inside the page
-        const tw = Math.max(s.rYr.getComputedTextLength(), s.rCt.getComputedTextLength(), lh ? s.rLh.getComputedTextLength() : 0) + 22, room = s.W - 8, xr = o.top[0] + o.r + 14, xl = o.top[0] - o.r - 14;
+        const tw = Math.max(s.rYr.getComputedTextLength(), s.rCt.getComputedTextLength(), lh ? s.rLh.getComputedTextLength() : 0) + 22, room = cv && cv.side === "right" && o.top[1] > cv.y - 70 && o.top[1] < cv.y + cv.h + 20 ? cv.x - 8 : s.W - 8, xr = o.top[0] + o.r + 14, xl = o.top[0] - o.r - 14;
         const left = xr + tw > room && xl - tw >= 8, x = left ? xl : Math.min(xr, room - tw), y = o.top[1] - o.r - 10;
         s.rLine.setAttribute("x1", fx(o.top[0] + (left ? -o.r : o.r))); s.rLine.setAttribute("y1", fx(o.top[1])); s.rLine.setAttribute("x2", fx(x)); s.rLine.setAttribute("y2", fx(y));
         [[s.rYr, 0], [s.rCt, 17], [s.rLh, 34]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
@@ -843,6 +899,9 @@
               if (dd < best) { best = dd; const age = Math.pow((w0 + u * (w - w0) - R0) / (RMAX - R0), 2) * MAX_AGE; hy = cl(Math.round((NOW - age) / 10) * 10, L.c.segs[0][0], NOW); hc = L.col; } }
             q0 = q; w0 = w; } }); }
       if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
+      // the time period the reader is hovering, which lights the circles that cover it on every line (in the next frame):
+      // a hovered circle's own years, or the single year under the pointer on a line or at the timeline's knob
+      s.hotP = s.read && !(ring.hover || ringDrag) ? [s.read.m.d[0], s.read.m.d[1]] : hy == null ? null : [hy, hy];
     }
 
     // dragging the timeline's knob: the pointer's ray meets the ring's plane (y = 0); its angle there places the knob and
@@ -853,7 +912,7 @@
       const hit = k > 0 && isFinite(k), x = hit ? pos[0] + d[0] * k : d[0], z = hit ? pos[2] + d[2] * k : d[2];
       ring.a = Math.atan2(z, x); ring.moved = ring.touched = true; waveU = hit ? 1 - cl((Math.hypot(x, z) - R0) / (RMAX - R0), 0, 1) : 0;
     }
-    host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit,.rd-grip")) return; if (S) S.pin = null; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
+    host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit,.rd-grip")) return; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
     host.addEventListener("pointermove", e => { const hr = host.getBoundingClientRect(); ptr.x = e.clientX - hr.left; ptr.y = e.clientY - hr.top; ptr.in = true; if (ringDrag) { toRing(e); lastInput = performance.now(); return; }
       if (!dragging) { ring.hover = !!(S && S.kxy) && Math.hypot(ptr.x - S.kxy[0], ptr.y - S.kxy[1]) < 16; return; } const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
     const endDrag = () => { dragging = false; ringDrag = false; host.classList.remove("grab", "ringgrab"); };
@@ -866,6 +925,8 @@
     return {
       resize() { const b = S ? S.born : 0, a = S && S.anim; build(a); if (S) S.born = b; },
       play(on) { setPlaying(on); },
+      // the clicked period: select({ key, i }) sets it, select(null) lets it go; either way opts.onSelect hears
+      select(q) { setSel(q ? [q.key, q.i] : null); },
       playing() { return playing; },
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
         return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
