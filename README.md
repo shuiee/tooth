@@ -27,6 +27,7 @@ js/popup.js           the pop-up for a clicked time period (placeholders for now
 js/caries-data.js     caries per period, for the molar
 js/wear-data.js       molar wear per period and age, for the molar's height
 js/metals-data.js     metals in childhood enamel per period, for the particles flowing down to the molar
+js/interventions-data.js  tooth repair per period, for the repaired share of the molar's decay
 js/pathogens-data.js  pathogens per century, for the particles climbing the molar's nerve
 js/leh-data.js        stress lines per period, for the molar
 js/radial.js          the diagram (window.ToothRadial)

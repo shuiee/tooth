@@ -15,11 +15,12 @@
   // a card's X lets its own period go (pick), Escape lets them all go (null)
   const popup = window.ToothPopup.create({ onClose: pick => radial && (pick ? radial.unpick(pick) : radial.select(null)) });
 
-  // the filter menu (top left): a checkbox per record, in the record's colour, all ticked to begin with
-  const flt = document.getElementById("filter"), fltBtn = document.getElementById("filter-btn"), fltList = document.getElementById("filter-list"), hidden = new Set();
+  // the filter menu (top left): a checkbox per record, in the record's colour, all ticked to begin with but Artificial
+  // interventions, which is shown only once the reader ticks it
+  const flt = document.getElementById("filter"), fltBtn = document.getElementById("filter-btn"), fltList = document.getElementById("filter-list"), hidden = new Set(["interventions"]);   // interventions: shown only once ticked
   const COLS = (window.ToothRadial && window.ToothRadial.COLS) || {};
   (window.RADIAL_DATA || []).forEach(c => { const li = document.createElement("li"), lab = document.createElement("label"), box = document.createElement("input"), sw = document.createElement("span");
-    lab.className = "flt-row"; box.type = "checkbox"; box.checked = true; box.value = c.key; sw.className = "flt-box"; sw.style.setProperty("--c", COLS[c.key] || "#55544f");
+    lab.className = "flt-row"; box.type = "checkbox"; box.checked = !hidden.has(c.key); box.value = c.key; sw.className = "flt-box"; sw.style.setProperty("--c", COLS[c.key] || "#55544f");
     lab.append(box, sw, document.createTextNode(c.name)); li.appendChild(lab); fltList.appendChild(li);
     box.addEventListener("change", () => { if (box.checked) hidden.delete(c.key); else hidden.add(c.key); if (radial) radial.show(c.key, box.checked); }); });
   const openMenu = on => { flt.classList.toggle("open", on); fltBtn.setAttribute("aria-expanded", on ? "true" : "false"); fltList.hidden = !on; };

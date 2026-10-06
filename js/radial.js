@@ -78,6 +78,11 @@
   const metalGroups = i => { const v = metalValues(i); if (!v || !MD.groups) return null;
     return ["nonindustrial", "industrial"].map(gk => { const els = MD.groups[gk], vs = MD.elements.map(([el], j) => els.includes(el) ? v[j] : null).filter(x => x != null); return vs.reduce((a, b) => a + b, 0) / (vs.length || 1); }); };
 
+  // a period's tooth repair as a share of the 2009 rate (linear), the share of the molar's decay drawn as repaired
+  // (see js/interventions-data.js)
+  const ID = window.INTERVENTIONS_DATA || { periods: [], modern: 1 };
+  const repShare = i => ID.periods[i] ? Math.max(0, Math.min(1, ID.periods[i].per100 / ID.modern)) : 0;
+
   // a period's pathogens: for each taxon, how many particles climb the nerve, one per 2.5% of that century's genomes it
   // was found in (at least one where it was found) (see js/pathogens-data.js). i is the index into the radial's
   // pathogens line, whose periods are the centuries with genomes.
@@ -106,7 +111,7 @@
     // between the two periods for that record alone (cmp), every other record holding still. Clicking a picked circle
     // lets it go; a third on the same line lets the older go; a circle on another line starts afresh. A click on empty
     // space, or the pop-up's close and Escape (select()), lets them all go and stops the loop.
-    const MOLAR_KEYS = ["caries", "wear", "metals", "pathogens"];
+    const MOLAR_KEYS = ["caries", "wear", "metals", "pathogens", "interventions"];
     let sel = null, selKey = null, selIdx = [], cmp = null;
     const pickOf = (k, i) => { const c = DATA.find(c2 => c2.key === k), d = c && c.dens[i]; return d ? { key: k, i, name: c.name, col: COLS[k], from: d[0], to: d[1], n: d[2], unit: c.unit, range: range(d[0], d[1]) } : null; };
     const setSel = next => { sel = next; if (opts.onSelect) opts.onSelect(sel && selIdx.length ? selIdx.map(i => pickOf(selKey, i)).filter(Boolean) : null); };
@@ -154,7 +159,7 @@
       const ink = new TH.Color("#2b2a27"), cA = new TH.Color("#E3A46A"), cB = new TH.Color("#C2611A"), cC = new TH.Color("#6F320B");
       // the crown's top and the enamel-root junction, in the drawing's units; the wear plane starts above the crown
       const Ytop = (MC.top - yMid) * k, Ycej = -yMid * k;
-      const U = { uCd: { value: 0 }, uWd: { value: 0 }, uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
+      const U = { uCd: { value: 0 }, uWd: { value: 0 }, uRep: { value: 0 }, uRd: { value: 0 }, cR: { value: new TH.Color(COLS.interventions) }, uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
         cInk: { value: ink }, cA: { value: cA }, cB: { value: cB }, cC: { value: cC } };
       const FLY = "float fly(float d){ float e = clamp((uT - d) / 1.5, 0.0, 1.0); return 1.0 - pow(1.0 - e, 3.0); }";
       // Stress lines as bands of negative space: within a line's reach round the crown, crown points near the line are
@@ -181,12 +186,13 @@
       const pg = new TH.BufferGeometry(); pg.setAttribute("position", new TH.BufferAttribute(pos, 3)); pg.setAttribute("aStart", new TH.BufferAttribute(start, 3));
       pg.setAttribute("aRank", new TH.BufferAttribute(rank, 1)); pg.setAttribute("aDelay", new TH.BufferAttribute(delay, 1));
       const pts = new TH.Points(pg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse, uWearY, uCd, uWd; uniform vec3 cInk, cA, cB, cC; varying vec3 vC; varying float vA; " + FLY + LEHGL +
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse, uWearY, uCd, uWd, uRep, uRd; uniform vec3 cInk, cA, cB, cC, cR; varying vec3 vC; varying float vA; " + FLY + LEHGL +
           " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vec3 p = mix(aStart, w, e); vec4 mv = modelViewMatrix * vec4(p, 1.0);" +
           " float a = 1.0 - smoothstep(uOut - 0.012, uOut, aRank), b = 1.0 - smoothstep(uMid - 0.012, uMid, aRank), c = 1.0 - smoothstep(uInn - 0.012, uInn, aRank);" +
           " vec3 k3 = mix(mix(cA, cB, b), cC, c); k3 = mix(k3, vec3(dot(k3, vec3(0.3, 0.59, 0.11))), uCd); vC = mix(cInk, k3, a * (1.0 - 0.5 * uCd));" +
           " float car = max(a, 0.0) * (1.0 - 0.65 * uCd); vC = mix(vC, tc, 0.75 * tn * (1.0 - car) * (1.0 - 0.75 * uWd));" +
-          " gl_PointSize = uPx * (0.95 + (0.75 + 1.1 * uPulse) * car) * 1480.0 / max(200.0, -mv.z); vA = (0.15 + 0.85 * e) * (aRank > 1.5 ? 0.34 : 0.5 + 0.45 * car) * (1.0 + 0.4 * tn); gl_Position = projectionMatrix * mv; }",
+          " float r = aRank < uRep ? 1.0 - 0.6 * uRd : 0.0; vec3 kr = mix(cR, vec3(dot(cR, vec3(0.3, 0.59, 0.11))), uRd); vC = mix(vC, kr, r); car = max(car, r);" +
+          " gl_PointSize = uPx * (0.95 + (0.75 + 1.1 * uPulse) * car + 0.9 * r) * 1480.0 / max(200.0, -mv.z); vA = (0.15 + 0.85 * e) * (aRank > 1.5 ? 0.34 : 0.5 + 0.45 * car) * (1.0 + 0.4 * tn); gl_Position = projectionMatrix * mv; }",
         fragmentShader: "varying vec3 vC; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25) discard; gl_FragColor = vec4(vC, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
       // the mesh over the decay: a line between each pair of neighbouring crown points, shown once both are carious
       const m = EP.length, lpos = new Float32Array(m * 3), lst = new Float32Array(m * 3), lseg = new Float32Array(m), ldel = new Float32Array(m);
@@ -195,9 +201,9 @@
       const lg = new TH.BufferGeometry(); lg.setAttribute("position", new TH.BufferAttribute(lpos, 3)); lg.setAttribute("aStart", new TH.BufferAttribute(lst, 3));
       lg.setAttribute("aRank", new TH.BufferAttribute(lseg, 1)); lg.setAttribute("aDelay", new TH.BufferAttribute(ldel, 1));
       const lines = new TH.LineSegments(lg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uWearY, uCd; varying float vA; " + FLY + LEHGL +
-          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vA = (1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * e * 0.3 * (1.0 - 0.75 * uCd); gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, w, e), 1.0); }",
-        fragmentShader: "uniform vec3 cB; varying float vA; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(cB, vA); }" }));
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uWearY, uCd, uRep, uRd; varying float vA; varying float vR; " + FLY + LEHGL +
+          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vR = aRank < uRep ? 1.0 - 0.6 * uRd : 0.0; vA = max((1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * (1.0 - 0.75 * uCd), vR) * e * 0.3; gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, w, e), 1.0); }",
+        fragmentShader: "uniform vec3 cB, cR; varying float vA; varying float vR; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(mix(cB, cR, vR), vA); }" }));
       // The worn-away crown: every crown point above the wear plane also rises, a few at a time, in the tooth's own ink, to hover above the tooth
       // as a separate cloud, at its own place lifted by LIFT, so the cloud is the lost cap and grows as the molar wears.
       // aLift (0 on the tooth, 1 in the cloud) is stepped on the CPU (wearStep()), each point at its own pace.
@@ -545,6 +551,7 @@
       // focused, styled as the circles' pop-up: the pathogens' kinds, the metals' two groups
       const LEG = {
         pathogens: PD.colours && { title: "Pathogens on the molar, by kind", cols: 2, rows: [["bacteria", "Bacteria", "red"], ["virus", "Viruses", "blue"], ["parasite", "Parasites", "teal"], ["other", "Not disease agents", "grey"]].map(([k, t, w]) => [PD.colours[k], t, w]) },
+        interventions: { title: "Repair against decay, on the molar", rows: [[COLS.interventions, "Repaired decay", "blue"], [COLS.caries, "Untreated decay", "orange"]] },
         metals: MD.groupColours && { title: "Metals around the molar", rows: [[MD.groupColours.nonindustrial, "Non-industrial: Zn, Ba, Sr, Mg", "gold", null, "Non-industrial: zinc, barium, strontium, magnesium"], [MD.groupColours.industrial, "Industrial: Pb, Cu, Cr, Ni", "violet", null, "Industrial: lead, copper, chromium, nickel"]] } };
       const gLeg = el("g", { class: "rd-read rd-leg", "aria-hidden": "true" }, svg), lgLine = el("line", {}, gLeg), lgBg = el("rect", { class: "rd-rbg", rx: 3 }, gLeg), lgT = el("text", { class: "rd-yr" }, gLeg), lgRows = el("g", {}, gLeg);
       const hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
@@ -614,7 +621,7 @@
         ring.touched = true; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, int: { era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
       applyOff();
     }
 
@@ -624,7 +631,7 @@
       const dt = Math.min(0.05, s.last ? (now - s.last) / 1000 : 0); s.last = now; const t = (now - s.born) / 1000;
       // of two compared periods, the one the molar shows now: each held a while (the particles' records longer, since their
       // streams take a few seconds to thin or thicken), then the other, in a loop
-      const cmpI = cmp ? cmp.eras[Math.floor((now - cmp.t0) / 1000 / ({ caries: 2.4, wear: 2.4, metals: 5, pathogens: 5 }[cmp.key] || 3)) % 2] : -1;
+      const cmpI = cmp ? cmp.eras[Math.floor((now - cmp.t0) / 1000 / ({ caries: 2.4, wear: 2.4, metals: 5, pathogens: 5, interventions: 2.4 }[cmp.key] || 3)) % 2] : -1;
       { const id = cmp ? cmp.key + ":" + cmpI : null; if (id !== s.cmpShown) { s.cmpShown = id; if (opts.onCompare) opts.onCompare(id); } }
       if (!REDUCED && !dragging && now - lastInput > 4000 && (!s.anim || t > 3)) cam.tYaw += dt * 0.02;
       const kc = Math.min(1, dt * (dragging ? 9 : s.anim && t < 3.2 ? 1.3 : 3.5));
@@ -661,9 +668,13 @@
         GLT.molar.position.y = REDUCED ? 0 : Math.sin(t * 0.7) * 6;
         const ku = Math.min(1, dt * 3), U2 = GLT.U; U2.uT.value = REDUCED || !s.anim ? 99 : t;
         // comparing two periods of one record: the molar's other records fade and grey, while still following the same years
-        s.dim = s.dim || { caries: 0, wear: 0, metals: 0, pathogens: 0 };
+        s.dim = s.dim || { caries: 0, wear: 0, metals: 0, pathogens: 0, interventions: 0 };
         for (const k in s.dim) s.dim[k] += ((cmp && cmp.key !== k ? 1 : 0) - s.dim[k]) * (REDUCED ? 1 : Math.min(1, dt * 3));
-        U2.uCd.value = s.dim.caries; U2.uWd.value = s.dim.wear;
+        U2.uCd.value = s.dim.caries; U2.uWd.value = s.dim.wear; U2.uRd.value = s.dim.interventions;
+        // repair against decay: the period's repair share of the decay the molar shows (its caries share, even with caries
+        // hidden), eased so the points turn one by one; it reads the decay order earliest first, the deepest fissures
+        { const er = REDUCED ? 1 : Math.min(1, dt * 1.2); s.repP = (s.repP || 0) + ((s.int.era >= 0 ? repShare(s.int.era) : 0) - (s.repP || 0)) * er;
+          s.repB = (s.repB || 0) + ((s.car.base || 0) - (s.repB || 0)) * er; U2.uRep.value = s.repP * s.repB; }
         U2.uPulse.value = REDUCED ? 0 : Math.max(0, 1 - (now - (s.car.at || -1e9)) / 900);   // the swell after a change of period
         const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
         U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
@@ -727,17 +738,19 @@
       // until the wave reaches the next record.
       // The same for wear, on the Wear and LEH line: the molar's height is the period's wear.
       const cmpL = cmp && s.lines.find(L2 => L2.c.key === cmp.key), cmpD = cmpL && cmpL.c.dens[cmpI], cmpY = cmpD ? (cmpD[0] + cmpD[1]) / 2 : null;
-      ["caries", "wear", "metals", "pathogens"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
+      ["caries", "wear", "metals", "pathogens", "interventions"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
         const D = L.c.dens, y = cmpY != null ? cmpY : s.waveYear;   // comparing: the other records follow the compared period's years
         let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
         const inData = at >= 0;
         if (!inData) { at = -1; D.forEach((d, i) => { if (d[1] <= y) at = i; }); }
         // two picked on this line: the molar loops between them (cmpI); a hidden record shows nothing on the molar
-        const era = off.has(key) ? -1 : cmp && cmp.key === key ? cmpI : at;
+        const eraRaw = cmp && cmp.key === key ? cmpI : at, era = off.has(key) ? -1 : eraRaw;
+        if (key === "caries") s.car.base = eraRaw >= 0 ? cariesShares(eraRaw).out : 0;   // what repair covers, shown or not
         if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
         if (key === "metals") s.met.era = era;
         if (key === "pathogens") s.pat.era = era;
+        if (key === "interventions") s.int.era = era;
         L.g.classList.toggle("rd-nodata", !inData && !REDUCED && !(cmp && cmp.key === key)); });   // with reduced motion there is no wave: the latest period, undimmed
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
       const ay = REDUCED ? 0 : t * 0.025;
@@ -954,7 +967,7 @@
       if (s.read && s.read.byPtr && (!ptr.in || !s.read.top || Math.hypot(ptr.x - s.read.top[0], ptr.y - s.read.top[1]) > s.read.r + 6)) s.read.off();
       const o = s.read;
       if (o && o.top) {
-        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "metals" && MD.lead && MD.lead[o.mi] != null ? " · lead " + MD.lead[o.mi] + " ppm" : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "");
+        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "metals" && MD.lead && MD.lead[o.mi] != null ? " · lead " + MD.lead[o.mi] + " ppm" : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "") + (o.c.key === "interventions" && ID.periods[o.mi] ? " · " + ID.periods[o.mi].per100 + " repaired teeth per 100 people" : "");
         const lh = o.c.key === "wear" && LR[o.mi]; s.rLa.textContent = lh ? LR[o.mi].any.toFixed(1) + "% with a stress line" : ""; s.rLb.textContent = lh ? " · " + LR[o.mi].multi.toFixed(1) + "% with two or more" : "";
         // the side with room for the text, measured (the caries and wear readouts run long); if neither side has room,
         // the right, pulled back inside the page
@@ -1017,6 +1030,8 @@
           metals: { era: S.met.era, period: MD.periods[S.met.era] ? MD.periods[S.met.era].p : null, values: (metalValues(S.met.era) || []).map(v => +v.toFixed(3)),
             groups: S.met.groups ? { nonindustrial: +S.met.groups[0].toFixed(3), industrial: +S.met.groups[1].toFixed(3) } : null,
             particles: GLT.met && GLT.met.want ? { nonindustrial: GLT.met.want[0], industrial: GLT.met.want[1] } : null, flying: GLT.met ? GLT.met.flying : null },
+          interventions: { era: S.int.era, period: ID.periods[S.int.era] ? ID.periods[S.int.era].p : null, per100: ID.periods[S.int.era] ? ID.periods[S.int.era].per100 : null,
+            share: S.int.era >= 0 ? +repShare(S.int.era).toFixed(4) : 0, repaired: +GLT.U.uRep.value.toFixed(5) },
           pathogens: { era: S.pat.era, century: PLINE[S.pat.era] ? PLINE[S.pat.era][0] : null, flying: GLT.pat ? GLT.pat.active : 0, leaving: GLT.pat ? GLT.pat.leaving : 0,
             counts: Object.fromEntries((S.pat.counts || []).map((c, j) => [PD.taxa[j].name, c]).filter(e => e[1] > 0)),
             flyingByKind: GLT.pat ? GLT.pat.flyingByKind : null, byKind: GLT.pat && GLT.pat.byKind ? Object.fromEntries(GLT.pat.kinds.map((kk, j) => [kk, GLT.pat.byKind[j]])) : null } }; },
