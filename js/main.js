@@ -3,11 +3,10 @@
    when its name is clicked; while it is null the names are plain text, not links. A click on a circle picks its time
    period, which opens its pop-up (js/popup.js), one at a time, over the diagram. The filter menu at the top right
    hides or shows each record (its line, circles, name and what it draws on the molar); the choice holds over Replay.
-   The filter menu sits at the top left; Play/Pause and Replay, as icons, at the foot of the page; Fast forward at the
-   bottom right opens the look ahead, and Rewind, at the bottom left in its place, closes it. */
+   The filter menu sits at the top left; Play/Pause and Replay, as icons, at the foot of the page. */
 (function () {
   "use strict";
-  const host = document.getElementById("radial"), again = document.getElementById("again"), pause = document.getElementById("pause"), ffwd = document.getElementById("ffwd"), rewind = document.getElementById("rewind");
+  const host = document.getElementById("radial"), again = document.getElementById("again"), pause = document.getElementById("pause"), ffwd = document.getElementById("ffwd");
   const onOpen = null;   // e.g. key => showRecord(key)
   let radial = null, ctlBox = null;
   // the boxes round the page's buttons, measured once per size of the page: Pause and Replay together, and Fast forward
@@ -32,7 +31,7 @@
   const menu = () => { const r = fltBtn.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
 
   function mount(animate) {
-    if (radial) radial.destroy(); document.body.classList.remove("story");
+    if (radial) radial.destroy();
     radial = window.ToothRadial.mount(host, {
       animate,
       onOpen,
@@ -55,15 +54,8 @@
   function showPlaying(on) { pause.innerHTML = on ? ICON.pause : ICON.play; pause.setAttribute("aria-label", on ? "Pause" : "Play"); pause.title = on ? "Pause" : "Play"; pause.setAttribute("aria-pressed", on ? "false" : "true"); }
   showPlaying(true); again.title = "Replay";
   pause.addEventListener("click", () => { if (radial) radial.play(!radial.playing()); });
-  // Replay: the opening again, or in the look ahead, the look ahead from its start
-  again.addEventListener("click", () => { if (radial && document.body.classList.contains("story")) { radial.replayStory(); return; } popup.show(null); mount(true); showPlaying(true); });
-  // Fast forward: the look ahead (radial.story()), the molar divided in two and the text beside it; the filter menu and
-  // Fast forward give way to Rewind, at the bottom left, which brings the radial back as it was. Play/Pause and Replay
-  // stay, and act on the look ahead
-  const toStory = on => { if (!radial) return; if (on) { popup.show(null); openMenu(false); } radial.story(on); document.body.classList.toggle("story", on);
-    (on ? rewind : ffwd).focus({ preventScroll: true }); };
-  ffwd.addEventListener("click", () => toStory(true));
-  rewind.addEventListener("click", () => toStory(false));
+  again.addEventListener("click", () => { popup.show(null); mount(true); showPlaying(true); });
+  // Fast forward (#ffwd): placed, its function to come
   window.__radial = () => radial;   // for checking in the console: __radial().state()
   let rz;
   addEventListener("resize", () => { ctlBox = null; clearTimeout(rz); rz = setTimeout(() => radial && radial.resize(), 150); });
