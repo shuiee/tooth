@@ -68,9 +68,9 @@ Then go to <http://localhost:8770>. Opening `index.html` straight from disk also
 
 | Path | What it is |
 |---|---|
-| `index.html` | The page: the running head, the `#radial` host, the Replay button, and the scripts in load order |
+| `index.html` | The page: the `#radial` host, the Replay button, and the scripts in load order |
 | `js/main.js` | Mounts the diagram, wires Replay and resize, and holds the `onOpen` hook (null for now) |
-| `js/radial.js` | The diagram (`window.ToothRadial`). Copied unchanged from the prototype |
+| `js/radial.js` | The diagram (`window.ToothRadial`). Copied from the prototype, then changed here (see Origin) |
 | `js/radial-data.js` | The data (`window.RADIAL_DATA`), hand-edited, with each number's source file in its header comment. Copied unchanged |
 | `data/tooth-mesh.js` | The tooth model drawn at the hub (`window.TOOTH_MESHES.UL4`) |
 | `vendor/three.min.js` | three.js r128 (MIT), used only to draw the tooth |
@@ -100,7 +100,8 @@ Then go to <http://localhost:8770>. Opening `index.html` straight from disk also
 - **Interaction:**
   - drag to orbit; the mouse wheel zooms (distance 760 to 3,000); double-click resets;
   - after 4 s idle the camera drifts slowly;
-  - hovering a circle shows its years and count and dims the other records.
+  - hovering a circle shows its years and count and dims the other records;
+  - the readout at the bottom left shows the year under the pointer, in that record's colour: a hovered circle's start year, or the year at that point on the nearest record line (within 14 px, read back off the square-root scale, rounded to 10 years). It is empty otherwise.
 - **Reduced motion:** with `prefers-reduced-motion`, there is no opening move, no drift and no sweeping ring.
 
 ## Data
@@ -174,5 +175,6 @@ These come from how the team has worked on the prototype; keep them unless the o
 
 ## Origin
 
-- **Source:** `js/radial.js` and `js/radial-data.js` are copied unchanged from `shuiee/tooth-untold` at commit 5e341a3. The radial was last changed there in c7da21c, Ali Qureshi's 3D rewrite.
+- **Source:** `js/radial.js` and `js/radial-data.js` were copied unchanged from `shuiee/tooth-untold` at commit 5e341a3. The radial was last changed there in c7da21c, Ali Qureshi's 3D rewrite.
+- **Changed here since (2026-10-05):** in `js/radial.js`, the bottom-left camera readout became the year readout, the "Drag to orbit" hint was removed, and the oldest circle on each line now grows to full size (it used to stay at radius 0 after the opening; the prototype still has that bug). The page has no running head. `js/radial-data.js` is still unchanged.
 - **Mesh and styles:** `data/tooth-mesh.js` keeps only the mesh the radial draws, and `css/radial.css` collects its styles from the prototype's `index.html`.

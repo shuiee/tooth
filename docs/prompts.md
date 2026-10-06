@@ -55,11 +55,10 @@ CAMERA AND INTERACTION.
   onOpen(key), so the host page can open that record's section.
 - On load the camera swings in from far away and higher up, and the names fade in last. A Replay button runs it
   again.
-- A small readout bottom-left (azimuth, elevation, distance) and a hint bottom-centre ("Drag to orbit · scroll to
-  travel · double-click to reset").
+- A small readout bottom-left showing only the year under the pointer, in that record's colour: a hovered circle's
+  start year, or the year at that point on the nearest line (rounded to 10 years). Empty otherwise. No hint text.
 - With prefers-reduced-motion: no opening move, no drift, no wave.
-- Leave room at the top for a running head: "The Tooth Untold / What can a tooth remember?" and
-  "Plate II / How far back each record reaches".
+- No running head: the page carries no text at the top.
 - No text may overlap at any width from 390 px up; the web layout is the priority.
 ```
 

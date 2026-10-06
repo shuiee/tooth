@@ -12,8 +12,7 @@
     radial = window.ToothRadial.mount(host, {
       animate,
       onOpen,
-      padTop: () => document.getElementById("rh").getBoundingClientRect().bottom + 8,   // clear of the running head
-      padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,            // and of Replay
+      padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,   // clear of Replay
     });
   }
 
