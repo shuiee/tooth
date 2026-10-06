@@ -64,6 +64,18 @@
   }
   const wearShare = i => { const st = wearOf(i); return st == null ? 0 : Math.max(0.05, Math.min(0.62, 0.12 + 0.48 * (st - 3.5) / 2.5)); };
 
+  // a period's metals: each element's change from the archaeological level, as a radius on the prototype radial chart's
+  // log scale (x 0.08 to x 20), 0 to 1 (see js/metals-data.js)
+  const MD = window.METALS_DATA || { periods: [], elements: [] };
+  const metChange = (el, i) => { const last = MD.periods.length - 1;
+    if (el === "Pb") return MD.lead[i] / MD.leadArch;
+    return i === last ? MD.modern[el] / MD.pooled[el] : 1; };
+  const metRadius = x => Math.max(0, Math.min(1, (Math.log(Math.max(1e-6, x)) - Math.log(0.08)) / (Math.log(20) - Math.log(0.08))));
+  const metalValues = i => MD.periods[i] ? MD.elements.map(([el]) => metRadius(metChange(el, i))) : null;
+  // each group's presence in a period, not industrial then industrial: the mean of its elements' values
+  const metalGroups = i => { const v = metalValues(i); if (!v || !MD.groups) return null;
+    return ["nonindustrial", "industrial"].map(gk => { const els = MD.groups[gk], vs = MD.elements.map(([el], j) => els.includes(el) ? v[j] : null).filter(x => x != null); return vs.reduce((a, b) => a + b, 0) / (vs.length || 1); }); };
+
   // a period's pathogens: for each taxon, how many particles climb the nerve, one per 2.5% of that century's genomes it
   // was found in (at least one where it was found) (see js/pathogens-data.js). i is the index into the radial's
   // pathogens line, whose periods are the centuries with genomes.
@@ -299,7 +311,78 @@
           pat.active = P.filter(pp => pp.k >= 0 && !pp.retire).length; pat.flyingByKind = KINDS.map((_, kI) => P.filter(pp => pp.k === kI && !pp.retire).length); pat.leaving = P.filter(pp => pp.k >= 0 && pp.retire).length;
         };
       }
-      GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift, pathStep, pat };
+      // The metals, as the pathogens' reflection: particles in two streams, not industrial and industrial (the
+      // prototype's grouping, js/metals-data.js), flowing down from above the worn-away cloud towards the tooth along
+      // smooth gliding curves, and dissipating before they reach it, so the molar itself stays clear. The groups keep to
+      // either side of the tooth, not industrial on the left and industrial on the right (they turn with the camera, not
+      // with the molar, so the sides hold as the reader orbits), each in three nested lanes that stay wide of the
+      // worn-away cloud and glide in beside the crown. A group's particles follow one another at even spacing, so a
+      // denser stream is a greater presence (metalGroups(): the group's mean value on the prototype chart's log scale).
+      let metalsStep = () => {}, met = null;
+      if (MD.elements.length && MD.groups) {
+        const GK = ["nonindustrial", "industrial"], LANES = 3, MAXM = 160, TLm = 12, TRm = 34, VM = 62, GAPM = 14, NMAX = 48;
+        // the crown's radius near its top, round its axis: the lanes keep wide of it (and of the cloud above, the same width)
+        let mcx = 0, mcz = 0, mc = 0; for (let i = 0; i < n; i++) if (rank[i] < 1.5) { mcx += pos[3 * i]; mcz += pos[3 * i + 2]; mc++; } mcx /= mc; mcz /= mc;
+        let rTop = 0, rc = 0; for (let i = 0; i < n; i++) if (rank[i] < 1.5 && pos[3 * i + 1] > Ytop - 0.3 * (Ytop - Ycej)) { rTop = Math.max(rTop, Math.hypot(pos[3 * i] - mcx, pos[3 * i + 2] - mcz)); rc++; }
+        // each lane: a cubic curve in the plane facing the reader (with a little depth), falling from high above on its
+        // group's side, wide of the hovering cloud, then gliding in to beside the crown's upper part, where the particles
+        // have faded; a group's three lanes are nested (the inner one, nearest the tooth, starts highest, each further one
+        // lower, so the stream's top slopes down away from the tooth; the outer ones end further out), so they never cross
+        const yS = Ytop + LIFT + 70, yE = Ytop - 0.12 * (Ytop - Ycej);
+        const lanes = []; GK.forEach((gk, g) => { const side = g ? 1 : -1; for (let l = 0; l < LANES; l++) {
+          const r0 = rTop * (1.85 + 0.35 * l), r1 = rTop * (1.3 + 0.15 * l), y0 = yS + 45 - 38 * l, y1 = yE + 10 * l, zl = (l - 1) * rTop * 0.3;
+          const C = [[r0, y0, zl], [r0, y0 - (y0 - y1) * 0.5, zl], [r1 + (r0 - r1) * 0.35, y1 + (y0 - y1) * 0.1, zl * 0.6], [r1, y1, zl * 0.4]];
+          const pts = []; for (let i = 0; i <= 60; i++) { const u = i / 60, w = [(1 - u) ** 3, 3 * u * (1 - u) ** 2, 3 * u * u * (1 - u), u ** 3];
+            const sum = j2 => w.reduce((acc, wi, j) => acc + wi * C[j][j2], 0); pts.push(side * sum(0), sum(1), sum(2)); }
+          const P3 = new Float32Array(pts), cum = new Float32Array(61);
+          for (let i = 1; i <= 60; i++) cum[i] = cum[i - 1] + Math.hypot(P3[3 * i] - P3[3 * i - 3], P3[3 * i + 1] - P3[3 * i - 2], P3[3 * i + 2] - P3[3 * i - 1]);
+          lanes.push({ g, P: P3, cum, len: cum[60] }); } });
+        const atM = (pa, d, out, oi) => { const c = pa.cum; d = Math.max(0, Math.min(pa.len, d)); let lo = 0, hi = c.length - 1;
+          while (hi - lo > 1) { const m2 = (lo + hi) >> 1; if (c[m2] <= d) lo = m2; else hi = m2; }
+          const f = (d - c[lo]) / Math.max(1e-6, c[hi] - c[lo]); for (let a2 = 0; a2 < 3; a2++) out[oi + a2] = pa.P[3 * lo + a2] + (pa.P[3 * hi + a2] - pa.P[3 * lo + a2]) * f; };
+        // a particle's look along its lane: it gathers out of nothing at the top and dissipates over the last stretch
+        const fadeAt = (pa, d) => d < 0 || d > pa.len ? 0 : Math.min(1, d / (pa.len * 0.14)) * Math.min(1, (pa.len - d) / (pa.len * 0.3));
+        const gcol = GK.map(gk => new TH.Color((MD.groupColours || {})[gk] || "#888888"));
+        const HNm = MAXM * (1 + TLm), mp = new Float32Array(HNm * 3), mcol = new Float32Array(HNm * 3), ma = new Float32Array(HNm), ms = new Float32Array(HNm);
+        const mg = new TH.BufferGeometry(), aMP = new TH.BufferAttribute(mp, 3), aMA = new TH.BufferAttribute(ma, 1), aMS = new TH.BufferAttribute(ms, 1), aMC = new TH.BufferAttribute(mcol, 3);
+        [aMP, aMA, aMS, aMC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); mg.setAttribute("position", aMP); mg.setAttribute("aA", aMA); mg.setAttribute("aS", aMS); mg.setAttribute("aC", aMC);
+        const mpts = new TH.Points(mg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA; vC = aC;" +
+            " gl_PointSize = aA < 0.004 ? 0.0 : uPx * aS * 1480.0 / max(200.0, -mv.z); gl_Position = projectionMatrix * mv; }",
+          fragmentShader: "varying float vA; varying vec3 vC; void main(){ vec2 q = gl_PointCoord - 0.5; float d = length(q) * 2.0; if (d > 1.0) discard;" +
+            " float core = 1.0 - smoothstep(0.18, 0.34, d), glow = exp(-d * d * 4.0); vec3 c = mix(vC * 1.12, vC * 0.75, core); gl_FragColor = vec4(c, vA * clamp(core + glow * 0.42, 0.0, 1.0)); }" }));
+        // in a frame of their own that turns with the camera (not the molar), so the sides stay the reader's left and right
+        const mgrp = new TH.Group(); mgrp.add(mpts); sc.add(mgrp); mpts.frustumCulled = false; mpts.renderOrder = 13;
+        // each particle: its lane (-1 idle), its distance along it (negative: waiting its turn), a small sideways offset
+        const M = Array.from({ length: MAXM }, () => ({ l: -1, d: 0, retire: false, off: [0, 0, 0] }));
+        met = { lanes, M, groups: GK, mgrp };
+        metalsStep = (want, t, dt, wearY, appear) => {
+          mgrp.rotation.y = Math.atan2(tc.position.x, tc.position.z); mgrp.position.y = molar.position.y;
+          if (want !== met.wantRef) { met.wantRef = want; met.want = GK.map((_, g) => want ? Math.max(1, Math.round(want[g] * NMAX)) : 0);
+            lanes.forEach((pa, li) => { const need = Math.floor(met.want[pa.g] / LANES) + (li % LANES < met.want[pa.g] % LANES ? 1 : 0);
+              const mine = M.filter(pp => pp.l === li && !pp.retire).sort((p1, p2) => p2.d - p1.d);
+              mine.slice(need).forEach(pp => { if (pp.d < 0) pp.l = -1; else pp.retire = true; });
+              const L = Math.max(pa.len + TRm, need * GAPM), sp = L / Math.max(1, need);
+              let back = mine.length && need ? Math.min(0, mine[Math.min(need, mine.length) - 1].d) : (REDUCED ? pa.len : 0) + sp * rnd() * 0.5;
+              for (let c = mine.length; c < need; c++) { const pp = M.find(x => x.l < 0); if (!pp) break; back -= sp; pp.l = li; pp.retire = false; pp.d = REDUCED ? ((back % L) + L) % L : back;
+                pp.off = [(rnd() - 0.5) * 6, (rnd() - 0.5) * 4, (rnd() - 0.5) * 6]; } }); }
+          M.forEach((pp, i) => {
+            const h0 = i * (1 + TLm), hide = () => { for (let j = 0; j <= TLm; j++) ma[h0 + j] = 0; };
+            if (pp.l < 0) { hide(); return; }
+            const pa = lanes[pp.l]; pp.d += VM * dt;
+            if (pp.d > pa.len + TRm) { if (pp.retire) { pp.l = -1; pp.retire = false; hide(); return; }
+              const n2 = M.filter(x => x.l === pp.l && !x.retire).length; pp.d -= Math.max(pa.len + TRm, n2 * GAPM); }
+            const c = gcol[pa.g];
+            for (let j = 0; j <= TLm; j++) { const q = h0 + j, dj = pp.d - j * TRm / TLm, f = j / TLm, fa = fadeAt(pa, dj);
+              atM(pa, dj, mp, 3 * q); mp[3 * q] += pp.off[0]; mp[3 * q + 1] += pp.off[1]; mp[3 * q + 2] += pp.off[2];
+              mcol[3 * q] = c.r; mcol[3 * q + 1] = c.g; mcol[3 * q + 2] = c.b;
+              ma[q] = appear * fa * (j ? 0.6 * Math.pow(1 - f, 1.4) : 1); ms[q] = j ? 6.5 * (1 - f * 0.65) : 9 + 6 * (1 - Math.min(1, fa * 1.5)); }
+          });
+          aMP.needsUpdate = aMA.needsUpdate = aMS.needsUpdate = aMC.needsUpdate = true;
+          met.flying = GK.map((_, g) => M.filter(pp => pp.l >= 0 && !pp.retire && lanes[pp.l].g === g).length);
+        };
+      }
+      GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift, pathStep, pat, metalsStep, met };
       // Stress lines (js/leh-data.js), as a current over the side of the crown rather than grooves cut into it: particles
       // stream round the crown and gather into two wavy lines. The first reaches round by the period's share of adults
       // with any line, the second, fainter, by the share with two or more (all the way round = 100%). The band's place,
@@ -430,7 +513,13 @@
       shells.forEach(r => r.lab.textContent = r.a.toLocaleString("en-GB") + " years ago");
       const wave = el("polyline", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere);
       const gAmb = el("g", { "aria-hidden": "true" }, svg), gLines = el("g", {}, svg), gArrows = el("g", { "aria-hidden": "true" }, svg), gBack = el("g", {}, svg), gTeeth = el("g", { class: "rd-teeth", "aria-hidden": "true" }, svg), gHub = el("g", { "aria-hidden": "true" }, svg), gFront = el("g", {}, svg), gCards = el("g", {}, svg), gRead = el("g", { class: "rd-read", "aria-hidden": "true" }, svg);
-      const hubDot = el("circle", { class: "rd-hubdot" }, gHub), hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
+      // a legend for the colours a record draws on the molar, shown beside its name while the name is hovered or
+      // focused, styled as the circles' pop-up: the pathogens' kinds, the metals' two groups
+      const LEG = {
+        pathogens: PD.colours && { title: "Pathogens on the molar, by kind", rows: [["bacteria", "Bacteria", "red"], ["virus", "Viruses", "blue"], ["parasite", "Parasites", "teal"], ["other", "Not disease agents", "grey"]].map(([k, t, w]) => [PD.colours[k], t, w]) },
+        metals: MD.groupColours && { title: "Metals around the molar", rows: [[MD.groupColours.nonindustrial, "Non-industrial", "gold", "zinc, barium, strontium, magnesium"], [MD.groupColours.industrial, "Industrial", "violet", "lead, copper, chromium, nickel"]] } };
+      const gLeg = el("g", { class: "rd-read rd-leg", "aria-hidden": "true" }, svg), lgLine = el("line", {}, gLeg), lgBg = el("rect", { class: "rd-rbg", rx: 3 }, gLeg), lgT = el("text", { class: "rd-yr" }, gLeg), lgRows = el("g", {}, gLeg);
+      const hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
       const opens = typeof opts.onOpen === "function";
       const lines = DATA.map((c, ci) => {
         const A = c.angle * Math.PI / 180, E = (ELEV[c.key] != null ? ELEV[c.key] : (ci * 23 % 60) - 30) * Math.PI / 180, col = COLS[c.key] || "#5CCBFF";
@@ -438,7 +527,6 @@
         const marks = c.dens.map(dd => ({ d: dd, w: rYear(dd[0]) })), wEnd = Math.max(...marks.map(m => m.w)), mx = Math.max(1, ...c.dens.map(dd => dd[2] || 0));
         const g = el("g", { "data-cat": c.key, style: "--c:" + col }, gLines), base = el("line", { class: "rd-ray", "marker-end": "url(#rd-arrow)" }, g);
         const spans = c.segs.map(sg => ({ a: rYear(sg[1]), b: rYear(sg[0]), el: el("line", { class: "rd-beam" }, g) }));
-        const pulse = el("circle", { class: "rd-pulse" }, g);
         const ms = marks.map((m, mi) => {
           const mgp = el("g", { class: "rd-mark", style: "--c:" + col }), halo = el("circle", { class: "rd-bokeh" }, mgp), dot = el("circle", { class: "rd-core" + (m.d[2] == null ? " nocount" : "") }, mgp),
             hit = el("circle", { class: "rd-hit", tabindex: 0, role: "button", "aria-label": c.name + ", " + range(m.d[0], m.d[1]) + ", " + amount(c, m.d) }, mgp);
@@ -449,19 +537,23 @@
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
           // which can cancel a click between press and release. A caries point also moves the timeline to its period and
           // pauses it there, so the molar shows that period's caries.
-          const pick = () => { if (c.key !== "caries" && c.key !== "wear" && c.key !== "pathogens") { fly(); return; }
+          const pick = () => { if (c.key !== "caries" && c.key !== "wear" && c.key !== "metals" && c.key !== "pathogens") { fly(); return; }
             S.pin = o; on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
         });
-        const card = el("g", { class: "rd-card" + (opens ? " go" : ""), style: "--c:" + col, tabindex: opens ? 0 : null, role: opens ? "link" : null, "aria-label": opens ? c.name + ": open this section" : null }, gCards);
+        const leg = LEG[c.key];
+        const card = el("g", { class: "rd-card" + (opens ? " go" : ""), style: "--c:" + col, tabindex: opens || leg ? 0 : null, role: opens ? "link" : null,
+          "aria-label": opens ? c.name + ": open this section" : leg ? c.name + ". Colours on the molar: " + leg.rows.map(r => r[2] + ", " + r[1] + (r[3] ? " (" + r[3] + ")" : "")).join("; ") : null }, gCards);
         const sub = range(c.segs[0][0], c.segs[c.segs.length - 1][1]), cw = Math.max(c.name.length * 10.2, sub.length * 6.9) + 6;
         const lead = el("line", { class: "rd-lead" }, gCards), rect = el("rect", { width: cw, height: 46, class: "rd-cbox" }, card);   // no box drawn: an invisible hit area for the name
         const t1 = el("text", { class: "rd-cname", x: 0, y: 19 }, card), t2 = el("text", { class: "rd-csub", x: 0, y: 36 }, card); t1.textContent = c.name.toUpperCase(); t2.textContent = sub;
         if (opens) { const go = () => opts.onOpen(c.key); card.addEventListener("click", go); card.addEventListener("keydown", press(go)); }
         card.addEventListener("mouseenter", () => lit(ci, true)); card.addEventListener("mouseleave", () => lit(ci, false));
+        if (leg) { const on2 = () => { if (S) S.leg = c.key; }, off2 = () => { if (S && S.leg === c.key) S.leg = null; };
+          card.addEventListener("mouseenter", on2); card.addEventListener("mouseleave", off2); card.addEventListener("focus", on2); card.addEventListener("blur", off2); }
         g.addEventListener("mouseenter", () => lit(ci, true)); g.addEventListener("mouseleave", () => lit(ci, false));
-        return { c, ci, g, base, spans, pulse, ms, wEnd, d, n1, n2, col, card, lead, cw };
+        return { c, ci, g, base, spans, ms, wEnd, d, n1, n2, col, card, lead, cw };
       });
       function lit(ci, on) { svg.classList.toggle("rd-dim", on); lines.forEach(L => { const y = on && L.ci === ci; [L.g, L.card].forEach(e => e.classList.toggle("lit", y)); L.ms.forEach(o => { o.mg.classList.toggle("lit", y); o.arrow.classList.toggle("lit", y); }); }); }
       let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
@@ -482,7 +574,7 @@
         ring.touched = true; S.pin = null; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -509,6 +601,8 @@
         U2.uPulse.value = REDUCED ? 0 : Math.max(0, 1 - (now - (s.car.at || -1e9)) / 900);   // the swell after a change of period
         const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
         U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
+        if (s.met.era !== s.met.cEra) { s.met.cEra = s.met.era; s.met.groups = s.met.era >= 0 ? metalGroups(s.met.era) : null; }
+        GLT.metalsStep(s.met.groups, t, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * (REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1)));
         { const pa = REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1); U2.uNv && (U2.uNv.value = appear * pa);
           if (s.pat.era !== s.pat.cEra) { s.pat.cEra = s.pat.era; s.pat.counts = s.pat.era >= 0 ? pathogenCounts(s.pat.era) : null; }
           GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa); }
@@ -532,7 +626,6 @@
       // hub
       const hb = pj(0, 0, 0), hubZ = hb[3], hr = cl(46 * hb[2] / U, 26, 80);
       s.gHalo.setAttribute("cx", fx(hb[0])); s.gHalo.setAttribute("cy", fx(hb[1])); s.gHalo.setAttribute("r", fx(hr * 5.5));
-      s.hubDot.setAttribute("cx", fx(hb[0])); s.hubDot.setAttribute("cy", fx(hb[1])); s.hubDot.setAttribute("r", fx(cl(6 * hb[2] / U, 4, 9)));
       [[s.hubR1, 1.9], [s.hubR2, 2.5], [s.hubR3, 3.3]].forEach(([e, m]) => { e.setAttribute("cx", fx(hb[0])); e.setAttribute("cy", fx(hb[1])); e.setAttribute("r", fx(hr * m)); });
       const tc = pj(0, 0, 0), sc = tc[2];
       s.teeth.forEach(o => { const h = TOOTH_H[o.key] * sc, w = h * o.t.w / o.t.h, x = o.side === 0 ? tc[0] - w / 2 : o.side < 0 ? tc[0] - GAP / 2 * sc - w : tc[0] + GAP / 2 * sc;
@@ -562,7 +655,7 @@
       // in no period the molar keeps the last period it passed (nothing before the first), and the caries line dims
       // until the wave reaches the next record.
       // The same for wear, on the Wear and LEH line: the molar's height is the period's wear.
-      ["caries", "wear", "pathogens"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
+      ["caries", "wear", "metals", "pathogens"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
         const D = L.c.dens, y = s.waveYear;
         let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
         const inData = at >= 0;
@@ -570,6 +663,7 @@
         const era = at;
         if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
+        if (key === "metals") s.met.era = era;
         if (key === "pathogens") s.pat.era = era;
         L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
         L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); });
@@ -589,8 +683,6 @@
         const p0 = at(R0 * 0.6), pe = at(wNow); seg(L.base, p0, pe); L._s = p0[3] > 60 && pe[3] > 60 ? [p0, pe] : null; L._w = wNow;
         L.spans.forEach(spn => { const a = Math.min(spn.a, wNow), b = Math.min(spn.b, wNow); if (b - a < 0.5) { spn.el.setAttribute("visibility", "hidden"); return; }
           const p = at(a), q = at(b); if (seg(spn.el, p, q)) spn.el.setAttribute("stroke-width", fx(cl(3.6 * (p[2] + q[2]) / 2 / U, 2, 6.5))); });
-        const u = REDUCED ? 0.5 : (t * 0.09 + L.ci * 0.23) % 1, tp = at(R0 + u * (wNow - R0));
-        L.pulse.setAttribute("cx", fx(tp[0])); L.pulse.setAttribute("cy", fx(tp[1])); L.pulse.setAttribute("r", fx(cl(4 * tp[2] / U, 2, 7))); L.pulse.style.opacity = (Math.sin(Math.PI * u) * g * 0.85).toFixed(2);
         L.ms.forEach(o => { o.arrow.setAttribute("visibility", "hidden"); if (o.m.w > wNow + 0.5) { o.mg.setAttribute("visibility", "hidden"); return; }
           const pop = s.anim ? ease(cl((wFront - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
           const x = L.d[0] * o.m.w + (L.n1[0] * Math.cos(ph) + L.n2[0] * Math.sin(ph)) * hrx, y = L.d[1] * o.m.w + (L.n1[1] * Math.cos(ph) + L.n2[1] * Math.sin(ph)) * hrx, z = L.d[2] * o.m.w + (L.n1[2] * Math.cos(ph) + L.n2[2] * Math.sin(ph)) * hrx;
@@ -660,13 +752,76 @@
           if (pick) { lab.setAttribute("x", fx(pick.x)); lab.setAttribute("y", fx(pick.y)); lab.setAttribute("text-anchor", pick.anchor); }
           lab.style.opacity = pick ? L.op.toFixed(2) : 0; }
       }
+      { // the legend beside a hovered (or focused) name, in empty space: never over the molar and what hangs about it (the
+        // worn-away cloud above, the pathogens' ways in below, the metals), the record lines, their circles, the names and
+        // labels, the metals' streams, the timeline's knob and year, or the page's readout and buttons; it may lie over the sphere's rings. It
+        // keeps its place beside its name while that stays clear, and moves only when the tooth or the camera brings
+        // something under it: then to the nearest clear place, trying rings of places further and further from the name.
+        const key = s.leg, L = key && s.lines.find(L2 => L2.c.key === key), b = L && L._b, lg = key && s.LEG[key];
+        if (lg && b && b.vis) {
+          if (s.legKey !== key) { s.legKey = key; s.legRel = null; s.lgT.textContent = lg.title; while (s.lgRows.firstChild) s.lgRows.firstChild.remove();
+            lg.rows.forEach(([col, txt, , sub]) => { const rg = el("g", {}, s.lgRows); el("circle", { class: "rd-lsw", r: 5, style: "fill:" + col }, rg); el("text", { class: "rd-ct rd-lrow" }, rg).textContent = txt;
+              if (sub) el("text", { class: "rd-ct rd-lsub" }, rg).textContent = sub; });
+            s.lgW = Math.max(s.lgT.getComputedTextLength(), ...[...s.lgRows.querySelectorAll("text")].map(t => t.getComputedTextLength() + 16)) + 20;
+            s.lgH = 30 + lg.rows.reduce((a2, r) => a2 + (r[3] ? 35 : 19), 0); }
+          const bb = L._bb || (L._bb = L.card.getBBox()), cx0 = b.x + bb.x, cy0 = b.y + bb.y, cw = bb.width, ch = bb.height, h = s.lgH, w = s.lgW;
+          // what it keeps clear of, as screen rectangles [x0, y0, x1, y1], points with a radius, and segments
+          const boxes = [], dots = [], segs2 = s.lines.map(L2 => L2._s).filter(Boolean);
+          // the molar and what hangs about it: bands round its axis, from the pathogens' ways in to the top of the cloud
+          const RINGS = [[-295, 220], [-150, 215], [0, 135], [150, 135], [300, 145]], ring = (y, r) => Array.from({ length: 12 }, (_, i) => pj(r * Math.cos(i * Math.PI / 6), y, r * Math.sin(i * Math.PI / 6)));
+          const rp = RINGS.map(([y, r]) => ring(y, r));
+          for (let i = 0; i < rp.length - 1; i++) { const q = rp[i].concat(rp[i + 1]).filter(v => v[3] > 60); if (!q.length) continue;
+            boxes.push([Math.min(...q.map(v => v[0])), Math.min(...q.map(v => v[1])), Math.max(...q.map(v => v[0])), Math.max(...q.map(v => v[1]))]); }
+          // the metals' two streams beside the tooth, while they flow: each side's lanes, through the camera-facing frame they turn in
+          if (GLT && GLT.met && GLT.met.want && GLT.met.want.some(v => v > 0)) { const mg2 = GLT.met.mgrp, cy2 = Math.cos(mg2.rotation.y), sy2 = Math.sin(mg2.rotation.y);
+            [0, 1].forEach(g2 => { const q = []; GLT.met.lanes.forEach(pa => { if (pa.g !== g2) return; for (let i = 0; i < pa.P.length / 3; i += 4) { const lx = pa.P[3 * i], ly = pa.P[3 * i + 1], lz = pa.P[3 * i + 2];
+              const v = pj(lx * cy2 + lz * sy2, ly + mg2.position.y, -lx * sy2 + lz * cy2); if (v[3] > 60) q.push(v); } });
+              if (q.length) boxes.push([Math.min(...q.map(v => v[0])) - 8, Math.min(...q.map(v => v[1])) - 8, Math.max(...q.map(v => v[0])) + 8, Math.max(...q.map(v => v[1])) + 8]); }); }
+          cards.forEach(b2 => { if (!b2.vis) return; const k2 = b2.L._bb || (b2.L._bb = b2.L.card.getBBox()); boxes.push([b2.x + k2.x, b2.y + k2.y, b2.x + k2.x + k2.width, b2.y + k2.y + k2.height]); });
+          s.shells.forEach(r => { if (+r.lab.style.opacity > 0.05) { const x = +r.lab.getAttribute("x"), y = +r.lab.getAttribute("y"); boxes.push([x, y - 12, x + 96, y + 3]); } });
+          if (+s.waveLab.style.opacity > 0.05) { const k2 = s.waveLab.getBBox(); boxes.push([k2.x, k2.y, k2.x + k2.width, k2.y + k2.height]); }
+          if (s.kxy) dots.push([s.kxy[0], s.kxy[1], 18]);
+          all.forEach(o => { if (o.top && o.mg.getAttribute("visibility") !== "hidden") dots.push([o.top[0], o.top[1], (o.r || 3) + 5]); });
+          boxes.push([0, s.H - 58, 170, s.H], [s.W - 160, s.H - 120, s.W, s.H]);   // the year readout; Pause and Replay
+          const M = 6, clear = (x, y) => { if (x < 8 || y < 8 || x + w > s.W - 8 || y + h > s.H - 8) return false; const X0 = x - M, Y0 = y - M, X1 = x + w + M, Y1 = y + h + M;
+            if (boxes.some(q => q[0] < X1 && X0 < q[2] && q[1] < Y1 && Y0 < q[3])) return false;
+            if (dots.some(d => { const nx = cl(d[0], X0, X1), ny = cl(d[1], Y0, Y1); return Math.hypot(nx - d[0], ny - d[1]) < d[2]; })) return false;
+            return !segs2.some(([a1, a2]) => { for (let k = 0; k <= 24; k++) { const qx = a1[0] + (a2[0] - a1[0]) * k / 24, qy = a1[1] + (a2[1] - a1[1]) * k / 24; if (qx > X0 && qx < X1 && qy > Y0 && qy < Y1) return true; } return false; }); };
+          // keep the last place, relative to the name, while it is clear; else search outwards from the name
+          let pos = s.legRel && clear(cx0 + s.legRel[0], cy0 + s.legRel[1]) ? [cx0 + s.legRel[0], cy0 + s.legRel[1]] : null;
+          if (!pos) {
+            const mx = cx0 + cw / 2, my = cy0 + ch / 2;
+            search: for (const d of [16, 44, 80, 125, 180, 240, 310, 390]) {
+              const cand = [[cx0 + cw + d, my - h / 2], [cx0 - d - w, my - h / 2], [cx0 + cw + d, cy0 - 4], [cx0 - d - w, cy0 - 4], [cx0 + cw + d, cy0 + ch - h + 4], [cx0 - d - w, cy0 + ch - h + 4],
+                [mx - w / 2, cy0 + ch + d], [mx - w / 2, cy0 - d - h], [cx0, cy0 + ch + d], [cx0, cy0 - d - h], [cx0 + cw - w, cy0 + ch + d], [cx0 + cw - w, cy0 - d - h],
+                [cx0 + cw + d * 0.7, cy0 + ch + d * 0.7], [cx0 + cw + d * 0.7, cy0 - h - d * 0.7], [cx0 - w - d * 0.7, cy0 + ch + d * 0.7], [cx0 - w - d * 0.7, cy0 - h - d * 0.7]];
+              for (const [x, y] of cand) if (clear(x, y)) { pos = [x, y]; break search; } }
+            // none of those clear: the clear place on the whole page nearest the name
+            if (!pos) { let best = 1e9; for (let gy = 8; gy <= s.H - h - 8; gy += 18) for (let gx = 8; gx <= s.W - w - 8; gx += 18) {
+              const dd = Math.hypot(gx + w / 2 - mx, gy + h / 2 - my); if (dd < best && clear(gx, gy)) { best = dd; pos = [gx, gy]; } } }
+            // nowhere clear at all (the reader has zoomed far in): beside the name, on the side away from the tooth
+            if (!pos) { const away = mx < hb[0]; pos = [cl(away ? cx0 - 16 - w : cx0 + cw + 16, 8, s.W - 8 - w), cl(my - h / 2, 8, s.H - 8 - h)]; }
+            s.legRel = [pos[0] - cx0, pos[1] - cy0];
+          }
+          const [x, y] = pos;
+          s.lgBg.setAttribute("x", fx(x)); s.lgBg.setAttribute("y", fx(y)); s.lgBg.setAttribute("width", fx(w)); s.lgBg.setAttribute("height", fx(h));
+          s.lgT.setAttribute("x", fx(x + 10)); s.lgT.setAttribute("y", fx(y + 20));
+          { let ry = y + 20; [...s.lgRows.children].forEach(rg => { ry += 19; const [c0, t0, t1] = rg.children;
+            c0.setAttribute("cx", fx(x + 15)); c0.setAttribute("cy", fx(ry - 4)); t0.setAttribute("x", fx(x + 26)); t0.setAttribute("y", fx(ry));
+            if (t1) { ry += 16; t1.setAttribute("x", fx(x + 26)); t1.setAttribute("y", fx(ry)); } }); }
+          // the leader: from the name's box to the legend's, between their nearest points
+          const lx = cl(x + w / 2, cx0, cx0 + cw), ly = cl(y + h / 2, cy0, cy0 + ch), gx = cl(lx, x, x + w), gy = cl(ly, y, y + h);
+          // drawn only while the legend is close to its name: a long leader would cross the drawing it keeps clear of
+          s.lgLine.setAttribute("x1", fx(lx)); s.lgLine.setAttribute("y1", fx(ly)); s.lgLine.setAttribute("x2", fx(gx)); s.lgLine.setAttribute("y2", fx(gy)); s.lgLine.style.opacity = Math.hypot(gx - lx, gy - ly) < 56 ? 1 : 0;
+          s.gLeg.classList.add("on");
+        } else { s.gLeg.classList.remove("on"); s.legRel = null; } }
       all.sort((a, b) => b.z - a.z).forEach(o => (o.z > hubZ ? s.gBack : s.gFront).appendChild(o.mg));
       // a circle hovered by the pointer is let go once the pointer is off it: the circles are re-stacked by depth every frame
       // (above), and moving a hovered node can swallow the browser's mouseleave, leaving its tooltip up and the rest dimmed
       if (s.read && s.read.byPtr && (!ptr.in || !s.read.top || Math.hypot(ptr.x - s.read.top[0], ptr.y - s.read.top[1]) > s.read.r + 6)) s.read.off();
       const o = s.read || s.pin;
       if (o && o.top) {
-        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "");
+        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "metals" && MD.lead && MD.lead[o.mi] != null ? " · lead " + MD.lead[o.mi] + " ppm" : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "");
         const lh = o.c.key === "wear" && LR[o.mi]; s.rLa.textContent = lh ? LR[o.mi].any.toFixed(1) + "% with a stress line" : ""; s.rLb.textContent = lh ? " · " + LR[o.mi].multi.toFixed(1) + "% with two or more" : "";
         // the side with room for the text, measured (the caries and wear readouts run long); if neither side has room,
         // the right, pulled back inside the page
@@ -715,6 +870,9 @@
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
         return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
           wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up }, leh: GLT.leh ? GLT.leh.reach() : null,
+          metals: { era: S.met.era, period: MD.periods[S.met.era] ? MD.periods[S.met.era].p : null, values: (metalValues(S.met.era) || []).map(v => +v.toFixed(3)),
+            groups: S.met.groups ? { nonindustrial: +S.met.groups[0].toFixed(3), industrial: +S.met.groups[1].toFixed(3) } : null,
+            particles: GLT.met && GLT.met.want ? { nonindustrial: GLT.met.want[0], industrial: GLT.met.want[1] } : null, flying: GLT.met ? GLT.met.flying : null },
           pathogens: { era: S.pat.era, century: PLINE[S.pat.era] ? PLINE[S.pat.era][0] : null, flying: GLT.pat ? GLT.pat.active : 0, leaving: GLT.pat ? GLT.pat.leaving : 0,
             counts: Object.fromEntries((S.pat.counts || []).map((c, j) => [PD.taxa[j].name, c]).filter(e => e[1] > 0)),
             flyingByKind: GLT.pat ? GLT.pat.flyingByKind : null, byKind: GLT.pat && GLT.pat.byKind ? Object.fromEntries(GLT.pat.kinds.map((kk, j) => [kk, GLT.pat.byKind[j]])) : null } }; },

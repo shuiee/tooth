@@ -2,7 +2,7 @@
 
 # Radial timeline
 
-A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries, wear and pathogens as the timeline plays (the worn-away crown hovers above it); five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
+A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries, wear, metals and pathogens as the timeline plays (the worn-away crown hovers above it); five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
 
 It is the baseline for a project that uses a tooth as a visual archive of human history. The story moves from what a tooth preserves (childhood development, years of wear and decay, lifetime exposure to pathogens and metals, and broader change in dental practice) to human intervention: fillings, appliances and restorations that repair, cover or alter that evidence. It asks: what can future observers still understand from a tooth after humans have changed it?
 
@@ -14,7 +14,7 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries, pathogens or wear circle shows that period on the molar; **Replay** runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries, pathogens, wear or metals circle shows that period on the molar; **Replay** runs the opening again.
 
 ## Structure
 
@@ -24,6 +24,7 @@ css/radial.css        theme tokens and the diagram's styles
 js/main.js            mounts the diagram; Pause, Replay, resize, the onOpen hook
 js/caries-data.js     caries per period, for the molar
 js/wear-data.js       molar wear per period and age, for the molar's height
+js/metals-data.js     metals in childhood enamel per period, for the particles flowing down to the molar
 js/pathogens-data.js  pathogens per century, for the particles climbing the molar's nerve
 js/leh-data.js        stress lines per period, for the molar
 js/radial.js          the diagram (window.ToothRadial)

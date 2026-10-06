@@ -57,7 +57,6 @@ button{font:inherit;color:inherit}
 .rd-pole{fill:#fff;opacity:.85}
 .rd-shell{fill:none;stroke:#5CCBFF;stroke-width:.8;stroke-opacity:.35;stroke-dasharray:1 5;animation:rdDash 6s linear infinite}
 .rd-slab{fill:#7F93C6;font-size:9.5px;letter-spacing:.14em}
-.rd-hubdot{fill:#fff;filter:url(#rd-glow)}
 .rd-hubr{fill:none;transform-box:fill-box;transform-origin:center}
 .rd-hubr.r1{stroke:#FF2E63;stroke-width:2;stroke-dasharray:2 7;animation:rdSpin 14s linear infinite}
 .rd-hubr.r2{stroke:#5CCBFF;stroke-width:5;stroke-opacity:.6;stroke-dasharray:1.5 4 1.5 30;animation:rdSpinR 22s linear infinite}
@@ -65,7 +64,6 @@ button{font:inherit;color:inherit}
 .rd-teeth image{filter:invert(1) hue-rotate(185deg) saturate(1.4) brightness(1.05);mix-blend-mode:screen;opacity:.9}
 .rd-ray{stroke:#fff;stroke-width:.7;stroke-opacity:.55}
 .rd-beam{stroke:var(--c);stroke-linecap:round;stroke-opacity:.85;filter:url(#rd-glow)}
-.rd-pulse{fill:#fff;filter:url(#rd-glow)}
 .rd-mark{opacity:var(--fog,1);transition:opacity .25s ease}
 .rd-bokeh{fill:var(--c);opacity:.18}
 .rd-core{fill:var(--c);fill-opacity:.85;stroke:#fff;stroke-width:.8;stroke-opacity:.6}
@@ -100,7 +98,6 @@ button{font:inherit;color:inherit}
 .rd-pole{fill:var(--ink-3);opacity:.6}
 .rd-shell{stroke:var(--ink);stroke-opacity:.28;animation:none}
 .rd-slab{fill:var(--ink-3);font-family:var(--label);font-style:italic;font-size:11px;letter-spacing:.02em}
-.rd-hubdot{fill:var(--dentine-ink);filter:none}
 .rd-hubr.r1{stroke:var(--ink);stroke-width:1;stroke-opacity:.5;animation-duration:60s}
 .rd-hubr.r2{stroke:var(--dentine-ink);stroke-width:3;stroke-opacity:.35;animation-duration:90s}
 .rd-hubr.r3{stroke:var(--ink);stroke-opacity:.2;animation:none}
@@ -133,7 +130,6 @@ button{font:inherit;color:inherit}
 .rd-teeth{display:none}
 .rd-wave{fill:none;stroke:var(--dentine-ink);stroke-width:1.6}
 .rd-wlab{fill:var(--dentine-ink);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
-.rd-pulse{fill:var(--c,var(--ink));filter:none}
 .rd-shell{animation:rdDash 14s linear infinite}
 /* the caries line while the timeline is between records: paler, until the wave reaches the next one */
 .rd3 [data-cat].rd-nodata{opacity:.32;filter:saturate(.35);transition:opacity .4s ease,filter .4s ease}
@@ -153,3 +149,7 @@ button{font:inherit;color:inherit}
 /* a Wear and LEH point's readout: its two stress lines, in the colours they have on the molar */
 .rd3 .rd-lh .a{fill:#16907A}
 .rd3 .rd-lh .b{fill:#0A4A3F}
+/* the legend beside a hovered record name (Pathogens, Metals): the circles' pop-up, with a swatch per colour */
+.rd3 .rd-lrow{font-style:normal}
+.rd-lsw{stroke:var(--bg);stroke-width:1}
+.rd3 .rd-lsub{font-size:11.5px}
