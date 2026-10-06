@@ -25,6 +25,7 @@ js/main.js            mounts the diagram; Pause, Replay, resize, the onOpen hook
 js/caries-data.js     caries per period, for the molar
 js/wear-data.js       molar wear per period and age, for the molar's height
 js/pathogens-data.js  pathogens per century, for the particles climbing the molar's nerve
+js/leh-data.js        stress lines per period, for the molar
 js/radial.js          the diagram (window.ToothRadial)
 js/radial-data.js     the data (window.RADIAL_DATA), with its sources
 data/molar-cloud.js   the molar at the centre, as a point cloud
