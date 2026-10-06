@@ -12,7 +12,7 @@ A 3D radial timeline of dental evidence (Harvard MDE). A first molar sits at the
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, and click a circle to open its time period: pictures, charts and figures for that period. A second circle on the same line compares the two on the molar; the menu at the top left hides or shows records. **Fast forward** (bottom right) opens the look ahead: the molar divides in two, the repair projected on the right, with the storyboard's text (Play/Pause and Replay work there too); **Rewind** (bottom left) goes back.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, and click a circle to open its time period: pictures, charts and figures for that period. A second circle on the same line compares the two on the molar; the menu at the top left hides or shows records. **Fast forward** (bottom right) opens the look ahead: a second molar forms beside the first and shows only its repair, rebuilt as the repair is projected into the future, with the storyboard's text, ending on a question (Play/Pause and Replay work there too); **Rewind** (bottom left) goes back.
 
 The live page (`main`) is one self-contained file, `index.html`, with its code, images and fonts packed inside it. This branch keeps the prototype as separate files:
 
