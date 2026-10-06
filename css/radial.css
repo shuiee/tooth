@@ -1,0 +1,139 @@
+/* Radial timeline styles, ported from The Tooth Untold prototype (index.html), in their original order: later rules
+   override earlier ones, so do not reorder. Selectors for classes radial.js no longer uses were dropped. */
+
+:root{
+  color-scheme: light;
+  --bg:#e9e8e4; --bg-2:#dfded9; --card:#f3f2ee;
+  --ink:#1a1a18; --ink-2:#55544f; --ink-3:#8a8983; --rule:#c6c4bd;
+  --bacteria:#b0362f; --virus:#2f55b0; --parasite:#16907a; --metal:#b98208;
+  /* the radial timeline's secondary colour (a line whose per-year view is on): a deep tone of the renderer's dentine */
+  --dentine-ink:#8a6d47;
+  --serif:"Lora", Georgia, "Times New Roman", serif;
+  /* labels, controls, numbers and tables. For now everything is Lora; to bring back a sans for these,
+     load it in the <link> above and set it here, e.g. "Archivo", "Helvetica Neue", Arial, sans-serif */
+  --label:var(--serif);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow:hidden}
+button{font:inherit;color:inherit}
+
+/* ---- the page: running head and Replay, as on the prototype */
+.rh{position:fixed;left:28px;right:28px;top:16px;z-index:5;display:flex;gap:34px;font-family:var(--label);font-size:10.5px;line-height:1.4;color:var(--ink-3);pointer-events:none}
+.rh b{display:block;font-weight:600;color:var(--ink)}
+.rh span{display:block}
+.btn{font-family:var(--label);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);background:var(--bg);padding:6px 12px;cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+#again{position:fixed;right:28px;bottom:26px;z-index:6}
+
+/* ---- the radial (radial.js) */
+#radial{position:fixed;inset:0;z-index:3;background:var(--bg)}
+#radial[hidden]{display:none}
+.rd{display:block;width:100%;height:100%;font-family:var(--label)}
+.rd-teeth,.rd-read{pointer-events:none}
+.rd-hit{fill:transparent;cursor:pointer;outline:none}
+.rd [data-cat]{transition:opacity .25s ease}
+.rd.rd-dim [data-cat]:not(.lit){opacity:.16}
+.rd-read{opacity:0;transition:opacity .15s ease}
+.rd-read.on{opacity:1}
+.rd-read line{stroke:var(--ink-3);stroke-width:.8}
+.rd-yr,.rd-ct{font-family:var(--label);paint-order:stroke;stroke:var(--bg);stroke-width:6px;stroke-linejoin:round}
+.rd-yr{fill:var(--ink);font-size:15px;font-weight:600}
+.rd-ct{fill:var(--ink-2);font-size:13px;font-style:italic}
+@keyframes rdDash{to{stroke-dashoffset:-40}}
+@keyframes rdSpin{to{transform:rotate(360deg)}}
+@keyframes rdSpinR{to{transform:rotate(-360deg)}}
+
+/* ---- the 3D scene as first designed: a dark, glowing 'space' look (overridden below by the paper theme; kept so a
+   dark variant can be restored by deleting the paper section) */
+#radial{overflow:hidden;cursor:grab;touch-action:none;background:radial-gradient(ellipse 60% 55% at 50% 50%,#0b1640 0%,#04081a 45%,#000 100%)}
+#radial::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);mix-blend-mode:screen}
+#radial.grab{cursor:grabbing}
+.rd-sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rd3{position:relative;user-select:none;-webkit-user-select:none;font-family:"Geist Mono",ui-monospace,monospace}
+.rd-wire{fill:none;stroke:#7FB6FF;stroke-width:.6;stroke-opacity:.16}
+.rd-equator{fill:none;stroke:#BFD8FF;stroke-width:1.6;stroke-opacity:.55}
+.rd-axis{stroke:#fff;stroke-width:.8;stroke-opacity:.5}
+.rd-pole{fill:#fff;opacity:.85}
+.rd-shell{fill:none;stroke:#5CCBFF;stroke-width:.8;stroke-opacity:.35;stroke-dasharray:1 5;animation:rdDash 6s linear infinite}
+.rd-slab{fill:#7F93C6;font-size:9.5px;letter-spacing:.14em}
+.rd-hubdot{fill:#fff;filter:url(#rd-glow)}
+.rd-hubr{fill:none;transform-box:fill-box;transform-origin:center}
+.rd-hubr.r1{stroke:#FF2E63;stroke-width:2;stroke-dasharray:2 7;animation:rdSpin 14s linear infinite}
+.rd-hubr.r2{stroke:#5CCBFF;stroke-width:5;stroke-opacity:.6;stroke-dasharray:1.5 4 1.5 30;animation:rdSpinR 22s linear infinite}
+.rd-hubr.r3{stroke:#fff;stroke-width:.6;stroke-opacity:.3;stroke-dasharray:40 10 4 10;animation:rdSpin 40s linear infinite}
+.rd-teeth image{filter:invert(1) hue-rotate(185deg) saturate(1.4) brightness(1.05);mix-blend-mode:screen;opacity:.9}
+.rd-ray{stroke:#fff;stroke-width:.7;stroke-opacity:.55}
+.rd-beam{stroke:var(--c);stroke-linecap:round;stroke-opacity:.85;filter:url(#rd-glow)}
+.rd-pulse{fill:#fff;filter:url(#rd-glow)}
+.rd-mark{opacity:var(--fog,1);transition:opacity .25s ease}
+.rd-bokeh{fill:var(--c);opacity:.18}
+.rd-core{fill:var(--c);fill-opacity:.85;stroke:#fff;stroke-width:.8;stroke-opacity:.6}
+.rd-core.nocount{fill-opacity:.1;stroke:var(--c);stroke-dasharray:2 2}
+.rd-mark.on .rd-core{fill:#fff;fill-opacity:1}
+.rd-mark.on .rd-bokeh{opacity:.5}
+.rd3 .rd-hit{fill:transparent;cursor:pointer;outline:none}
+.rd-card{cursor:pointer;outline:none;transition:opacity .3s}
+.rd-cbox{fill:rgba(0,0,0,.6);stroke:#fff;stroke-opacity:.55;stroke-width:.8}
+.rd-cname{fill:#fff;font-size:12px;font-weight:500;letter-spacing:.14em}
+.rd-csub{fill:var(--c);font-size:10px;letter-spacing:.06em}
+.rd-lead{stroke:#fff;stroke-width:.6;stroke-opacity:.6;stroke-dasharray:2 3}
+.rd-card.lit .rd-cbox,.rd-card:focus-visible .rd-cbox{stroke:var(--c);stroke-opacity:1;filter:url(#rd-glow)}
+.rd3.rd-dim .rd-mark:not(.lit),.rd3.rd-dim [data-cat]:not(.lit),.rd3.rd-dim .rd-card:not(.lit){opacity:.15}
+.rd3 .rd-read line{stroke:#fff;stroke-width:.7}
+.rd3 .rd-yr{fill:#fff;font-size:13px;font-weight:500;letter-spacing:.04em;stroke:#000;stroke-width:4px;paint-order:stroke}
+.rd3 .rd-ct{fill:#9AA6CC;font-size:10.5px;font-style:normal;letter-spacing:.08em;text-transform:uppercase;stroke:#000;stroke-width:4px;paint-order:stroke}
+.rd-amb{fill:#E6E8EE}
+.rd-albl{fill:#8A93A8;font-size:9px;letter-spacing:.16em}
+.rd-arw{stroke:#E6E8EE;stroke-width:.7}
+.rd-arw.lit{stroke:var(--c);stroke-width:1.1}
+.rd-hint,.rd-hud{position:absolute;z-index:1;pointer-events:none;font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:#7F93C6}
+.rd-hint{left:50%;bottom:30px;transform:translateX(-50%);transition:opacity .8s ease}
+.rd-hud{left:28px;bottom:30px;color:#BFD8FF;font-variant-numeric:tabular-nums}
+
+/* ---- the paper theme: the journal's light paper, ink and Lora. Later rules win, so keep this section last */
+#radial{background:radial-gradient(ellipse 75% 65% at 50% 52%,#f3f2ee 0%,var(--bg) 58%,#dcdad3 100%)}
+#radial::after{display:none}
+.rd3{font-family:var(--label)}
+.rd-wire{stroke:var(--ink);stroke-opacity:.09}
+.rd-equator{stroke:var(--ink);stroke-width:1;stroke-opacity:.35}
+.rd-axis{stroke:var(--ink);stroke-opacity:.35}
+.rd-pole{fill:var(--ink-3);opacity:.6}
+.rd-shell{stroke:var(--ink);stroke-opacity:.28;animation:none}
+.rd-slab{fill:var(--ink-3);font-family:var(--label);font-style:italic;font-size:11px;letter-spacing:.02em}
+.rd-hubdot{fill:var(--dentine-ink);filter:none}
+.rd-hubr.r1{stroke:var(--ink);stroke-width:1;stroke-opacity:.5;animation-duration:60s}
+.rd-hubr.r2{stroke:var(--dentine-ink);stroke-width:3;stroke-opacity:.35;animation-duration:90s}
+.rd-hubr.r3{stroke:var(--ink);stroke-opacity:.2;animation:none}
+.rd-teeth image{filter:none;mix-blend-mode:multiply;opacity:1}
+.rd-ray{stroke:var(--ink);stroke-width:1.2;stroke-opacity:.7}
+.rd-beam{filter:none;stroke-opacity:.9}
+.rd-bokeh{opacity:.16}
+.rd-core{fill:var(--c);fill-opacity:.55;stroke:var(--c);stroke-width:1;stroke-opacity:.9}
+.rd-core.nocount{fill:var(--bg);fill-opacity:1;stroke:var(--c);stroke-dasharray:2 2}
+.rd-mark.on .rd-core{fill-opacity:1}
+.rd-mark.on .rd-bokeh{opacity:.32}
+.rd-cbox{fill:rgba(243,242,238,.92);stroke:var(--ink);stroke-opacity:.6}
+.rd-cname{fill:var(--ink);font-family:var(--label);font-size:13px;font-weight:600;letter-spacing:.06em}
+.rd-csub{font-family:var(--label);font-size:11px;font-style:italic;letter-spacing:0}
+.rd-lead{stroke:var(--ink);stroke-opacity:.5}
+.rd-card.lit .rd-cbox,.rd-card:focus-visible .rd-cbox{filter:none;stroke-width:1.4}
+.rd-cbox{fill:transparent!important;stroke:none!important;filter:none!important}
+.rd-cname{fill:var(--c);font-size:16px;font-weight:600;letter-spacing:.08em;paint-order:stroke;stroke:var(--bg);stroke-width:5px;stroke-linejoin:round}
+.rd-csub{fill:var(--ink-2);font-size:12px;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.rd-card.lit .rd-cname,.rd-card:focus-visible .rd-cname{text-decoration:underline;text-underline-offset:4px}
+.rd-lead{stroke-opacity:.35}
+.rd-arw{stroke:var(--c);stroke-opacity:.6}
+.rd3 .rd-read line{stroke:var(--ink)}
+.rd3 .rd-yr{fill:var(--ink);font-family:var(--label);font-size:15px;font-weight:600;letter-spacing:0;stroke:var(--bg)}
+.rd3 .rd-ct{fill:var(--ink-2);font-family:var(--label);font-size:13px;font-style:italic;text-transform:none;letter-spacing:0;stroke:var(--bg)}
+.rd-hint,.rd-hud{font-family:var(--label);font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);background:rgba(233,232,228,.9);padding:3px 8px}
+.rd-hud{color:var(--ink-2)}
+.rd-tgl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rd-rbg{fill:#f3f2ee;fill-opacity:.96;stroke:var(--rule);stroke-width:1}
+.rd-teeth{display:none}
+.rd-wave{fill:none;stroke:var(--dentine-ink);stroke-width:1.6}
+.rd-wlab{fill:var(--dentine-ink);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.rd-pulse{fill:var(--c,var(--ink));filter:none}
+.rd-shell{animation:rdDash 14s linear infinite}
