@@ -150,3 +150,6 @@ button{font:inherit;color:inherit}
 #radial.ringgrab,#radial.ringgrab .rd-grip{cursor:grabbing}
 /* only a circle's hit area takes the pointer: the soft halos are wider and, re-stacked by depth, can sit over a neighbour's hit area */
 .rd-bokeh,.rd-core{pointer-events:none}
+/* a Wear and LEH point's readout: its two stress lines, in the colours they have on the molar */
+.rd3 .rd-lh .a{fill:#16907A}
+.rd3 .rd-lh .b{fill:#0A4A3F}
