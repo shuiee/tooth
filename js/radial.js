@@ -64,6 +64,17 @@
   }
   const wearShare = i => { const st = wearOf(i); return st == null ? 0 : Math.max(0.05, Math.min(0.62, 0.12 + 0.48 * (st - 3.5) / 2.5)); };
 
+  // a period's pathogens: for each taxon, how many particles climb the nerve, one per 2.5% of that century's genomes it
+  // was found in (at least one where it was found) (see js/pathogens-data.js). i is the index into the radial's
+  // pathogens line, whose periods are the centuries with genomes.
+  const PD = window.PATHOGENS_DATA || { taxa: [] };
+  const PLINE = (DATA.find(c => c.key === "pathogens") || { dens: [] }).dens;
+  const pathogenPcts = i => { const d = PLINE[i]; if (!d) return null; return PD.taxa.map(t => (t.cells[d[0]] || [0, 0])[1]); };
+  // the readout's note for a century: the pathogen found in the most of its genomes
+  const topPathogen = i => { const p = pathogenPcts(i); if (!p) return ""; let b = -1; p.forEach((v, j) => { if (v > 0 && (b < 0 || v > p[b])) b = j; });
+    return b < 0 ? "" : " · " + PD.taxa[b].name + " in " + Math.round(p[b]) + "%"; };
+  const pathogenCounts = i => { const p = pathogenPcts(i); return p ? p.map(v => v > 0 ? Math.max(1, Math.round(v / 2.5)) : 0) : null; };
+
   function mount(host, opts) {
     let svg = null, raf = 0, S = null, dragging = false, px = 0, py = 0, lastInput = -1e9, stars = null;
     let playing = true, waveU = REDUCED ? 1 : 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
@@ -151,7 +162,123 @@
         for (let i = 0; i < n; i++) { const tgt = pos[3 * i + 1] > plane ? 1 : 0, v = lift[i]; if (v === tgt) continue;
           lift[i] = tgt ? Math.min(1, v + dt * pace[i] / 1.1) : Math.max(0, v - dt * pace[i] / 0.9); moved = true; }
         if (moved) aLift.needsUpdate = true; };
-      GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift };
+      // The nerve and the pathogens. The pulp's nerve strands (data/molar-nerve.js: up each root canal from the root's tip,
+      // across the pulp chamber and branching under the cusps) are dense branches of points in the tooth's ink. The
+      // pathogens of the period travel up them as glowing particles with fading trails, in their kind's colour, from the
+      // root tips into the crown; at a strand's end each fades out, then sets off again from a root tip. How many fly is
+      // each pathogen's % of that century's genomes (pathogenCounts()); when the period changes, the extra ones finish
+      // their climb and stop, and new ones set off. The nerve and the particles stay below the worn surface.
+      const NV = window.MOLAR_NERVE, PD = window.PATHOGENS_DATA;
+      let pathStep = () => {}, pat = null;
+      if (NV && PD) {
+        const Q16 = b64(NV.p, Int16Array), segs = []; let o = 0;
+        NV.len.forEach(L => { const a = new Float32Array(L * 3);
+          for (let i = 0; i < L; i++) { a[3 * i] = Q16[3 * (o + i)] / 32767 * NV.s * k; a[3 * i + 1] = (Q16[3 * (o + i) + 1] / 32767 * NV.s - yMid) * k; a[3 * i + 2] = Q16[3 * (o + i) + 2] / 32767 * NV.s * k; }
+          segs.push(a); o += L; });
+        // the nerve as points: every point of every strand, and two more scattered about it, so the branches read dense
+        const nvN = segs.reduce((a, g) => a + g.length / 3, 0) * 3, nvP = new Float32Array(nvN * 3), nvR = new Float32Array(nvN); let q = 0;
+        segs.forEach((g, gi) => { const tw = NV.par[gi] >= 0 && NV.len[gi] < 40;   // twigs: finer
+          for (let i = 0; i < g.length; i += 3) for (let c = 0; c < 3; c++) { const j = c ? (tw ? 0.5 : 1.1) : 0;
+            nvP[3 * q] = g[i] + (rnd() - 0.5) * 2 * j; nvP[3 * q + 1] = g[i + 1] + (rnd() - 0.5) * 2 * j; nvP[3 * q + 2] = g[i + 2] + (rnd() - 0.5) * 2 * j; nvR[q] = rnd(); q++; } });
+        const ng = new TH.BufferGeometry(); ng.setAttribute("position", new TH.BufferAttribute(nvP, 3)); ng.setAttribute("aR", new TH.BufferAttribute(nvR, 1));
+        U.uNv = { value: 0 };
+        const nervePts = new TH.Points(ng, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+          vertexShader: "attribute float aR; uniform float uWearY, uPx, uNv; varying float vA; void main(){ vec3 p = position; p.y = min(p.y, uWearY - 6.0); vec4 mv = modelViewMatrix * vec4(p, 1.0);" +
+            " gl_PointSize = uPx * (0.8 + 0.4 * aR) * 1480.0 / max(200.0, -mv.z); vA = uNv * (0.3 + 0.25 * aR); gl_Position = projectionMatrix * mv; }",
+          fragmentShader: "uniform vec3 cInk; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25 || vA < 0.01) discard; gl_FragColor = vec4(cInk, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
+        molar.add(nervePts);
+        // Each kind of pathogen has its own route, so its volume reads as one stream: it comes in from outside, below the
+        // tooth, to a root tip, climbs its own strand of that root's canal and crosses the chamber to its own pulp horn,
+        // where it splits into two twigs (one route for a single particle). Bacteria and parasites take the one root,
+        // viruses and the rest the other; no two kinds share a strand or a horn. The particles of a kind follow one
+        // another at even spacing, so a denser stream is a larger share of the century's genomes.
+        const isPar = new Set(NV.par), roots = NV.par.map((q2, gi) => q2 < 0 ? gi : -1).filter(gi => gi >= 0), perCanal = roots.length / 2;
+        const chainOf = gi => { const c2 = []; for (let c = gi; c >= 0; c = NV.par[c]) c2.unshift(c); return c2; };
+        const leaves = NV.len.map((_, gi) => gi).filter(gi => !isPar.has(gi)).map(chainOf);
+        const KINDS = (PD.kinds || []).map(kk => kk[0]), cols = PD.colours || {};
+        const ROUTE = { bacteria: [0, 0, -1], parasite: [0, 2, 1], virus: [1, 0, 1], other: [1, 1, -1] };   // [canal, strand, side of entry]
+        const routes = KINDS.map(kind => { const [cn, sn, sd] = ROUTE[kind] || [0, 0, 1], root = roots[Math.min(roots.length - 1, cn * perCanal + sn)];
+          // two twigs from different first branches under the horn, each the deepest of its branch
+          const mine = leaves.filter(ch => ch[0] === root), groups = {}; mine.forEach(ch => { const g = ch[1]; if (!groups[g] || ch.length > groups[g].length) groups[g] = ch; });
+          const picks = Object.values(groups).slice(0, 2);
+          const s0 = segs[root], apex = [s0[0], s0[1], s0[2]], rr = Math.hypot(apex[0], apex[2]) || 1, a0 = Math.atan2(apex[2], apex[0]) + sd * 0.75;
+          const out = [Math.cos(a0), 0, Math.sin(a0)], st = [apex[0] + out[0] * 95, apex[1] - 120, apex[2] + out[2] * 95], cp = [apex[0] + out[0] * 15, apex[1] - 70, apex[2] + out[2] * 15];
+          const lead = []; for (let i = 0; i < 24; i++) { const u = i / 24, w0 = (1 - u) * (1 - u), w1 = 2 * u * (1 - u), w2 = u * u; for (let a2 = 0; a2 < 3; a2++) lead.push(w0 * st[a2] + w1 * cp[a2] + w2 * apex[a2]); }
+          return picks.map(ch => { const pts = lead.slice(); ch.forEach(c => { const g = segs[c]; for (let i = 0; i < g.length; i += 3) pts.push(g[i], g[i + 1], g[i + 2]); });
+            const P3 = new Float32Array(pts), cum = new Float32Array(P3.length / 3);
+            for (let i = 1; i < cum.length; i++) cum[i] = cum[i - 1] + Math.hypot(P3[3 * i] - P3[3 * i - 3], P3[3 * i + 1] - P3[3 * i - 2], P3[3 * i + 2] - P3[3 * i - 1]);
+            return { P: P3, cum, len: cum[cum.length - 1], lead: cum[23] }; }); });
+        const at = (pa, d, out, oi) => { const c = pa.cum; d = Math.max(0, Math.min(pa.len, d)); let lo = 0, hi = c.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= d) lo = m; else hi = m; }
+          const f = (d - c[lo]) / Math.max(1e-6, c[hi] - c[lo]); for (let a2 = 0; a2 < 3; a2++) out[oi + a2] = pa.P[3 * lo + a2] + (pa.P[3 * hi + a2] - pa.P[3 * lo + a2]) * f; };
+        // the way in from outside: faint dots in the kind's colour, shown while that kind is present
+        const GN = 60, gp = new Float32Array(KINDS.length * GN * 3), gc = new Float32Array(KINDS.length * GN * 3), ga = new Float32Array(KINDS.length * GN), gaB = new Float32Array(KINDS.length * GN);
+        routes.forEach((rs, kI) => { const r0 = rs[0], col = new TH.Color(cols[KINDS[kI]] || "#8a8983"); if (!r0) return;
+          for (let i = 0; i < GN; i++) { const q = kI * GN + i; at(r0, r0.lead * (i / GN), gp, 3 * q); gc[3 * q] = col.r; gc[3 * q + 1] = col.g; gc[3 * q + 2] = col.b; } });
+        const gg = new TH.BufferGeometry(), aGA = new TH.BufferAttribute(ga, 1); aGA.setUsage(TH.DynamicDrawUsage); gg.setAttribute("position", new TH.BufferAttribute(gp, 3)); gg.setAttribute("aC", new TH.BufferAttribute(gc, 3)); gg.setAttribute("aA", aGA);
+        const gS = new Float32Array(KINDS.length * GN).fill(2.4); gg.setAttribute("aS", new TH.BufferAttribute(gS, 1));
+        // the particles: a head (a soft glowing point) and a trail behind it, of dots and a fine line, fading
+        const MAXP = 240, TL = 18, TRAIL = 46, TD = 14, HN = MAXP * (1 + TD), V = 125, GAP = 30;   // GAP: the closest spacing in a stream
+        const hp = new Float32Array(HN * 3), hc = new Float32Array(HN * 3), ha = new Float32Array(HN), hs = new Float32Array(HN);
+        const tp = new Float32Array(MAXP * TL * 2 * 3), tcol = new Float32Array(MAXP * TL * 2 * 3), ta = new Float32Array(MAXP * TL * 2);
+        const hg = new TH.BufferGeometry(), aHP = new TH.BufferAttribute(hp, 3), aHA = new TH.BufferAttribute(ha, 1), aHS = new TH.BufferAttribute(hs, 1), aHC = new TH.BufferAttribute(hc, 3);
+        [aHP, aHA, aHS, aHC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); hg.setAttribute("position", aHP); hg.setAttribute("aA", aHA); hg.setAttribute("aS", aHS); hg.setAttribute("aC", aHC);
+        const glowMat = new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA; vC = aC;" +
+            " gl_PointSize = aA < 0.004 ? 0.0 : uPx * aS * 1480.0 / max(200.0, -mv.z); gl_Position = projectionMatrix * mv; }",
+          fragmentShader: "varying float vA; varying vec3 vC; void main(){ vec2 q = gl_PointCoord - 0.5; float d = length(q) * 2.0; if (d > 1.0) discard;" +
+            " float core = 1.0 - smoothstep(0.18, 0.34, d), glow = exp(-d * d * 4.0); vec3 c = mix(vC * 1.12, vC * 0.7, core); gl_FragColor = vec4(c, vA * clamp(core + glow * 0.42, 0.0, 1.0)); }" });
+        const heads = new TH.Points(hg, glowMat), guides = new TH.Points(gg, glowMat);
+        const tg = new TH.BufferGeometry(), aTP = new TH.BufferAttribute(tp, 3), aTA = new TH.BufferAttribute(ta, 1), aTC = new TH.BufferAttribute(tcol, 3);
+        [aTP, aTA, aTC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); tg.setAttribute("position", aTP); tg.setAttribute("aA", aTA); tg.setAttribute("aC", aTC);
+        const trails = new TH.LineSegments(tg, new TH.ShaderMaterial({ transparent: true, depthWrite: false,
+          vertexShader: "attribute float aA; attribute vec3 aC; varying float vA; varying vec3 vC; void main(){ vA = aA; vC = aC; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+          fragmentShader: "varying float vA; varying vec3 vC; void main(){ if (vA < 0.004) discard; gl_FragColor = vec4(vC, vA); }" }));
+        heads.frustumCulled = trails.frustumCulled = guides.frustumCulled = false; guides.renderOrder = 10; heads.renderOrder = 12; trails.renderOrder = 11;
+        molar.add(guides); molar.add(trails); molar.add(heads);
+        // each particle: its kind (-1 idle), its route, and its distance along it (negative: waiting its turn)
+        const P = Array.from({ length: MAXP }, () => ({ k: -1, r: 0, d: 0, retire: false }));
+        const period = (kI, r) => { const ro = routes[kI][r], n = P.filter(pp => pp.k === kI && pp.r === r && !pp.retire).length; return Math.max(ro.len + TRAIL, n * GAP); };
+        pat = { routes, P, kinds: KINDS };
+        pathStep = (want, dt, wearY, appear) => {
+          // the period's particles per kind (want: per taxon): split between the kind's routes; extras finish their
+          // climb and stop (or go at once if still waiting), new ones join the back of the stream
+          if (want !== pat.wantRef) { pat.wantRef = want; const w = KINDS.map(() => 0); (want || []).forEach((c, ti) => { const kI = KINDS.indexOf(PD.taxa[ti].kind); if (kI >= 0) w[kI] += c; }); pat.byKind = w;
+            KINDS.forEach((_, kI) => { const nr = routes[kI].length; if (!nr) return;
+              for (let r = 0; r < nr; r++) { const need = Math.floor(w[kI] / nr) + (r < w[kI] % nr ? 1 : 0), mine = P.filter(pp => pp.k === kI && pp.r === r && !pp.retire).sort((p1, p2) => p2.d - p1.d);
+                mine.slice(need).forEach(pp => { if (pp.d < 0) pp.k = -1; else pp.retire = true; });
+                const ro = routes[kI][r], L = Math.max(ro.len + TRAIL, need * GAP), sp = L / Math.max(1, need);
+                let back = mine.length && need ? Math.min(0, mine[Math.min(need, mine.length) - 1].d) : (REDUCED ? ro.len : 0) + sp * rnd() * 0.5;
+                for (let c = mine.length; c < need; c++) { const pp = P.find(x => x.k < 0); if (!pp) break; back -= sp; pp.k = kI; pp.r = r; pp.retire = false; pp.d = back; if (REDUCED) pp.d = ((back % L) + L) % L; } } });
+            gaB.fill(0); KINDS.forEach((_, kI) => { if (w[kI]) for (let i = 0; i < GN; i++) gaB[kI * GN + i] = 0.32 * (0.35 + 0.65 * i / GN); }); }
+          for (let i = 0; i < ga.length; i++) ga[i] = gaB[i] * appear; aGA.needsUpdate = true;
+          const yMax = wearY - 6;
+          P.forEach((pp, i) => {
+            const t0 = i * TL * 2, h0 = i * (1 + TD), hide = () => { for (let j = 0; j <= TD; j++) ha[h0 + j] = 0; for (let j = 0; j < TL * 2; j++) ta[t0 + j] = 0; };
+            if (pp.k < 0) { hide(); return; }
+            const pa = routes[pp.k][pp.r]; pp.d += V * dt;
+            if (pp.d > pa.len + TRAIL) { if (pp.retire) { pp.k = -1; pp.retire = false; hide(); return; } pp.d -= period(pp.k, pp.r); }
+            const cc = new TH.Color(cols[KINDS[pp.k]] || "#8a8983"), d = pp.d;
+            // the head: swelling and fading as it dissipates past the twig's end; the trail's dots behind it
+            const past = Math.max(0, (d - pa.len) / TRAIL), on = d < 0 ? 0 : 1;
+            for (let j = 0; j <= TD; j++) { const q = h0 + j, dj = d - j * TRAIL / TD * 0.9, f = j / TD;
+              at(pa, dj, hp, 3 * q); hp[3 * q + 1] = Math.min(yMax, hp[3 * q + 1]);
+              hc[3 * q] = cc.r; hc[3 * q + 1] = cc.g; hc[3 * q + 2] = cc.b;
+              if (!j) { ha[q] = on * appear * Math.max(0, 1 - past * 1.6) * Math.min(1, d / 30 + 0.2); hs[q] = 11 + 14 * past; }
+              else { ha[q] = dj >= 0 && dj <= pa.len ? appear * 0.75 * Math.pow(1 - f, 1.3) : 0; hs[q] = 8 * (1 - f * 0.65); } }
+            for (let j = 0; j < TL; j++) {
+              const d0 = d - j * TRAIL / TL, d1 = d - (j + 1) * TRAIL / TL, v0 = (t0 + 2 * j) * 3, a0 = 1 - j / TL, a1 = 1 - (j + 1) / TL;
+              at(pa, d0, tp, v0); at(pa, d1, tp, v0 + 3);
+              for (let h = 0; h < 2; h++) { tp[v0 + 3 * h + 1] = Math.min(yMax, tp[v0 + 3 * h + 1]); tcol[v0 + 3 * h] = cc.r; tcol[v0 + 3 * h + 1] = cc.g; tcol[v0 + 3 * h + 2] = cc.b; }
+              const ok = d0 >= 0 && d0 <= pa.len && d1 >= 0 && d1 <= pa.len;
+              ta[t0 + 2 * j] = ok ? appear * 0.8 * a0 * a0 : 0; ta[t0 + 2 * j + 1] = ok ? appear * 0.8 * a1 * a1 : 0;
+            }
+          });
+          aHP.needsUpdate = aHA.needsUpdate = aHS.needsUpdate = aHC.needsUpdate = aTP.needsUpdate = aTA.needsUpdate = aTC.needsUpdate = true;
+          pat.active = P.filter(pp => pp.k >= 0 && !pp.retire).length; pat.flyingByKind = KINDS.map((_, kI) => P.filter(pp => pp.k === kI && !pp.retire).length); pat.leaving = P.filter(pp => pp.k >= 0 && pp.retire).length;
+        };
+      }
+      GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift, pathStep, pat };
     } catch (e) { GLT = null; }
 
     function build(animate) {
@@ -196,7 +323,7 @@
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
           // which can cancel a click between press and release. A caries point also moves the timeline to its period and
           // pauses it there, so the molar shows that period's caries.
-          const pick = () => { if (c.key !== "caries" && c.key !== "wear") { fly(); return; }
+          const pick = () => { if (c.key !== "caries" && c.key !== "wear" && c.key !== "pathogens") { fly(); return; }
             S.pin = o; on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
@@ -228,7 +355,7 @@
         ring.touched = true; S.pin = null; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -255,6 +382,9 @@
         U2.uPulse.value = REDUCED ? 0 : Math.max(0, 1 - (now - (s.car.at || -1e9)) / 900);   // the swell after a change of period
         const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
         U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
+        { const pa = REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1); U2.uNv && (U2.uNv.value = appear * pa);
+          if (s.pat.era !== s.pat.cEra) { s.pat.cEra = s.pat.era; s.pat.counts = s.pat.era >= 0 ? pathogenCounts(s.pat.era) : null; }
+          GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa); }
         U2.uOut.value += (s.car.out - U2.uOut.value) * (REDUCED ? 1 : ku); U2.uMid.value += (s.car.mid - U2.uMid.value) * (REDUCED ? 1 : ku); U2.uInn.value += (s.car.inn - U2.uInn.value) * (REDUCED ? 1 : ku);
         GLT.tcv.style.opacity = appear; rd.render(GLT.sc, tc); }
       // sky
@@ -303,7 +433,7 @@
       // in no period the molar keeps the last period it passed (nothing before the first), and the caries line dims
       // until the wave reaches the next record.
       // The same for wear, on the Wear and LEH line: the molar's height is the period's wear.
-      ["caries", "wear"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
+      ["caries", "wear", "pathogens"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
         const D = L.c.dens, y = s.waveYear;
         let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
         const inData = at >= 0;
@@ -311,6 +441,7 @@
         const era = at;
         if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
+        if (key === "pathogens") s.pat.era = era;
         L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
         L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); });
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
@@ -407,7 +538,7 @@
       const o = s.read || s.pin;
       if (o && o.top) { const left = o.top[0] + 200 > s.W, x = left ? o.top[0] - o.r - 14 : o.top[0] + o.r + 14, y = o.top[1] - o.r - 10;
         s.rLine.setAttribute("x1", fx(o.top[0] + (left ? -o.r : o.r))); s.rLine.setAttribute("y1", fx(o.top[1])); s.rLine.setAttribute("x2", fx(x)); s.rLine.setAttribute("y2", fx(y));
-        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "");
+        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "") + (o.c.key === "pathogens" ? topPathogen(o.mi) : "");
         [[s.rYr, 0], [s.rCt, 17]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
         { const b1 = s.rYr.getBBox(), b2 = s.rCt.getBBox(), x0 = Math.min(b1.x, b2.x) - 9, y0 = b1.y - 6, x1 = Math.max(b1.x + b1.width, b2.x + b2.width) + 9, y1 = b2.y + b2.height + 6; s.rBg.setAttribute("x", fx(x0)); s.rBg.setAttribute("y", fx(y0)); s.rBg.setAttribute("width", fx(x1 - x0)); s.rBg.setAttribute("height", fx(y1 - y0)); }
         s.gRead.classList.add("on"); } else s.gRead.classList.remove("on");
@@ -449,7 +580,10 @@
       playing() { return playing; },
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
         return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
-          wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up } }; },
+          wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up },
+          pathogens: { era: S.pat.era, century: PLINE[S.pat.era] ? PLINE[S.pat.era][0] : null, flying: GLT.pat ? GLT.pat.active : 0, leaving: GLT.pat ? GLT.pat.leaving : 0,
+            counts: Object.fromEntries((S.pat.counts || []).map((c, j) => [PD.taxa[j].name, c]).filter(e => e[1] > 0)),
+            flyingByKind: GLT.pat ? GLT.pat.flyingByKind : null, byKind: GLT.pat && GLT.pat.byKind ? Object.fromEntries(GLT.pat.kinds.map((kk, j) => [kk, GLT.pat.byKind[j]])) : null } }; },
       // Replay mounts a fresh diagram: take the molar's canvas and its WebGL context with this one, or the old molar
       // stays behind as a frozen second tooth
       destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove();
