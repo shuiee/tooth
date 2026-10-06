@@ -53,6 +53,16 @@
     return { out: F, mid: F * (R.sev[2] + R.sev[3] + R.sev[4]) / any, inn: F * (R.sev[3] + R.sev[4]) / any };
   }
 
+  // a period's wear as the share of the crown's height worn away: its lifetime of wear (the age bands in order, each at
+  // least the band before; the last band's value), on an expanded Smith-stage scale (see js/wear-data.js)
+  const WD = window.WEAR_DATA || { ages: [], periods: [] };
+  function wearOf(i) {
+    const P = WD.periods[i]; if (!P) return null; let run = 1;
+    WD.ages.forEach(a => { if (P.cells[a]) run = Math.max(run, P.cells[a][0]); });
+    return run;
+  }
+  const wearShare = i => { const st = wearOf(i); return st == null ? 0 : Math.max(0.05, Math.min(0.62, 0.12 + 0.48 * (st - 3.5) / 2.5)); };
+
   function mount(host, opts) {
     let svg = null, raf = 0, S = null, dragging = false, px = 0, py = 0, lastInput = -1e9, stars = null;
     let playing = true, waveU = 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
@@ -90,14 +100,16 @@
         delay[i] = 0.2 + (y + 150) / 300 * 0.9 + rnd() * 0.55;
       }
       const ink = new TH.Color("#2b2a27"), cA = new TH.Color("#E3A46A"), cB = new TH.Color("#C2611A"), cC = new TH.Color("#6F320B");
-      const U = { uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
+      // the crown's top and the enamel-root junction, in the drawing's units; the wear plane starts above the crown
+      const Ytop = (MC.top - yMid) * k, Ycej = -yMid * k;
+      const U = { uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
         cInk: { value: ink }, cA: { value: cA }, cB: { value: cB }, cC: { value: cC } };
       const FLY = "float fly(float d){ float e = clamp((uT - d) / 1.5, 0.0, 1.0); return 1.0 - pow(1.0 - e, 3.0); }";
       const pg = new TH.BufferGeometry(); pg.setAttribute("position", new TH.BufferAttribute(pos, 3)); pg.setAttribute("aStart", new TH.BufferAttribute(start, 3));
       pg.setAttribute("aRank", new TH.BufferAttribute(rank, 1)); pg.setAttribute("aDelay", new TH.BufferAttribute(delay, 1));
       const pts = new TH.Points(pg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse; uniform vec3 cInk, cA, cB, cC; varying vec3 vC; varying float vA; " + FLY +
-          " void main(){ float e = fly(aDelay); vec3 p = mix(aStart, position, e); vec4 mv = modelViewMatrix * vec4(p, 1.0);" +
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse, uWearY; uniform vec3 cInk, cA, cB, cC; varying vec3 vC; varying float vA; " + FLY +
+          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 p = mix(aStart, w, e); vec4 mv = modelViewMatrix * vec4(p, 1.0);" +
           " float a = 1.0 - smoothstep(uOut - 0.012, uOut, aRank), b = 1.0 - smoothstep(uMid - 0.012, uMid, aRank), c = 1.0 - smoothstep(uInn - 0.012, uInn, aRank);" +
           " vC = mix(mix(mix(cInk, cA, a), cB, b), cC, c); float car = max(a, 0.0);" +
           " gl_PointSize = uPx * (0.95 + (0.75 + 1.1 * uPulse) * car) * 1480.0 / max(200.0, -mv.z); vA = (0.15 + 0.85 * e) * (aRank > 1.5 ? 0.34 : 0.5 + 0.45 * car); gl_Position = projectionMatrix * mv; }",
@@ -109,11 +121,32 @@
       const lg = new TH.BufferGeometry(); lg.setAttribute("position", new TH.BufferAttribute(lpos, 3)); lg.setAttribute("aStart", new TH.BufferAttribute(lst, 3));
       lg.setAttribute("aRank", new TH.BufferAttribute(lseg, 1)); lg.setAttribute("aDelay", new TH.BufferAttribute(ldel, 1));
       const lines = new TH.LineSegments(lg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut; varying float vA; " + FLY +
-          " void main(){ float e = fly(aDelay); vA = (1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * e * 0.3; gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, position, e), 1.0); }",
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uWearY; varying float vA; " + FLY +
+          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vA = (1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * e * 0.3; gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, w, e), 1.0); }",
         fragmentShader: "uniform vec3 cB; varying float vA; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(cB, vA); }" }));
-      const molar = new TH.Group(); molar.add(lines); molar.add(pts); sc.add(molar);
-      GLT = { rd, sc, tc, tcv, molar, U };
+      // The worn-away crown: every crown point above the wear plane also rises, a few at a time, in the tooth's own ink, to hover above the tooth
+      // as a separate cloud, at its own place lifted by LIFT, so the cloud is the lost cap and grows as the molar wears.
+      // aLift (0 on the tooth, 1 in the cloud) is stepped on the CPU (wearStep()), each point at its own pace.
+      const LIFT = (Ytop - Ycej) * 0.62 + 46, lift = new Float32Array(n), pace = new Float32Array(n);
+      for (let i = 0; i < n; i++) pace[i] = 0.7 + rnd() * 0.9;
+      const wg = new TH.BufferGeometry(); wg.setAttribute("position", new TH.BufferAttribute(pos, 3)); wg.setAttribute("aDelay", new TH.BufferAttribute(delay, 1));
+      wg.setAttribute("aPace", new TH.BufferAttribute(pace, 1)); const aLift = new TH.BufferAttribute(lift, 1); aLift.setUsage(TH.DynamicDrawUsage); wg.setAttribute("aLift", aLift);
+      U.uLift = { value: LIFT };
+      const lost = new TH.Points(wg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+        vertexShader: "attribute float aDelay, aPace, aLift; uniform float uT, uWearY, uLift, uPx; varying float vA; " + FLY +
+          " void main(){ if (aLift < 0.004) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }" +
+          " float u = aLift * aLift * (3.0 - 2.0 * aLift); vec3 a = vec3(position.x, min(position.y, uWearY), position.z);" +
+          " vec3 b = position + vec3(0.0, uLift, 0.0) + vec3(sin(uT * 0.7 + aPace * 9.0), sin(uT * 0.9 + aPace * 5.0), cos(uT * 0.6 + aPace * 7.0)) * 2.5;" +
+          " vec3 p = mix(a, b, u) + vec3(position.x, 0.0, position.z) * 0.35 * sin(3.14159 * u);" +
+          " vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_PointSize = uPx * 1.25 * 1480.0 / max(200.0, -mv.z); vA = u * 0.55 * fly(aDelay); gl_Position = projectionMatrix * mv; }",
+        fragmentShader: "uniform vec3 cInk; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25 || vA < 0.01) discard; gl_FragColor = vec4(cInk, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
+      const molar = new TH.Group(); molar.add(lines); molar.add(pts); molar.add(lost); sc.add(molar);
+      // a point rises when the wear plane passes below it and settles back when the plane passes above it
+      const wearStep = (plane, dt) => { let moved = false;
+        for (let i = 0; i < n; i++) { const tgt = pos[3 * i + 1] > plane ? 1 : 0, v = lift[i]; if (v === tgt) continue;
+          lift[i] = tgt ? Math.min(1, v + dt * pace[i] / 1.1) : Math.max(0, v - dt * pace[i] / 0.9); moved = true; }
+        if (moved) aLift.needsUpdate = true; };
+      GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift };
     } catch (e) { GLT = null; }
 
     function build(animate) {
@@ -158,7 +191,7 @@
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
           // which can cancel a click between press and release. A caries point also moves the timeline to its period and
           // pauses it there, so the molar shows that period's caries.
-          const pick = () => { if (c.key !== "caries") { fly(); return; }
+          const pick = () => { if (c.key !== "caries" && c.key !== "wear") { fly(); return; }
             S.pin = o; on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
@@ -182,7 +215,7 @@
       const rLine = el("line", {}, gRead), rBg = el("rect", { class: "rd-rbg", rx: 3 }, gRead), rYr = el("text", { class: "rd-yr" }, gRead), rCt = el("text", { class: "rd-ct" }, gRead);
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -207,6 +240,8 @@
         GLT.molar.position.y = REDUCED ? 0 : Math.sin(t * 0.7) * 6;
         const ku = Math.min(1, dt * 3), U2 = GLT.U; U2.uT.value = REDUCED || !s.anim ? 99 : t;
         U2.uPulse.value = REDUCED ? 0 : Math.max(0, 1 - (now - (s.car.at || -1e9)) / 900);   // the swell after a change of period
+        const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
+        U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
         U2.uOut.value += (s.car.out - U2.uOut.value) * (REDUCED ? 1 : ku); U2.uMid.value += (s.car.mid - U2.uMid.value) * (REDUCED ? 1 : ku); U2.uInn.value += (s.car.inn - U2.uInn.value) * (REDUCED ? 1 : ku);
         GLT.tcv.style.opacity = appear; rd.render(GLT.sc, tc); }
       // sky
@@ -242,15 +277,17 @@
       // the caries on the molar: the picked caries point's period, else the period the wave is in. Where the wave is
       // in no period the molar keeps the last period it passed (nothing before the first), and the caries line dims
       // until the wave reaches the next record.
-      { const L = s.lines.find(L2 => L2.c.key === "caries");
-        if (L) { const D = L.c.dens, y = s.waveYear;
-          let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
-          const inData = at >= 0;
-          if (!inData) { at = -1; D.forEach((d, i) => { if (d[1] <= y) at = i; }); }
-          const era = at;
-          if (era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
-          L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
-          L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); } }
+      // The same for wear, on the Wear and LEH line: the molar's height is the period's wear.
+      ["caries", "wear"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
+        const D = L.c.dens, y = s.waveYear;
+        let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
+        const inData = at >= 0;
+        if (!inData) { at = -1; D.forEach((d, i) => { if (d[1] <= y) at = i; }); }
+        const era = at;
+        if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
+        if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
+        L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
+        L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); });
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
       const ay = REDUCED ? 0 : t * 0.025;
       s.amb.forEach(o => { const ca = Math.cos(ay), sa = Math.sin(ay), x = o.p[0] * ca - o.p[2] * sa, z = o.p[0] * sa + o.p[2] * ca, y = o.p[1] + (REDUCED ? 0 : Math.sin(t * 0.4 + o.ph) * 10);
@@ -330,7 +367,7 @@
       const o = s.read || s.pin;
       if (o && o.top) { const left = o.top[0] + 200 > s.W, x = left ? o.top[0] - o.r - 14 : o.top[0] + o.r + 14, y = o.top[1] - o.r - 10;
         s.rLine.setAttribute("x1", fx(o.top[0] + (left ? -o.r : o.r))); s.rLine.setAttribute("y1", fx(o.top[1])); s.rLine.setAttribute("x2", fx(x)); s.rLine.setAttribute("y2", fx(y));
-        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "");
+        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "");
         [[s.rYr, 0], [s.rCt, 17]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
         { const b1 = s.rYr.getBBox(), b2 = s.rCt.getBBox(), x0 = Math.min(b1.x, b2.x) - 9, y0 = b1.y - 6, x1 = Math.max(b1.x + b1.width, b2.x + b2.width) + 9, y1 = b2.y + b2.height + 6; s.rBg.setAttribute("x", fx(x0)); s.rBg.setAttribute("y", fx(y0)); s.rBg.setAttribute("width", fx(x1 - x0)); s.rBg.setAttribute("height", fx(y1 - y0)); }
         s.gRead.classList.add("on"); } else s.gRead.classList.remove("on");
@@ -360,7 +397,9 @@
       resize() { const b = S ? S.born : 0, a = S && S.anim; build(a); if (S) S.born = b; },
       play(on) { setPlaying(on); },
       playing() { return playing; },
-      state() { return S && GLT ? { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3) } : null; },
+      state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
+        return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
+          wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up } }; },
       // Replay mounts a fresh diagram: take the molar's canvas and its WebGL context with this one, or the old molar
       // stays behind as a frozen second tooth
       destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove();

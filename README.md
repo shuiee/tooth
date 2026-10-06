@@ -2,7 +2,7 @@
 
 # Radial timeline
 
-A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries as the timeline plays; five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
+A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries and wear as the timeline plays (the worn-away crown hovers above it); five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
 
 It is the baseline for a project that uses a tooth as a visual archive of human history. The story moves from what a tooth preserves (childhood development, years of wear and decay, lifetime exposure to pathogens and metals, and broader change in dental practice) to human intervention: fillings, appliances and restorations that repair, cover or alter that evidence. It asks: what can future observers still understand from a tooth after humans have changed it?
 
@@ -14,7 +14,7 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries circle shows that period on the molar; **Replay** runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries or wear circle shows that period on the molar; **Replay** runs the opening again.
 
 ## Structure
 
@@ -23,6 +23,7 @@ index.html            the page
 css/radial.css        theme tokens and the diagram's styles
 js/main.js            mounts the diagram; Pause, Replay, resize, the onOpen hook
 js/caries-data.js     caries per period, for the molar
+js/wear-data.js       molar wear per period and age, for the molar's height
 js/radial.js          the diagram (window.ToothRadial)
 js/radial-data.js     the data (window.RADIAL_DATA), with its sources
 data/molar-cloud.js   the molar at the centre, as a point cloud
