@@ -428,9 +428,12 @@
       const AGES = [300, 1000, 2000, 4000, 6000].filter(a => a <= MAX_AGE * 1.02);
       const shells = AGES.map((a, i) => ({ w: rAge(a), a, el: el("polyline", { class: "rd-shell", style: "animation-delay:" + (-i * 1.1) + "s" }, gSphere), lab: el("text", { class: "rd-slab" }, gSphere) }));
       shells.forEach(r => r.lab.textContent = r.a.toLocaleString("en-GB") + " years ago");
-      const wave = el("polyline", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere);
+      // the timeline's ring, drawn as a soft, blurred band so it reads apart from the records' crisp lines: the same ring
+      // stroked five times over, widest faintest (stacked strokes, not a blur filter, which would be redrawn every frame)
+      const wave = el("g", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere),
+        waveL = [[14, 0.06], [9, 0.09], [6, 0.13], [3.5, 0.2], [1.6, 0.3]].map(([sw, so]) => el("polyline", { "stroke-width": sw, "stroke-opacity": so }, wave));
       const gAmb = el("g", { "aria-hidden": "true" }, svg), gLines = el("g", {}, svg), gArrows = el("g", { "aria-hidden": "true" }, svg), gBack = el("g", {}, svg), gTeeth = el("g", { class: "rd-teeth", "aria-hidden": "true" }, svg), gHub = el("g", { "aria-hidden": "true" }, svg), gFront = el("g", {}, svg), gCards = el("g", {}, svg), gRead = el("g", { class: "rd-read", "aria-hidden": "true" }, svg);
-      const hubDot = el("circle", { class: "rd-hubdot" }, gHub), hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
+      const hubR1 = el("circle", { class: "rd-hubr r1" }, gHub), hubR2 = el("circle", { class: "rd-hubr r2" }, gHub), hubR3 = el("circle", { class: "rd-hubr r3" }, gHub);
       const opens = typeof opts.onOpen === "function";
       const lines = DATA.map((c, ci) => {
         const A = c.angle * Math.PI / 180, E = (ELEV[c.key] != null ? ELEV[c.key] : (ci * 23 % 60) - 30) * Math.PI / 180, col = COLS[c.key] || "#5CCBFF";
@@ -475,14 +478,15 @@
       // the timeline's handle: drag it around the ring, or in and out to a year (which pauses the timeline there); the
       // arrow keys step it in and out
       const grip = el("g", { class: "rd-grip", tabindex: 0, role: "slider", "aria-label": "Timeline: drag to choose a year", "aria-valuemin": 0, "aria-valuemax": MAX_AGE }); svg.insertBefore(grip, gRead);
-      const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), kRing = el("circle", { class: "rd-kring" }, grip), knob = el("circle", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
+      const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), knob = el("g", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
+      el("path", { class: "rd-kbody", d: "M-10 0L0 -7L10 0L0 7Z" }, knob); el("path", { class: "rd-kfacet", d: "M-4.5 0L0 -3.2L4.5 0L0 3.2Z" }, knob);   // a diamond lying along the ring, with a small facet
       grip.addEventListener("pointerdown", e => { ringDrag = true; ring.touched = true; if (!ring.moved) { ring.moved = true; ring.a = S.ringA; } S.pin = null; setPlaying(false);
         try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("ringgrab"); lastInput = performance.now(); });
       grip.addEventListener("keydown", e => { const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]; if (!k) return; e.preventDefault();   // up: further back
         ring.touched = true; S.pin = null; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -532,7 +536,6 @@
       // hub
       const hb = pj(0, 0, 0), hubZ = hb[3], hr = cl(46 * hb[2] / U, 26, 80);
       s.gHalo.setAttribute("cx", fx(hb[0])); s.gHalo.setAttribute("cy", fx(hb[1])); s.gHalo.setAttribute("r", fx(hr * 5.5));
-      s.hubDot.setAttribute("cx", fx(hb[0])); s.hubDot.setAttribute("cy", fx(hb[1])); s.hubDot.setAttribute("r", fx(cl(6 * hb[2] / U, 4, 9)));
       [[s.hubR1, 1.9], [s.hubR2, 2.5], [s.hubR3, 3.3]].forEach(([e, m]) => { e.setAttribute("cx", fx(hb[0])); e.setAttribute("cy", fx(hb[1])); e.setAttribute("r", fx(hr * m)); });
       const tc = pj(0, 0, 0), sc = tc[2];
       s.teeth.forEach(o => { const h = TOOTH_H[o.key] * sc, w = h * o.t.w / o.t.h, x = o.side === 0 ? tc[0] - w / 2 : o.side < 0 ? tc[0] - GAP / 2 * sc - w : tc[0] + GAP / 2 * sc;
@@ -544,7 +547,8 @@
       // reader moves the knob.
       { const hold = ring.hover || ringDrag, shown = !REDUCED || ring.touched;
         if (playing && !hold && !REDUCED && (!s.anim || t > 2.4)) waveU = (waveU + dt * 0.045) % 1;
-        const u = waveU, w = RMAX - u * (RMAX - R0); s.wW = shown ? w : 0; poly(s.wave, a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
+        const u = waveU, w = RMAX - u * (RMAX - R0); poly(s.waveL[0], a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
+        { const pts = s.waveL[0].getAttribute("points"); for (let i = 1; i < s.waveL.length; i++) s.waveL[i].setAttribute("points", pts); }
         const op = shown ? appear * (playing && !hold ? Math.max(0.25, Math.sin(Math.PI * u)) : 1) * 0.9 : 0; s.wave.style.opacity = op.toFixed(2);
         const age = Math.pow((w - R0) / (RMAX - R0), 2) * MAX_AGE, y0 = Math.round(NOW - age); s.ringY = y0 < 0 ? Math.round(y0 / 10) * 10 : y0; s.waveYear = y0;
         // the knob on the ring; its year is placed once the names are (below)
@@ -552,7 +556,9 @@
         const q = pj(w * Math.cos(A), 0, w * Math.sin(A)), vis = q[3] > 60, ox = q[0] - hb[0], oy = q[1] - hb[1], ol = Math.hypot(ox, oy) || 1;
         s.waveLab.textContent = yr(s.ringY); s.wl = { q, nx: ox / ol, ny: oy / ol, op: vis ? op : 0 };
         const hot = hold || s.grip.matches(":focus-visible"); s.grip.classList.toggle("on", hot);
-        [s.kHalo, s.kRing, s.knob, s.kHit].forEach(e => { e.setAttribute("cx", fx(q[0])); e.setAttribute("cy", fx(q[1])); }); s.knob.setAttribute("r", hot ? 7 : 5.5); s.kRing.setAttribute("r", hot ? 11 : 9.5);
+        [s.kHalo, s.kHit].forEach(e => { e.setAttribute("cx", fx(q[0])); e.setAttribute("cy", fx(q[1])); });
+        { const q2 = pj(w * Math.cos(A + 0.02), 0, w * Math.sin(A + 0.02)); let ang = Math.atan2(q2[1] - q[1], q2[0] - q[0]) * 57.2958; if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;   // along the ring, never upside down
+          s.knob.setAttribute("transform", "translate(" + fx(q[0]) + "," + fx(q[1]) + ") rotate(" + ang.toFixed(1) + ") scale(" + (hot ? 1.18 : 1) + ")"); }
         s.grip.style.opacity = vis ? Math.max(op, 0.65 * appear).toFixed(2) : 0; s.grip.style.pointerEvents = vis && appear > 0.5 ? "" : "none";
         if (s.grip._y !== s.ringY) { s.grip._y = s.ringY; s.grip.setAttribute("aria-valuenow", Math.round(age)); s.grip.setAttribute("aria-valuetext", yr(s.ringY)); }
         // hover is set when the pointer moves onto the knob (pointermove below), and cleared here once they part, so a
@@ -571,8 +577,7 @@
         if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
         if (key === "pathogens") s.pat.era = era;
-        L.g.classList.toggle("rd-nodata", !inData && !REDUCED);   // with reduced motion there is no wave: the latest period, undimmed
-        L.ms.forEach(o => o.mg.classList.toggle("now", o.mi === era)); });
+        L.g.classList.toggle("rd-nodata", !inData && !REDUCED); });   // with reduced motion there is no wave: the latest period, undimmed
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
       const ay = REDUCED ? 0 : t * 0.025;
       s.amb.forEach(o => { const ca = Math.cos(ay), sa = Math.sin(ay), x = o.p[0] * ca - o.p[2] * sa, z = o.p[0] * sa + o.p[2] * ca, y = o.p[1] + (REDUCED ? 0 : Math.sin(t * 0.4 + o.ph) * 10);
@@ -595,7 +600,10 @@
           const pop = s.anim ? ease(cl((wFront - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
           const x = L.d[0] * o.m.w + (L.n1[0] * Math.cos(ph) + L.n2[0] * Math.sin(ph)) * hrx, y = L.d[1] * o.m.w + (L.n1[1] * Math.cos(ph) + L.n2[1] * Math.sin(ph)) * hrx, z = L.d[2] * o.m.w + (L.n1[2] * Math.cos(ph) + L.n2[2] * Math.sin(ph)) * hrx;
           const p = pj(x, y, z); if (p[3] < 60) { o.mg.setAttribute("visibility", "hidden"); return; } o.mg.removeAttribute("visibility");
-          const bo = s.wW ? Math.exp(-Math.pow((o.m.w - s.wW) / 16, 2)) : 0, r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.5 * bo); o.top = p; o.r = r; o.z = p[3];
+          // a circle lights up only while the reader hovers a time period that it covers (s.hotP, set by the readout below)
+          const hp = s.hotP, d0 = o.m.d[0], d1 = o.m.d[1], want = hp && ((d0 < hp[1] && d1 > hp[0]) || (d0 === d1 && d0 >= hp[0] && d0 <= hp[1]) || (hp[0] === hp[1] && d0 <= hp[0] && hp[0] <= d1)) ? 1 : 0;
+          o.hz = (o.hz || 0) + (want - (o.hz || 0)) * (REDUCED ? 1 : Math.min(1, dt * 9)); if ((o.hz > 0.5) !== !!o.hot) { o.hot = o.hz > 0.5; o.mg.classList.toggle("hot", o.hot); }
+          const r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.45 * o.hz); o.top = p; o.r = r; o.z = p[3];
           [o.halo, o.dot, o.hit].forEach((e, j) => { e.setAttribute("cx", fx(p[0])); e.setAttribute("cy", fx(p[1])); e.setAttribute("r", fx(j === 0 ? r * 2.6 : j === 2 ? r + 6 : r)); });
           const bl = 0;
           if (bl !== o.blur) { o.blur = bl; if (bl) o.mg.setAttribute("filter", "url(#rd-b" + bl + ")"); else o.mg.removeAttribute("filter"); }
@@ -688,6 +696,9 @@
               if (dd < best) { best = dd; const age = Math.pow((w0 + u * (w - w0) - R0) / (RMAX - R0), 2) * MAX_AGE; hy = cl(Math.round((NOW - age) / 10) * 10, L.c.segs[0][0], NOW); hc = L.col; } }
             q0 = q; w0 = w; } }); }
       if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
+      // the time period the reader is hovering, which lights the circles that cover it on every line (in the next frame):
+      // a hovered circle's own years, or the single year under the pointer on a line or at the timeline's knob
+      s.hotP = s.read && !(ring.hover || ringDrag) ? [s.read.m.d[0], s.read.m.d[1]] : hy == null ? null : [hy, hy];
     }
 
     // dragging the timeline's knob: the pointer's ray meets the ring's plane (y = 0); its angle there places the knob and

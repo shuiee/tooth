@@ -57,7 +57,6 @@ button{font:inherit;color:inherit}
 .rd-pole{fill:#fff;opacity:.85}
 .rd-shell{fill:none;stroke:#5CCBFF;stroke-width:.8;stroke-opacity:.35;stroke-dasharray:1 5;animation:rdDash 6s linear infinite}
 .rd-slab{fill:#7F93C6;font-size:9.5px;letter-spacing:.14em}
-.rd-hubdot{fill:#fff;filter:url(#rd-glow)}
 .rd-hubr{fill:none;transform-box:fill-box;transform-origin:center}
 .rd-hubr.r1{stroke:#FF2E63;stroke-width:2;stroke-dasharray:2 7;animation:rdSpin 14s linear infinite}
 .rd-hubr.r2{stroke:#5CCBFF;stroke-width:5;stroke-opacity:.6;stroke-dasharray:1.5 4 1.5 30;animation:rdSpinR 22s linear infinite}
@@ -100,7 +99,6 @@ button{font:inherit;color:inherit}
 .rd-pole{fill:var(--ink-3);opacity:.6}
 .rd-shell{stroke:var(--ink);stroke-opacity:.28;animation:none}
 .rd-slab{fill:var(--ink-3);font-family:var(--label);font-style:italic;font-size:11px;letter-spacing:.02em}
-.rd-hubdot{fill:var(--dentine-ink);filter:none}
 .rd-hubr.r1{stroke:var(--ink);stroke-width:1;stroke-opacity:.5;animation-duration:60s}
 .rd-hubr.r2{stroke:var(--dentine-ink);stroke-width:3;stroke-opacity:.35;animation-duration:90s}
 .rd-hubr.r3{stroke:var(--ink);stroke-opacity:.2;animation:none}
@@ -131,21 +129,19 @@ button{font:inherit;color:inherit}
 .rd-tgl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .rd-rbg{fill:#f3f2ee;fill-opacity:.96;stroke:var(--rule);stroke-width:1}
 .rd-teeth{display:none}
-.rd-wave{fill:none;stroke:var(--dentine-ink);stroke-width:1.6}
+.rd-wave polyline{fill:none;stroke:var(--dentine-ink);stroke-linejoin:round}
 .rd-wlab{fill:var(--dentine-ink);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .rd-pulse{fill:var(--c,var(--ink));filter:none}
 .rd-shell{animation:rdDash 14s linear infinite}
 /* the caries line while the timeline is between records: paler, until the wave reaches the next one */
 .rd3 [data-cat].rd-nodata{opacity:.32;filter:saturate(.35);transition:opacity .4s ease,filter .4s ease}
-/* the caries point whose period the molar is showing */
-.rd-mark.now .rd-core{stroke:var(--c);stroke-width:2;stroke-opacity:1}
-/* the timeline's handle: a knob on the reading wave that can be dragged around it or in and out */
+/* the timeline's handle: a diamond lying along the ring (not a circle, which would read as a record's point), dragged around it or in and out */
 .rd-grip{cursor:grab;outline:none}
-.rd-knob{fill:var(--dentine-ink);stroke:var(--bg);stroke-width:2}
-.rd-kring{fill:none;stroke:var(--dentine-ink);stroke-width:1;stroke-opacity:.55}
+.rd-kbody{fill:var(--dentine-ink);stroke:var(--bg);stroke-width:1.5;stroke-linejoin:round}
+.rd-kfacet{fill:none;stroke:var(--bg);stroke-width:1;stroke-opacity:.8;stroke-linejoin:round}
 .rd-khalo{fill:var(--dentine-ink);fill-opacity:0;transition:fill-opacity .15s ease}
 .rd-grip.on .rd-khalo{fill-opacity:.16}
-.rd-grip:focus-visible .rd-kring{stroke-width:1.6;stroke-opacity:1}
+.rd-grip:focus-visible .rd-kbody{stroke:var(--ink);stroke-width:1.6}
 .rd-khit{fill:transparent}
 #radial.ringgrab,#radial.ringgrab .rd-grip{cursor:grabbing}
 /* only a circle's hit area takes the pointer: the soft halos are wider and, re-stacked by depth, can sit over a neighbour's hit area */
@@ -153,3 +149,7 @@ button{font:inherit;color:inherit}
 /* a Wear and LEH point's readout: its two stress lines, in the colours they have on the molar */
 .rd3 .rd-lh .a{fill:#16907A}
 .rd3 .rd-lh .b{fill:#0A4A3F}
+/* circles covering the time period the reader is hovering: lit, and kept bright when the other records dim */
+.rd-mark.hot .rd-core{fill-opacity:1;stroke-width:1.6}
+.rd-mark.hot .rd-bokeh{opacity:.36}
+.rd3.rd-dim .rd-mark.hot{opacity:1}
