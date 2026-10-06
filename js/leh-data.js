@@ -12,8 +12,12 @@
      multi  share with two or more lines on their worst tooth (Schultz stage 3), %
      n      adults scored
 
-   How the molar draws it (radial.js): particles travel round the side of the crown and gather into two wavy lines. The
-   first reaches round the crown by `any` (all the way round = 100%), the second, fainter one by `multi`. Counts are
+   How the molar draws it (radial.js): each line is a band of negative space on the side of the crown, because a stress
+   line is a band of thinner enamel. Along the line, the molar's own points and the travelling particles are pushed up
+   or down out of the band and packed against its edges, so the line reads as a gap, and the surface round it sinks
+   towards the crown's axis, so the band constricts the tooth's outline. The first, high on the wall, edged
+   with a flowing band of mid-teal streaks, reaches round the crown by `any` (all the way round = 100%); the second,
+   lower down and narrower, edged with crisp dark-teal dots, by `multi`. Counts are
    shares of adults, not of the tooth: the molar stands for the period's adults, and the line's place on the crown, its
    waviness and the particles' flow are a drawing rule, not data. GHHP scores stress lines on canines and incisors, not
    on molars. */
