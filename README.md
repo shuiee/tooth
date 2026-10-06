@@ -3,6 +3,7 @@
 # Radial timeline
 
 A 3D radial timeline of dental evidence: how far back each kind of record reaches. A tooth model sits at the centre; five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
+
 It is the baseline for a project that uses a tooth as a visual archive of human history. The story moves from what a tooth preserves (childhood development, years of wear and decay, lifetime exposure to pathogens and metals, and broader change in dental practice) to human intervention: fillings, appliances and restorations that repair, cover or alter that evidence. It asks: what can future observers still understand from a tooth after humans have changed it?
 
 The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https://shuiee.github.io/tooth-untold-prototype/>). `CLAUDE.md` has the full storyboard.
