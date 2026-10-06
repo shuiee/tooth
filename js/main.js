@@ -6,12 +6,12 @@
    The filter menu sits at the top left; Play/Pause and Replay, as icons, at the foot of the page. */
 (function () {
   "use strict";
-  const host = document.getElementById("radial"), again = document.getElementById("again"), pause = document.getElementById("pause");
+  const host = document.getElementById("radial"), again = document.getElementById("again"), pause = document.getElementById("pause"), ffwd = document.getElementById("ffwd");
   const onOpen = null;   // e.g. key => showRecord(key)
   let radial = null, ctlBox = null;
-  // the box round Pause and Replay, measured once per size of the page
-  const controls = () => { if (ctlBox) return ctlBox; const a = pause.getBoundingClientRect(), b = again.getBoundingClientRect(), x = Math.min(a.left, b.left), y = Math.min(a.top, b.top);
-    return (ctlBox = { x, y, w: Math.max(a.right, b.right) - x, h: Math.max(a.bottom, b.bottom) - y }); };
+  // the boxes round the page's buttons, measured once per size of the page: Pause and Replay together, and Fast forward
+  const controls = () => { if (ctlBox) return ctlBox; const a = pause.getBoundingClientRect(), b = again.getBoundingClientRect(), f = ffwd.getBoundingClientRect(), x = Math.min(a.left, b.left), y = Math.min(a.top, b.top);
+    return (ctlBox = [{ x, y, w: Math.max(a.right, b.right) - x, h: Math.max(a.bottom, b.bottom) - y }, { x: f.left, y: f.top, w: f.width, h: f.height }]); };
   // a card's X lets its own period go (pick), Escape lets them all go (null)
   const popup = window.ToothPopup.create({ onClose: pick => radial && (pick ? radial.unpick(pick) : radial.select(null)) });
 
@@ -40,7 +40,7 @@
       onCompare: id => popup.mark(id),   // of two compared, the one the molar shows now
       onRoom: w => popup.width(w),   // the pop-up widens into the room the diagram leaves it, so the page's margins match
       cover: () => popup.cover(),   // the radial keeps its labels clear of the pop-up
-      controls,   // and of Pause and Replay
+      controls,   // and of Pause, Replay and Fast forward
       menu,   // and of the filter menu
       hidden: [...hidden],   // the records hidden with the filter
       padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,   // clear of Replay
@@ -55,6 +55,7 @@
   showPlaying(true); again.title = "Replay";
   pause.addEventListener("click", () => { if (radial) radial.play(!radial.playing()); });
   again.addEventListener("click", () => { popup.show(null); mount(true); showPlaying(true); });
+  // Fast forward (#ffwd): placed, its function to come
   window.__radial = () => radial;   // for checking in the console: __radial().state()
   let rz;
   addEventListener("resize", () => { ctlBox = null; clearTimeout(rz); rz = setTimeout(() => radial && radial.resize(), 150); });

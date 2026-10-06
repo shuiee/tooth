@@ -99,7 +99,7 @@
     let playing = true, waveU = REDUCED ? 1 : 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
     const setPlaying = on => { playing = !!on; if (opts.onPlay) opts.onPlay(playing); };
     const seekYear = y => { waveU = cl((RMAX - rYear(y)) / (RMAX - R0), 0, 1); };
-    const ptr = { x: 0, y: 0, in: false };   // the pointer over the diagram, for the year readout
+    const ptr = { x: 0, y: 0, in: false };   // the pointer over the diagram
     // the timeline's handle, a knob on the reading wave: a is its angle once dragged (until then it rides at the front of
     // the ring); touched once the reader has moved it, which also brings the ring out under reduced motion
     const ring = { a: 0, moved: false, touched: false, hover: false };
@@ -130,8 +130,6 @@
     const intro = !!opts.animate && !REDUCED;
     const cam = { yaw: HOME.yaw - (intro ? 1.1 : 0), pitch: intro ? 0.9 : HOME.pitch, dist: intro ? 2300 : HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist };
     const sky = document.createElement("canvas"); sky.className = "rd-sky"; host.prepend(sky);
-    // bottom left: the year under the pointer (a hovered circle's start year, or the year at that point on a record line)
-    const hud = document.createElement("div"); hud.className = "rd-hud"; hud.setAttribute("aria-hidden", "true"); host.appendChild(hud);
     // The first molar at the centre as a point cloud (data/molar-cloud.js, from the team's sculpted model), turning
     // with the camera. Its points are denser where the surface bends, so the cusps and fissures read. On opening they
     // fly in from loose sheets around it and settle, root first. The crown carries the caries of the period the
@@ -544,6 +542,9 @@
       shells.forEach(r => r.lab.textContent = r.a.toLocaleString("en-GB") + " years ago");
       // the timeline's ring, drawn as a soft, blurred band so it reads apart from the records' crisp lines: the same ring
       // stroked five times over, widest faintest (stacked strokes, not a blur filter, which would be redrawn every frame)
+      // two periods compared: a soft band on the ground plane, in the compared record's colour, from one picked circle's
+      // distance to the other's, so it spans the years between them (placed in frame())
+      const cband = el("path", { class: "rd-cband", "fill-rule": "evenodd" }, gSphere);
       const wave = el("g", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere),
         waveL = [[14, 0.06], [9, 0.09], [6, 0.13], [3.5, 0.2], [1.6, 0.3]].map(([sw, so]) => el("polyline", { "stroke-width": sw, "stroke-opacity": so }, wave));
       const gAmb = el("g", { "aria-hidden": "true" }, svg), gLines = el("g", {}, svg), gArrows = el("g", { "aria-hidden": "true" }, svg), gBack = el("g", {}, svg), gTeeth = el("g", { class: "rd-teeth", "aria-hidden": "true" }, svg), gHub = el("g", { "aria-hidden": "true" }, svg), gFront = el("g", {}, svg), gCards = el("g", {}, svg), gRead = el("g", { class: "rd-read", "aria-hidden": "true" }, svg);
@@ -621,7 +622,7 @@
         ring.touched = true; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, int: { era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, int: { era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, cband, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
       applyOff();
     }
 
@@ -642,7 +643,7 @@
       // along the bottom): the names, the time labels, the timeline's year and the readouts keep clear of it
       const cv = opts.cover ? opts.cover() : null, mb = opts.menu ? opts.menu() : null;   // and the filter menu (opts.menu(): its button's box, top right)
       const inBx = (q, x, y, w, h) => !!q && x < q.x + q.w + 6 && q.x - 6 < x + w && y < q.y + q.h + 6 && q.y - 6 < y + h, inCv = (x, y, w, h) => inBx(cv, x, y, w, h) || inBx(mb, x, y, w, h);
-      const ctl = opts.controls ? opts.controls() : null;   // the page's own buttons (Pause, Replay), which the names keep clear of too
+      const ctls = opts.controls ? [].concat(opts.controls() || []) : [];   // the page's own buttons (Pause and Replay, Fast forward), which the names keep clear of too
       // while the pop-up is open, the diagram moves over and shrinks into the space beside it (left of it, or above it on
       // narrow pages), so no circle lies under it and the reader can still pick a second period to compare. Beside it, the
       // diagram's scale comes from the pop-up's usual width (so widening the pop-up does not shrink it again), and it is
@@ -702,6 +703,14 @@
       let lastP = null;
       s.shells.forEach(r => { poly(r.el, a => pj(r.w * Math.cos(a), 0, r.w * Math.sin(a)), 96); r.el.style.opacity = appear;
         const p = pj(r.w * Math.cos(A0), 0, r.w * Math.sin(A0)); r.lab.setAttribute("x", fx(p[0] + 6)); r.lab.setAttribute("y", fx(p[1] - 6)); const ok = p[3] > 60 && (lastP == null || Math.abs(p[0] - lastP[0]) > 90 || Math.abs(p[1] - lastP[1]) > 15); if (ok) lastP = p; r.lab.style.opacity = ok ? appear * 0.85 : 0; });
+      { // the comparison's band: between the two picked circles' distances, faded in and out (it keeps its last place
+        // and colour while it fades out)
+        const cL = cmp && s.lines.find(L2 => L2.c.key === cmp.key), m1 = cL && cL.ms[cmp.eras[0]], m2 = cL && cL.ms[cmp.eras[1]];
+        if (m1 && m2) s.bandR = [Math.min(m1.m.w, m2.m.w), Math.max(m1.m.w, m2.m.w), COLS[cmp.key]];
+        s.bandA = (s.bandA || 0) + ((m1 && m2 ? 1 : 0) - (s.bandA || 0)) * (REDUCED ? 1 : Math.min(1, dt * 4));
+        if (s.bandR && s.bandA > 0.01) { const ring = (w, rev) => { const pts = []; for (let i = 0; i <= 96; i++) { const a = (rev ? 96 - i : i) / 96 * Math.PI * 2, q = pj(w * Math.cos(a), 0, w * Math.sin(a)); if (q[3] > 60) pts.push(fx(q[0]) + "," + fx(q[1])); } return pts.length > 2 ? "M" + pts.join("L") + "Z" : ""; };
+          s.cband.setAttribute("d", ring(s.bandR[1], false) + ring(s.bandR[0], true)); s.cband.style.setProperty("--c", s.bandR[2]); s.cband.style.opacity = (s.bandA * appear).toFixed(2); }
+        else s.cband.style.opacity = 0; }
       // hub
       const hb = pj(0, 0, 0), hubZ = hb[3], hr = cl(46 * hb[2] / U, 26, 80);
       s.gHalo.setAttribute("cx", fx(hb[0])); s.gHalo.setAttribute("cy", fx(hb[1])); s.gHalo.setAttribute("r", fx(hr * 5.5));
@@ -798,13 +807,13 @@
         L._b = { L, x: ne[0] + ux * 30 - (ux < 0 ? L.cw : 0), y: ne[1] + uy * 30 - 23, w: L.cw, ux, uy, ne, vis: ne[3] > 60,
           op: (s.anim ? cl((t - 2 - L.ci * 0.18) / 0.6, 0, 1) : 1) * cl(1.3 - (ne[3] - D) / (RMAX * 2), 0.45, 1) };
       });
-      // cards: keep inside the safe area (clear of the page edges, the pop-up and the year readout) and push overlapping ones apart
+      // cards: keep inside the safe area (clear of the page edges and the pop-up) and push overlapping ones apart
       const cards = s.lines.map(L => L._b).filter(b => b.vis), yMin = s.pt + 6, yMax = s.H - 60;
       cards.forEach(b => { const bb = b.L._bb; if (bb) b.w = Math.max(b.w, bb.x + bb.width); });   // a name's measured width, once known (its letter-spaced capitals run past the estimate)
       const keep = b => { b.x = cl(b.x, onRight ? sideM : 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46);
         if (inBx(cv, b.x, b.y, b.w, 46)) { if (cv.side === "right") b.x = Math.max(16, cv.x - b.w - 16); else b.y = cv.y - 52; }
         if (inBx(mb, b.x, b.y, b.w, 46)) b.y = mb.y + mb.h + 10;
-        if (ctl && b.x < ctl.x + ctl.w + 8 && ctl.x - 8 < b.x + b.w && b.y + 46 > ctl.y - 6) b.y = ctl.y - 52; };
+        ctls.forEach(ctl => { if (b.x < ctl.x + ctl.w + 8 && ctl.x - 8 < b.x + b.w && b.y + 46 > ctl.y - 6) b.y = ctl.y - 52; }); };
       // the teeth at the centre: a circle around the hub, roughly the height of the molar on screen
       const tTop = pj(0, 170, 0), tR = Math.max(60, Math.hypot(tTop[0] - hb[0], tTop[1] - hb[1]) * 1.15);
       const onTooth = b => { const nx = cl(hb[0], b.x - 6, b.x + b.w + 6), ny = cl(hb[1], b.y - 6, b.y + 52); return Math.hypot(nx - hb[0], ny - hb[1]) < tR; };
@@ -823,8 +832,6 @@
           const own = b.L._s; if (own) { const [a1, a2] = own; let on = false;
             for (let k = 0; k <= 20; k++) { const qx = a1[0] + (a2[0] - a1[0]) * k / 20, qy = a1[1] + (a2[1] - a1[1]) * k / 20; if (qx > b.x - 6 && qx < b.x + b.w + 6 && qy > b.y - 4 && qy < b.y + 44) { on = true; break; } }
             if (on) { let nx = -b.uy, ny = b.ux; if (ny * (b.uy >= 0 ? 1 : -1) < 0) { nx = -nx; ny = -ny; } b.x += nx * 14; b.y += ny * 14; } }
-          // the year readout at the bottom left of the page
-          if (b.y + 46 > s.H - 84 && b.x < 230) b.x += 14;
         });
       }
       cards.forEach(keep);   // the last pushes, too, stay on the page and clear of the pop-up
@@ -854,7 +861,7 @@
         if (P.o !== o0) { P.o = o0; P.t.textContent = range(o0.m.d[0], o0.m.d[1]); P.w = (P.t.getComputedTextLength() || 90) + 20; }
         const q = o0.top, r = o0.r, w = P.w, names = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; });
         pinAt = [[q[0] + r + 12, q[1] - 13, q[0] + r, q[1]], [q[0] - r - 12 - w, q[1] - 13, q[0] - r, q[1]], [q[0] - w / 2, q[1] + r + 10, q[0], q[1] + r], [q[0] - w / 2, q[1] - r - 36, q[0], q[1] - r]]
-          .find(([x, y]) => x > 8 && x + w < s.W - 8 && y > 8 && y + 26 < s.H - 8 && !inCv(x, y, w, 26) && !(ctl && x - 6 < ctl.x + ctl.w && ctl.x < x + w + 6 && y - 6 < ctl.y + ctl.h && ctl.y < y + 32) && !(s.kxy && x - 14 < s.kxy[0] && s.kxy[0] < x + w + 14 && y - 12 < s.kxy[1] && s.kxy[1] < y + 38) && !names.some(n => x - 6 < n[0] + n[2] && n[0] < x + w + 6 && y - 4 < n[1] + n[3] && n[1] < y + 30) && !pinB.some(b2 => x - 6 < b2.x + b2.w && b2.x < x + w + 6 && y - 4 < b2.y + b2.h && b2.y < y + 30)) || null; }
+          .find(([x, y]) => x > 8 && x + w < s.W - 8 && y > 8 && y + 26 < s.H - 8 && !inCv(x, y, w, 26) && !ctls.some(ctl => x - 6 < ctl.x + ctl.w && ctl.x < x + w + 6 && y - 6 < ctl.y + ctl.h && ctl.y < y + 32) && !(s.kxy && x - 14 < s.kxy[0] && s.kxy[0] < x + w + 14 && y - 12 < s.kxy[1] && s.kxy[1] < y + 38) && !names.some(n => x - 6 < n[0] + n[2] && n[0] < x + w + 6 && y - 4 < n[1] + n[3] && n[1] < y + 30) && !pinB.some(b2 => x - 6 < b2.x + b2.w && b2.x < x + w + 6 && y - 4 < b2.y + b2.h && b2.y < y + 30)) || null; }
       if (!pinAt) P.g.classList.remove("on");
       else { const [x, y, ax, ay] = pinAt; pinB.push({ x, y, w: P.w, h: 26 });
         P.bx.setAttribute("x", fx(x)); P.bx.setAttribute("y", fx(y)); P.bx.setAttribute("width", fx(P.w)); P.t.setAttribute("x", fx(x + 10)); P.t.setAttribute("y", fx(y + 17.5));
@@ -884,7 +891,7 @@
       }
       { // the legend beside a hovered (or focused) name, in empty space: never over the molar and what hangs about it (the
         // worn-away cloud above, the pathogens' ways in below, the metals), the record lines, their circles, the names and
-        // labels, the metals' streams, the timeline's knob and year, the pop-up, or the page's readout and buttons; it may lie over the sphere's rings. It
+        // labels, the metals' streams, the timeline's knob and year, the pop-up, or the page's buttons; it may lie over the sphere's rings. It
         // keeps its place beside its name while that stays clear, and moves only when the tooth or the camera brings
         // something under it: then to the nearest clear place, trying rings of places further and further from the name.
         const key = s.leg, L = key && s.lines.find(L2 => L2.c.key === key), b = L && L._b, lg = key && s.LEG[key];
@@ -917,8 +924,7 @@
           if (+s.waveLab.style.opacity > 0.05) { const k2 = s.waveLab.getBBox(); boxes.push([k2.x, k2.y, k2.x + k2.width, k2.y + k2.height]); }
           if (s.kxy) dots.push([s.kxy[0], s.kxy[1], 18]);
           all.forEach(o => { if (o.top && o.mg.getAttribute("visibility") !== "hidden") dots.push([o.top[0], o.top[1], (o.r || 3) + 5]); });
-          hard.push([0, s.H - 58, 170, s.H]);   // the year readout
-          if (ctl) hard.push([ctl.x, ctl.y, ctl.x + ctl.w, ctl.y + ctl.h]); else hard.push([s.W - 160, s.H - 120, s.W, s.H]);   // Pause and Replay
+          ctls.forEach(ctl => hard.push([ctl.x, ctl.y, ctl.x + ctl.w, ctl.y + ctl.h])); if (!ctls.length) hard.push([s.W - 160, s.H - 120, s.W, s.H]);   // the page's buttons
           if (cv) hard.push([cv.x, cv.y, cv.x + cv.w, cv.y + cv.h]);   // the time period's pop-up, while it is open
           if (mb) hard.push([mb.x, mb.y, mb.x + mb.w, mb.y + mb.h]);   // the filter menu
           // what a place would cover: 0 when clear; never off the page or over a hard box
@@ -977,18 +983,6 @@
         [[s.rYr, 0], [s.rCt, 17], [s.rLh, 34]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
         { const b1 = s.rYr.getBBox(), b2 = s.rCt.getBBox(), x0 = Math.min(b1.x, b2.x) - 9, y0 = b1.y - 6, b3 = lh ? s.rLh.getBBox() : b2, x1 = Math.max(b1.x + b1.width, b2.x + b2.width, b3.x + b3.width) + 9, y1 = b3.y + b3.height + 6; s.rBg.setAttribute("x", fx(x0)); s.rBg.setAttribute("y", fx(y0)); s.rBg.setAttribute("width", fx(x1 - x0)); s.rBg.setAttribute("height", fx(y1 - y0)); }
         s.gRead.classList.add("on"); } else s.gRead.classList.remove("on");
-      // year readout: a hovered circle gives its start year; otherwise the nearest record line within 14 px gives the
-      // year at that point, read back off the square-root scale and rounded to 10 years (never past the line's own span)
-      let hy = null, hc = null;
-      if (ring.hover || ringDrag) { hy = s.ringY; hc = "var(--dentine-ink)"; }   // the timeline's knob: the ring's year
-      else if (s.read) { hy = s.read.m.d[0]; hc = s.read.col; }
-      else if (ptr.in && !dragging) { let best = 14;
-        s.lines.forEach(L => { const wN = L._w || R0, N = 60; if (wN - R0 < 1) return; let q0 = null, w0 = R0;
-          for (let k = 0; k <= N; k++) { const w = R0 + (wN - R0) * k / N, q = pj(L.d[0] * w, L.d[1] * w, L.d[2] * w); if (q[3] < 60) { q0 = null; continue; }
-            if (q0) { const vx = q[0] - q0[0], vy = q[1] - q0[1], u = cl(((ptr.x - q0[0]) * vx + (ptr.y - q0[1]) * vy) / (vx * vx + vy * vy || 1), 0, 1), dd = Math.hypot(ptr.x - q0[0] - u * vx, ptr.y - q0[1] - u * vy);
-              if (dd < best) { best = dd; const age = Math.pow((w0 + u * (w - w0) - R0) / (RMAX - R0), 2) * MAX_AGE; hy = cl(Math.round((NOW - age) / 10) * 10, L.c.segs[0][0], NOW); hc = L.col; } }
-            q0 = q; w0 = w; } }); }
-      if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
     }
 
     // dragging the timeline's knob: the pointer's ray meets the ring's plane (y = 0); its angle there places the knob and
@@ -1037,7 +1031,7 @@
             flyingByKind: GLT.pat ? GLT.pat.flyingByKind : null, byKind: GLT.pat && GLT.pat.byKind ? Object.fromEntries(GLT.pat.kinds.map((kk, j) => [kk, GLT.pat.byKind[j]])) : null } }; },
       // Replay mounts a fresh diagram: take the molar's canvas and its WebGL context with this one, or the old molar
       // stays behind as a frozen second tooth
-      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove();
+      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; sky.remove();
         if (GLT) { try { GLT.rd.dispose(); GLT.rd.forceContextLoss(); } catch (_) { /* ignore */ } GLT.tcv.remove(); GLT = null; } },
     };
   }
