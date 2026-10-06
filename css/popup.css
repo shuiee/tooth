@@ -1,0 +1,82 @@
+/* The pop-up (js/popup.js): a clicked time period's card, laid over the diagram at the right of the page, about a
+   quarter of it, or along the bottom, above Pause and Replay, on narrow pages. Square corners throughout, like the crop
+   marks it opens with. Uses radial.css's tokens. */
+
+.pp-box{--side:right;position:fixed;z-index:5;top:50%;right:clamp(16px,2.4vw,40px);width:clamp(300px,25vw,460px);translate:0 -50%;pointer-events:none}
+.pp-box:not(.on){visibility:hidden}
+.pp-live{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
+
+.pp{position:relative;pointer-events:auto;padding:18px 20px 18px;color:var(--ink);font-family:var(--serif)}
+.pp.out{position:absolute;top:0;left:0;right:0;pointer-events:none}   /* the one going, over the one coming */
+.pp-sur{position:absolute;inset:0;background:rgba(243,242,238,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 10px 30px -18px rgba(60,55,45,.35);clip-path:inset(50% 0 50% 0)}
+.pp-body{position:relative}
+
+/* the corners: brackets on the pop-up's corners, and small marks just outside them */
+.pp-br{position:absolute;width:18px;height:18px;border:0 solid var(--ink);opacity:0}
+.pp-br.tl{top:0;left:0;border-width:1.5px 0 0 1.5px;--bx:-10px;--by:-10px}
+.pp-br.tr{top:0;right:0;border-width:1.5px 1.5px 0 0;--bx:10px;--by:-10px}
+.pp-br.bl{bottom:0;left:0;border-width:0 0 1.5px 1.5px;--bx:-10px;--by:10px}
+.pp-br.br{bottom:0;right:0;border-width:0 1.5px 1.5px 0;--bx:10px;--by:10px}
+.pp-tk{position:absolute;width:7px;height:7px;background:var(--ink-3);opacity:0}
+.pp-tk.tl{top:-12px;left:-12px;clip-path:polygon(100% 0,100% 100%,0 100%)}
+.pp-tk.tr{top:-12px;right:-12px;clip-path:polygon(0 0,100% 100%,0 100%)}
+.pp-tk.bl{bottom:-12px;left:-12px;clip-path:polygon(0 0,100% 0,100% 100%)}
+.pp-tk.br{bottom:-12px;right:-12px;clip-path:polygon(0 0,100% 0,0 100%)}
+
+/* the text */
+.pp-when{margin:0 60px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-size:12px;line-height:1.4}
+.pp-rec{color:var(--c);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+.pp-x{position:absolute;top:-4px;right:0;border:0;background:none;padding:4px 0 4px 8px;font-family:var(--serif);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
+.pp-x:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.pp-x:focus-visible{outline:1.5px solid var(--ink);outline-offset:-1px}
+.pp-x:active{translate:0 1px}
+.pp-lead{margin:8px 0 14px;font-size:clamp(15px,1.1vw,17px);line-height:1.38;text-wrap:pretty}
+
+/* the placeholders: a picture and two figures, three notes, the source */
+.pp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,clamp(46px,4.2vw,64px)) clamp(40px,3.4vw,52px);gap:8px}
+.pp-slot{position:relative;background:#cbc9c2}
+.pp-slot.img{grid-column:span 2;grid-row:span 2}
+.pp-slot span{position:absolute;left:8px;bottom:6px;font-size:9.5px;font-style:italic;color:var(--ink-2)}
+.pp-src{margin:10px 0 0;font-size:10px;font-style:italic;color:var(--ink-3)}
+
+/* the crop marks: hairlines across the page along the pop-up's edges, drawn as it opens, then faded */
+.pp-guides{position:fixed;inset:0;z-index:4;overflow:hidden;pointer-events:none}
+.pp-g{position:absolute;display:block;background:var(--ink)}
+.pp-g.h{left:0;right:0;height:1px;animation:ppGrow .5s cubic-bezier(.2,.7,.2,1) both,ppPart .5s .26s cubic-bezier(.65,0,.25,1) both,ppGuide 1.8s linear both}
+.pp-g.v{top:0;bottom:0;width:1px;animation:ppGrowV .55s .5s cubic-bezier(.2,.7,.2,1) both,ppGuide 1.8s linear both}
+@keyframes ppGrow{from{scale:0 1}to{scale:1 1}}
+@keyframes ppGrowV{from{scale:1 0}to{scale:1 1}}
+@keyframes ppPart{from{translate:0 0}to{translate:0 var(--dy)}}
+@keyframes ppGuide{0%{opacity:0}8%{opacity:.42}62%{opacity:.3}100%{opacity:0}}
+
+/* opening: the paper opens between the parting hairlines, the corners close in, then the text resolves line by line */
+.pp.go .pp-sur{animation:ppOpen .5s .26s cubic-bezier(.65,0,.25,1) both}
+.pp.go .pp-br{animation:ppBr .5s .56s cubic-bezier(.2,.7,.2,1) both}
+.pp.go .pp-tk{animation:ppTk .4s .72s ease both}
+.pp-in{opacity:0}
+.pp.go .pp-in{animation:ppIn .75s calc(.62s + var(--i) * 70ms) cubic-bezier(.2,.7,.2,1) both}
+@keyframes ppOpen{from{clip-path:inset(50% 0 50% 0)}to{clip-path:inset(0)}}
+@keyframes ppBr{from{opacity:0;translate:var(--bx) var(--by)}to{opacity:1;translate:0 0}}
+@keyframes ppTk{from{opacity:0;scale:.3}to{opacity:.9;scale:1}}
+@keyframes ppIn{from{opacity:0;filter:blur(7px);translate:0 5px}to{opacity:1;filter:blur(0);translate:0 0}}
+
+/* closing: the text blurs away, the paper shuts to a line, the corners go */
+.pp.out .pp-in{animation:ppOut .22s ease both}
+.pp.out .pp-sur{animation:ppShut .32s .1s cubic-bezier(.65,0,.25,1) both}
+.pp.out .pp-br,.pp.out .pp-tk{animation:ppGone .2s ease both}
+@keyframes ppOut{from{opacity:1;filter:blur(0)}to{opacity:0;filter:blur(4px)}}
+@keyframes ppShut{from{clip-path:inset(0)}to{clip-path:inset(50% 0 50% 0)}}
+@keyframes ppGone{from{opacity:1}to{opacity:0}}
+
+@media (prefers-reduced-motion: reduce){
+  .pp-sur{clip-path:none}
+  .pp.go .pp-in,.pp.go .pp-sur,.pp.go .pp-br,.pp.go .pp-tk{animation:ppFade .2s ease both}
+}
+@keyframes ppFade{from{opacity:0}to{opacity:1}}
+
+/* narrow pages: along the bottom, above Pause and Replay */
+@media (max-width:899px){
+  .pp-box{--side:bottom;top:auto;bottom:100px;left:16px;right:16px;width:auto;translate:none}
+  .pp-body{max-height:calc(38vh - 36px);overflow:hidden auto;scrollbar-width:thin}
+  .pp-grid{grid-template-rows:40px 40px 34px}
+}

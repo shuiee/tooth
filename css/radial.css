@@ -153,3 +153,11 @@ button{font:inherit;color:inherit}
 .rd-mark.hot .rd-core{fill-opacity:1;stroke-width:1.6}
 .rd-mark.hot .rd-bokeh{opacity:.36}
 .rd3.rd-dim .rd-mark.hot{opacity:1}
+/* the clicked time period (js/popup.js): its circle ringed in ink, its years in a box beside it */
+.rd-mark.sel .rd-core{fill:var(--card);fill-opacity:1;stroke:var(--ink);stroke-width:1.6;stroke-opacity:1}
+.rd3.rd-dim .rd-mark.sel{opacity:1}
+.rd-pin{opacity:0;transition:opacity .3s ease;pointer-events:none}
+.rd-pin.on{opacity:1}
+.rd-pin rect{fill:var(--card);fill-opacity:.96;stroke:var(--ink);stroke-opacity:.4;stroke-width:1}
+.rd-pin text{fill:var(--ink);font-family:var(--label);font-size:13px}
+.rd-pin line{stroke:var(--ink);stroke-opacity:.5;stroke-width:.8}
