@@ -11,8 +11,8 @@ The diagram is a 3D scene on light journal paper:
 - **Five lines:** one per kind of dental evidence, each leaving the tooth in its own direction: caries, pathogens, wear and stress lines (LEH), metals in enamel, and artificial interventions (repairs).
 - **Distance means time:** distance from the tooth is how long before 2009 a year is, on one square-root scale.
 - **Along each line:** a circle marks each record, sized by how much was gathered. The line is darker over the years the records cover, so a gap in the record is a pale stretch.
-- **The space around it:** a wire sphere, dotted time shells ("300 years ago" to "6,000 years ago") and the timeline: a ring that sweeps inward, from the oldest record to today, and can be paused.
-- **Interaction:** the reader can orbit, zoom, hover a circle for its years and count, pause the timeline, and click a caries or wear circle to show that period on the molar.
+- **The space around it:** a wire sphere, dotted time shells ("300 years ago" to "6,000 years ago") and the timeline: a ring that sweeps inward, from the oldest record to today, and can be paused. A knob on the ring lets the reader drag the timeline to a year.
+- **Interaction:** the reader can orbit, zoom, hover a circle for its years and count, pause the timeline, drag its knob to a year, and click a caries or wear circle to show that period on the molar.
 
 ## Goal of this repository
 
@@ -109,7 +109,9 @@ Then go to <http://localhost:8770>. Opening `index.html` straight from disk also
   - after 4 s idle the camera drifts slowly;
   - hovering a circle shows its years and count and dims the other records;
   - the readout at the bottom left shows the year under the pointer, in that record's colour: a hovered circle's start year, or the year at that point on the nearest record line (within 14 px, read back off the square-root scale, rounded to 10 years). It is empty otherwise.
-- **Reduced motion:** with `prefers-reduced-motion`, there is no opening move, no fly-in, no drift and no sweeping ring; the molar shows the latest period's caries.
+  - the timeline's knob sits on the ring, at its front until it is dragged. Hovering it holds the ring still and shows the ring's year in the readout, without touching Pause. Dragging it moves it around the ring and in or out: the pointer's ray meets the ring's plane, its angle there places the knob and its distance from the hub sets the year, from 2009 out to the oldest record. That pauses the timeline there (Pause shows Play), so the molar shows that period's caries; the knob keeps its angle when the timeline plays on. The arrow keys step it in and out (Shift for bigger steps), and also pause;
+  - hover on the circles and on the knob is checked against the pointer's position every frame, because the circles are re-stacked by depth every frame and that can swallow the browser's mouseleave.
+- **Reduced motion:** with `prefers-reduced-motion`, there is no opening move, no fly-in, no drift and no sweeping ring; the molar shows the latest period's caries. The timeline's knob still sits at today, and dragging it shows the ring and moves the timeline.
 
 ## Data
 
@@ -183,7 +185,7 @@ These come from how the team has worked on the prototype; keep them unless the o
 ## Origin
 
 - **Source:** `js/radial.js` and `js/radial-data.js` were copied unchanged from `shuiee/tooth-untold` at commit 5e341a3. The radial was last changed there in c7da21c, Ali Qureshi's 3D rewrite.
-- **Changed here since (2026-10-05):** in `js/radial.js`, the bottom-left camera readout became the year readout, the "Drag to orbit" hint was removed, and the oldest circle on each line now grows to full size (it used to stay at radius 0 after the opening; the prototype still has that bug). The centre tooth became the point-cloud molar with its caries, and the reading wave became the timeline: inward, from the oldest record to today, and pausable. Replay no longer leaves the previous tooth behind: `destroy()` now removes the tooth's canvas and its WebGL context (the prototype still has that bug). The page has no running head. `js/radial-data.js` is still unchanged.
+- **Changed here since (2026-10-05):** in `js/radial.js`, the bottom-left camera readout became the year readout, the "Drag to orbit" hint was removed, and the oldest circle on each line now grows to full size (it used to stay at radius 0 after the opening; the prototype still has that bug). The centre tooth became the point-cloud molar with its caries, and the reading wave became the timeline: inward, from the oldest record to today, and pausable. Replay no longer leaves the previous tooth behind: `destroy()` now removes the tooth's canvas and its WebGL context (the prototype still has that bug). The timeline got a draggable knob, and a hovered circle no longer stays lit after the pointer leaves it (the prototype has that bug too). The page has no running head. `js/radial-data.js` is still unchanged.
 - **Styles:** `css/radial.css` collects the radial's styles from the prototype's `index.html`.
 - **The molar:** `data/molar-cloud.js` replaces the prototype's UL4 premolar mesh (`data/tooth-mesh.js`, removed). It is built from `source/teeth models/mandibular-first-molar.zip` in the prototype; the orientation steps are copied from its `build_models.py`.
 - **Caries:** `js/caries-data.js` copies the prototype's `data/layers.js` caries plate (commit 5e341a3); the expanded scale is the prototype caries plate's `frac()`.

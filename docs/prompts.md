@@ -41,7 +41,8 @@ GEOMETRY.
 - At the hub, the 3D tooth model in the journal's ink: transparent, rim-lit, finely hatched in horizontal lines,
   turning with the camera. A small dot and slowly turning dashed rings mark the hub.
 - A "reading wave", the timeline: a ring that sweeps in from the oldest record to today about every 22 seconds (pausable), labelled with
-  the year it has reached. Circles swell as it passes them.
+  the year it has reached. Circles swell as it passes them. A knob on the ring can be dragged around it and in or out
+  to a year, which pauses the timeline there; the label sits just outside the knob.
 
 LOOK. Light journal paper (#e9e8e4) with a soft radial vignette, ink #1a1a18, greys #55544f and #8a8983, and one
 serif (Lora) for everything. The wireframe is very faint so the data reads first. Nearer lines and circles are

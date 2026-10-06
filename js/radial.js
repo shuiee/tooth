@@ -14,6 +14,7 @@
    The molar at the centre is a point cloud (data/molar-cloud.js) drawn with three.js. The reading wave is the
    timeline: it runs from the oldest record in to today (pausable, see play()), and the molar shows the caries of
    the period it is in; clicking a caries point moves the wave to that period and pauses it (js/caries-data.js, cariesShares()).
+   A knob on the wave can be dragged around it and in or out to a year, which also pauses it there.
 
    Hand-built SVG, no libraries. The teeth arrive as pictures from the page's own renderer (app.js, radialTeeth()),
    each with a white and a black silhouette for the blur and the mask. Styles are the .rd-* rules in index.html. */
@@ -65,10 +66,14 @@
 
   function mount(host, opts) {
     let svg = null, raf = 0, S = null, dragging = false, px = 0, py = 0, lastInput = -1e9, stars = null;
-    let playing = true, waveU = 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
+    let playing = true, waveU = REDUCED ? 1 : 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
     const setPlaying = on => { playing = !!on; if (opts.onPlay) opts.onPlay(playing); };
     const seekYear = y => { waveU = cl((RMAX - rYear(y)) / (RMAX - R0), 0, 1); };
     const ptr = { x: 0, y: 0, in: false };   // the pointer over the diagram, for the year readout
+    // the timeline's handle, a knob on the reading wave: a is its angle once dragged (until then it rides at the front of
+    // the ring); touched once the reader has moved it, which also brings the ring out under reduced motion
+    const ring = { a: 0, moved: false, touched: false, hover: false };
+    let ringDrag = false;
     const HOME = { yaw: -0.5, pitch: 0.3, dist: 1480 };
     const intro = !!opts.animate && !REDUCED;
     const cam = { yaw: HOME.yaw - (intro ? 1.1 : 0), pitch: intro ? 0.9 : HOME.pitch, dist: intro ? 2300 : HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist };
@@ -185,8 +190,8 @@
           const mgp = el("g", { class: "rd-mark", style: "--c:" + col }), halo = el("circle", { class: "rd-bokeh" }, mgp), dot = el("circle", { class: "rd-core" + (m.d[2] == null ? " nocount" : "") }, mgp),
             hit = el("circle", { class: "rd-hit", tabindex: 0, role: "button", "aria-label": c.name + ", " + range(m.d[0], m.d[1]) + ", " + amount(c, m.d) }, mgp);
           const arrow = el("line", { class: "rd-arw", "data-cat": c.key, style: "--c:" + col }, gArrows); const o = { c, m, mi, ci, arrow, mg: mgp, halo, dot, hit, col, ph: mi * 1.9 + ci, sz: m.d[2] == null ? 0.35 : 0.3 + 0.7 * Math.sqrt(m.d[2] / mx), blur: -1 };
-          const on = () => { mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); };
-          hit.addEventListener("mouseenter", on); hit.addEventListener("mouseleave", off); hit.addEventListener("focus", on); hit.addEventListener("blur", off);
+          const on = () => { mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); }; o.off = off;
+          hit.addEventListener("mouseenter", () => { o.byPtr = true; on(); }); hit.addEventListener("mouseleave", off); hit.addEventListener("focus", () => { o.byPtr = false; on(); }); hit.addEventListener("blur", off);
           const fly = () => { const yaw = Math.atan2(d[0], d[2]), k = Math.round((cam.yaw - yaw) / (2 * Math.PI)); cam.tYaw = yaw + (k - 1) * 2 * Math.PI; cam.tPitch = cl(Math.asin(d[1]) + 0.15, -1.2, 1.35); cam.tDist = cl(o.m.w + 620, 780, 3000); lastInput = performance.now() + 5000; S.pin = o; on(); };
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
           // which can cancel a click between press and release. A caries point also moves the timeline to its period and
@@ -213,9 +218,17 @@
       const T = opts.teeth, teeth = [];
       if (!GLT && T && T.canine && T.molar) [["molar", 0]].forEach(([key, side]) => teeth.push({ key, side, t: T[key], el: el("image", { href: T[key].art, preserveAspectRatio: "none" }, gTeeth) }));
       const rLine = el("line", {}, gRead), rBg = el("rect", { class: "rd-rbg", rx: 3 }, gRead), rYr = el("text", { class: "rd-yr" }, gRead), rCt = el("text", { class: "rd-ct" }, gRead);
+      // the timeline's handle: drag it around the ring, or in and out to a year (which pauses the timeline there); the
+      // arrow keys step it in and out
+      const grip = el("g", { class: "rd-grip", tabindex: 0, role: "slider", "aria-label": "Timeline: drag to choose a year", "aria-valuemin": 0, "aria-valuemax": MAX_AGE }); svg.insertBefore(grip, gRead);
+      const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), kRing = el("circle", { class: "rd-kring" }, grip), knob = el("circle", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
+      grip.addEventListener("pointerdown", e => { ringDrag = true; ring.touched = true; if (!ring.moved) { ring.moved = true; ring.a = S.ringA; } S.pin = null; setPlaying(false);
+        try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("ringgrab"); lastInput = performance.now(); });
+      grip.addEventListener("keydown", e => { const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]; if (!k) return; e.preventDefault();   // up: further back
+        ring.touched = true; S.pin = null; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, W, H, C, F, pt, dpr, amb, wave, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubDot, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, grip, kHalo, kRing, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
     }
 
     function frame(now) {
@@ -227,7 +240,7 @@
       cam.yaw += (cam.tYaw - cam.yaw) * kc; cam.pitch += (cam.tPitch - cam.pitch) * kc; cam.dist += (cam.tDist - cam.dist) * kc;
       const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), D = cam.dist;
       const pos = [D * cp * sy, D * sp, D * cp * cy], fw = [-pos[0] / D, -pos[1] / D, -pos[2] / D], rt = [cy, 0, -sy], up = cross(rt, fw);
-      const { C, F } = s, U = F / D;
+      const { C, F } = s, U = F / D; s.cb = { pos, fw, rt, up };   // the camera, kept for dragging the timeline's handle
       const pj = (x, y, z) => { const d0 = x - pos[0], d1 = y - pos[1], d2 = z - pos[2], zc = d0 * fw[0] + d1 * fw[1] + d2 * fw[2], q = F / Math.max(30, zc);
         return [C[0] + (d0 * rt[0] + d1 * rt[1] + d2 * rt[2]) * q, C[1] - (d0 * up[0] + d1 * up[1] + d2 * up[2]) * q, q, zc]; };
       const seg = (e, p, q) => { if (p[3] < 60 || q[3] < 60) { e.setAttribute("visibility", "hidden"); return false; } e.removeAttribute("visibility"); e.setAttribute("x1", fx(p[0])); e.setAttribute("y1", fx(p[1])); e.setAttribute("x2", fx(q[0])); e.setAttribute("y2", fx(q[1])); return true; };
@@ -265,15 +278,27 @@
       const tc = pj(0, 0, 0), sc = tc[2];
       s.teeth.forEach(o => { const h = TOOTH_H[o.key] * sc, w = h * o.t.w / o.t.h, x = o.side === 0 ? tc[0] - w / 2 : o.side < 0 ? tc[0] - GAP / 2 * sc - w : tc[0] + GAP / 2 * sc;
         o.el.setAttribute("x", fx(x)); o.el.setAttribute("y", fx(tc[1] - h / 2)); o.el.setAttribute("width", fx(w)); o.el.setAttribute("height", fx(h)); o.el.style.opacity = appear; });
-      // the reading wave: a ring that sweeps out from today to the oldest record; marks swell as it passes their year
       // the timeline: the reading wave runs inwards, from the oldest record to today, so the records play forward in time;
-      // it can be paused. Where it is sets the caries the molar shows (a picked caries point moves it there and pauses it).
-      { if (playing && !REDUCED && (!s.anim || t > 2.4)) waveU = (waveU + dt * 0.045) % 1;
-        const u = REDUCED ? 1 : waveU, w = RMAX - u * (RMAX - R0); s.wW = REDUCED ? 0 : w; poly(s.wave, a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
-        s.wave.style.opacity = REDUCED ? 0 : (appear * (playing ? Math.max(0.25, Math.sin(Math.PI * u)) : 1) * 0.9).toFixed(2);
-        const q = pj(w * Math.cos(Ab), 0, w * Math.sin(Ab)), age = Math.pow((w - R0) / (RMAX - R0), 2) * MAX_AGE, y0 = Math.round(NOW - age);
-        s.waveLab.setAttribute("x", fx(q[0])); s.waveLab.setAttribute("y", fx(q[1] + 18)); s.waveLab.setAttribute("text-anchor", "middle"); s.waveLab.textContent = yr(y0 < 0 ? Math.round(y0 / 10) * 10 : y0); s.waveLab.style.opacity = s.wave.style.opacity;
-        s.waveYear = REDUCED ? NOW : y0; }
+      // marks swell as it passes their year, and it can be paused. Where it is sets the caries the molar shows (a picked
+      // caries point moves it there and pauses it). Its knob holds it while hovered; dragging the knob, or the arrow keys,
+      // move it to a year and pause it there. With reduced motion it does not run, and stays hidden at today until the
+      // reader moves the knob.
+      { const hold = ring.hover || ringDrag, shown = !REDUCED || ring.touched;
+        if (playing && !hold && !REDUCED && (!s.anim || t > 2.4)) waveU = (waveU + dt * 0.045) % 1;
+        const u = waveU, w = RMAX - u * (RMAX - R0); s.wW = shown ? w : 0; poly(s.wave, a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
+        const op = shown ? appear * (playing && !hold ? Math.max(0.25, Math.sin(Math.PI * u)) : 1) * 0.9 : 0; s.wave.style.opacity = op.toFixed(2);
+        const age = Math.pow((w - R0) / (RMAX - R0), 2) * MAX_AGE, y0 = Math.round(NOW - age); s.ringY = y0 < 0 ? Math.round(y0 / 10) * 10 : y0; s.waveYear = y0;
+        // the knob on the ring; its year is placed once the names are (below)
+        const A = ring.moved ? ring.a : Ab; s.ringA = A;
+        const q = pj(w * Math.cos(A), 0, w * Math.sin(A)), vis = q[3] > 60, ox = q[0] - hb[0], oy = q[1] - hb[1], ol = Math.hypot(ox, oy) || 1;
+        s.waveLab.textContent = yr(s.ringY); s.wl = { q, nx: ox / ol, ny: oy / ol, op: vis ? op : 0 };
+        const hot = hold || s.grip.matches(":focus-visible"); s.grip.classList.toggle("on", hot);
+        [s.kHalo, s.kRing, s.knob, s.kHit].forEach(e => { e.setAttribute("cx", fx(q[0])); e.setAttribute("cy", fx(q[1])); }); s.knob.setAttribute("r", hot ? 7 : 5.5); s.kRing.setAttribute("r", hot ? 11 : 9.5);
+        s.grip.style.opacity = vis ? Math.max(op, 0.65 * appear).toFixed(2) : 0; s.grip.style.pointerEvents = vis && appear > 0.5 ? "" : "none";
+        if (s.grip._y !== s.ringY) { s.grip._y = s.ringY; s.grip.setAttribute("aria-valuenow", Math.round(age)); s.grip.setAttribute("aria-valuetext", yr(s.ringY)); }
+        // hover is set when the pointer moves onto the knob (pointermove below), and cleared here once they part, so a
+        // knob that sweeps or drifts under a resting pointer neither holds the ring nor stays lit
+        s.kxy = vis ? q : null; if (ring.hover && (!ptr.in || !vis || Math.hypot(ptr.x - q[0], ptr.y - q[1]) > 16)) ring.hover = false; }
       // the caries on the molar: the picked caries point's period, else the period the wave is in. Where the wave is
       // in no period the molar keeps the last period it passed (nothing before the first), and the caries line dims
       // until the wave reaches the next record.
@@ -363,7 +388,22 @@
         s.shells.forEach(r => { const q = pj(r.w * Math.cos(bestA), 0, r.w * Math.sin(bestA)); r.lab.setAttribute("x", fx(q[0] + 6)); r.lab.setAttribute("y", fx(q[1] - 6));
           const ok = q[3] > 60 && !bad(q) && (lp == null || Math.abs(q[0] - lp[0]) > 90 || Math.abs(q[1] - lp[1]) > 15); if (ok) lp = q; r.lab.style.opacity = ok ? (appear * 0.85).toFixed(2) : 0; });
       }
+      { // the timeline's year: just outside its knob, else the first other side of it (inside, below, above) that is clear of
+        // the record names, the time-shell labels and the page's edges, since the reader can leave the knob anywhere; hidden if none is
+        const L = s.wl, lab = s.waveLab;
+        if (L) { if (lab._t !== lab.textContent) { lab._t = lab.textContent; lab._w = lab.getComputedTextLength() || 60; }
+          // each name's real extent (its letter-spaced capitals can run past the estimated width), measured once per build
+          const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14]));
+          const pick = [[L.nx, L.ny], [-L.nx, -L.ny], [0, 1], [0, -1]].map(([dx, dy]) => {
+            const x = L.q[0] + dx * 20, y = L.q[1] + dy * 20 + 4 + (dy > 0.35 ? 6 : 0), anchor = dx > 0.35 ? "start" : dx < -0.35 ? "end" : "middle", x0 = anchor === "start" ? x : anchor === "end" ? x - tw : x - tw / 2;
+            return { x, y, anchor, clear: x0 > 4 && x0 + tw < s.W - 4 && y > 16 && y < s.H - 6 && !boxes.some(b => x0 - 4 < b[0] + b[2] && b[0] < x0 + tw + 4 && y - 15 < b[1] + b[3] && b[1] < y + 5) }; }).find(c => c.clear);
+          if (pick) { lab.setAttribute("x", fx(pick.x)); lab.setAttribute("y", fx(pick.y)); lab.setAttribute("text-anchor", pick.anchor); }
+          lab.style.opacity = pick ? L.op.toFixed(2) : 0; }
+      }
       all.sort((a, b) => b.z - a.z).forEach(o => (o.z > hubZ ? s.gBack : s.gFront).appendChild(o.mg));
+      // a circle hovered by the pointer is let go once the pointer is off it: the circles are re-stacked by depth every frame
+      // (above), and moving a hovered node can swallow the browser's mouseleave, leaving its tooltip up and the rest dimmed
+      if (s.read && s.read.byPtr && (!ptr.in || !s.read.top || Math.hypot(ptr.x - s.read.top[0], ptr.y - s.read.top[1]) > s.read.r + 6)) s.read.off();
       const o = s.read || s.pin;
       if (o && o.top) { const left = o.top[0] + 200 > s.W, x = left ? o.top[0] - o.r - 14 : o.top[0] + o.r + 14, y = o.top[1] - o.r - 10;
         s.rLine.setAttribute("x1", fx(o.top[0] + (left ? -o.r : o.r))); s.rLine.setAttribute("y1", fx(o.top[1])); s.rLine.setAttribute("x2", fx(x)); s.rLine.setAttribute("y2", fx(y));
@@ -374,7 +414,8 @@
       // year readout: a hovered circle gives its start year; otherwise the nearest record line within 14 px gives the
       // year at that point, read back off the square-root scale and rounded to 10 years (never past the line's own span)
       let hy = null, hc = null;
-      if (s.read) { hy = s.read.m.d[0]; hc = s.read.col; }
+      if (ring.hover || ringDrag) { hy = s.ringY; hc = "var(--dentine-ink)"; }   // the timeline's knob: the ring's year
+      else if (s.read) { hy = s.read.m.d[0]; hc = s.read.col; }
       else if (ptr.in && !dragging) { let best = 14;
         s.lines.forEach(L => { const wN = L._w || R0, N = 60; if (wN - R0 < 1) return; let q0 = null, w0 = R0;
           for (let k = 0; k <= N; k++) { const w = R0 + (wN - R0) * k / N, q = pj(L.d[0] * w, L.d[1] * w, L.d[2] * w); if (q[3] < 60) { q0 = null; continue; }
@@ -384,9 +425,18 @@
       if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
     }
 
-    host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit")) return; if (S) S.pin = null; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
-    host.addEventListener("pointermove", e => { const hr = host.getBoundingClientRect(); ptr.x = e.clientX - hr.left; ptr.y = e.clientY - hr.top; ptr.in = true; if (!dragging) return; const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
-    const endDrag = () => { dragging = false; host.classList.remove("grab"); };
+    // dragging the timeline's knob: the pointer's ray meets the ring's plane (y = 0); its angle there places the knob and
+    // its distance from the hub the year. Above the horizon, the ray's own direction sets the angle at the oldest year.
+    function toRing(e) {
+      const s = S; if (!s || !s.cb) return; const hr = host.getBoundingClientRect(), { pos, fw, rt, up } = s.cb;
+      const kx = (e.clientX - hr.left - s.C[0]) / s.F, ky = -(e.clientY - hr.top - s.C[1]) / s.F, d = [0, 1, 2].map(i => fw[i] + rt[i] * kx + up[i] * ky), k = -pos[1] / d[1];
+      const hit = k > 0 && isFinite(k), x = hit ? pos[0] + d[0] * k : d[0], z = hit ? pos[2] + d[2] * k : d[2];
+      ring.a = Math.atan2(z, x); ring.moved = ring.touched = true; waveU = hit ? 1 - cl((Math.hypot(x, z) - R0) / (RMAX - R0), 0, 1) : 0;
+    }
+    host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit,.rd-grip")) return; if (S) S.pin = null; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
+    host.addEventListener("pointermove", e => { const hr = host.getBoundingClientRect(); ptr.x = e.clientX - hr.left; ptr.y = e.clientY - hr.top; ptr.in = true; if (ringDrag) { toRing(e); lastInput = performance.now(); return; }
+      if (!dragging) { ring.hover = !!(S && S.kxy) && Math.hypot(ptr.x - S.kxy[0], ptr.y - S.kxy[1]) < 16; return; } const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
+    const endDrag = () => { dragging = false; ringDrag = false; host.classList.remove("grab", "ringgrab"); };
     host.addEventListener("pointerup", endDrag); host.addEventListener("pointercancel", endDrag); host.addEventListener("pointerleave", () => { ptr.in = false; });
     host.addEventListener("wheel", e => { e.preventDefault(); cam.tDist = cl(cam.tDist * Math.exp(e.deltaY * 0.0011), 760, 3000); lastInput = performance.now(); }, { passive: false });
     host.addEventListener("dblclick", () => { cam.tYaw = HOME.yaw + Math.round((cam.yaw - HOME.yaw) / (Math.PI * 2)) * Math.PI * 2; cam.tPitch = HOME.pitch; cam.tDist = HOME.dist; lastInput = performance.now(); });
