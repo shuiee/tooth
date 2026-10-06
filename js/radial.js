@@ -58,12 +58,13 @@
     let playing = true, waveU = 0;   // the timeline: the reading wave's place, 0 at the oldest record, 1 today; paused or playing
     const setPlaying = on => { playing = !!on; if (opts.onPlay) opts.onPlay(playing); };
     const seekYear = y => { waveU = cl((RMAX - rYear(y)) / (RMAX - R0), 0, 1); };
+    const ptr = { x: 0, y: 0, in: false };   // the pointer over the diagram, for the year readout
     const HOME = { yaw: -0.5, pitch: 0.3, dist: 1480 };
     const intro = !!opts.animate && !REDUCED;
     const cam = { yaw: HOME.yaw - (intro ? 1.1 : 0), pitch: intro ? 0.9 : HOME.pitch, dist: intro ? 2300 : HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist };
     const sky = document.createElement("canvas"); sky.className = "rd-sky"; host.prepend(sky);
-    const hint = document.createElement("div"); hint.className = "rd-hint"; hint.textContent = "Drag to orbit · scroll to travel · double-click to reset"; host.appendChild(hint);
-    const hud = document.createElement("div"); hud.className = "rd-hud"; host.appendChild(hud);
+    // bottom left: the year under the pointer (a hovered circle's start year, or the year at that point on a record line)
+    const hud = document.createElement("div"); hud.className = "rd-hud"; hud.setAttribute("aria-hidden", "true"); host.appendChild(hud);
     // The first molar at the centre as a point cloud (data/molar-cloud.js, from the team's sculpted model), turning
     // with the camera. Its points are denser where the surface bends, so the cusps and fissures read. On opening they
     // fly in from loose sheets around it and settle, root first. The crown carries the caries of the period the
@@ -261,14 +262,15 @@
       // records
       const all = [];
       s.lines.forEach(L => {
-        const g = s.anim ? ease(cl((t - 0.7 - L.ci * 0.18) / 1.6, 0, 1)) : 1, wNow = R0 + (L.wEnd - R0) * g, at = w => pj(L.d[0] * w, L.d[1] * w, L.d[2] * w);
-        const p0 = at(R0 * 0.6), pe = at(wNow); seg(L.base, p0, pe); L._s = p0[3] > 60 && pe[3] > 60 ? [p0, pe] : null;
+        // the line grows out to its oldest record; its front runs 60 further, so the oldest circle swells to full size too
+        const g = s.anim ? ease(cl((t - 0.7 - L.ci * 0.18) / 1.6, 0, 1)) : 1, wFront = R0 + (L.wEnd + 60 - R0) * g, wNow = Math.min(L.wEnd, wFront), at = w => pj(L.d[0] * w, L.d[1] * w, L.d[2] * w);
+        const p0 = at(R0 * 0.6), pe = at(wNow); seg(L.base, p0, pe); L._s = p0[3] > 60 && pe[3] > 60 ? [p0, pe] : null; L._w = wNow;
         L.spans.forEach(spn => { const a = Math.min(spn.a, wNow), b = Math.min(spn.b, wNow); if (b - a < 0.5) { spn.el.setAttribute("visibility", "hidden"); return; }
           const p = at(a), q = at(b); if (seg(spn.el, p, q)) spn.el.setAttribute("stroke-width", fx(cl(3.6 * (p[2] + q[2]) / 2 / U, 2, 6.5))); });
         const u = REDUCED ? 0.5 : (t * 0.09 + L.ci * 0.23) % 1, tp = at(R0 + u * (wNow - R0));
         L.pulse.setAttribute("cx", fx(tp[0])); L.pulse.setAttribute("cy", fx(tp[1])); L.pulse.setAttribute("r", fx(cl(4 * tp[2] / U, 2, 7))); L.pulse.style.opacity = (Math.sin(Math.PI * u) * g * 0.85).toFixed(2);
         L.ms.forEach(o => { o.arrow.setAttribute("visibility", "hidden"); if (o.m.w > wNow + 0.5) { o.mg.setAttribute("visibility", "hidden"); return; }
-          const pop = s.anim ? ease(cl((wNow - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
+          const pop = s.anim ? ease(cl((wFront - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
           const x = L.d[0] * o.m.w + (L.n1[0] * Math.cos(ph) + L.n2[0] * Math.sin(ph)) * hrx, y = L.d[1] * o.m.w + (L.n1[1] * Math.cos(ph) + L.n2[1] * Math.sin(ph)) * hrx, z = L.d[2] * o.m.w + (L.n1[2] * Math.cos(ph) + L.n2[2] * Math.sin(ph)) * hrx;
           const p = pj(x, y, z); if (p[3] < 60) { o.mg.setAttribute("visibility", "hidden"); return; } o.mg.removeAttribute("visibility");
           const bo = s.wW ? Math.exp(-Math.pow((o.m.w - s.wW) / 16, 2)) : 0, r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.5 * bo); o.top = p; o.r = r; o.z = p[3];
@@ -286,7 +288,7 @@
         L._b = { L, x: ne[0] + ux * 30 - (ux < 0 ? L.cw : 0), y: ne[1] + uy * 30 - 23, w: L.cw, ux, uy, ne, vis: ne[3] > 60,
           op: (s.anim ? cl((t - 2 - L.ci * 0.18) / 0.6, 0, 1) : 1) * cl(1.3 - (ne[3] - D) / (RMAX * 2), 0.45, 1) };
       });
-      // cards: keep inside the safe area (clear of the running head and the HUD) and push overlapping ones apart
+      // cards: keep inside the safe area (clear of the page edges and the year readout) and push overlapping ones apart
       const cards = s.lines.map(L => L._b).filter(b => b.vis), yMin = s.pt + 6, yMax = s.H - 60;
       // the teeth at the centre: a circle around the hub, roughly the height of the molar on screen
       const tTop = pj(0, 170, 0), tR = Math.max(60, Math.hypot(tTop[0] - hb[0], tTop[1] - hb[1]) * 1.15);
@@ -306,7 +308,7 @@
           const own = b.L._s; if (own) { const [a1, a2] = own; let on = false;
             for (let k = 0; k <= 20; k++) { const qx = a1[0] + (a2[0] - a1[0]) * k / 20, qy = a1[1] + (a2[1] - a1[1]) * k / 20; if (qx > b.x - 6 && qx < b.x + b.w + 6 && qy > b.y - 4 && qy < b.y + 44) { on = true; break; } }
             if (on) { let nx = -b.uy, ny = b.ux; if (ny * (b.uy >= 0 ? 1 : -1) < 0) { nx = -nx; ny = -ny; } b.x += nx * 14; b.y += ny * 14; } }
-          // the camera readout and the hint at the bottom of the page
+          // the year readout at the bottom left of the page
           if (b.y + 46 > s.H - 84 && b.x < 230) b.x += 14;
         });
       }
@@ -332,14 +334,23 @@
         [[s.rYr, 0], [s.rCt, 17]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
         { const b1 = s.rYr.getBBox(), b2 = s.rCt.getBBox(), x0 = Math.min(b1.x, b2.x) - 9, y0 = b1.y - 6, x1 = Math.max(b1.x + b1.width, b2.x + b2.width) + 9, y1 = b2.y + b2.height + 6; s.rBg.setAttribute("x", fx(x0)); s.rBg.setAttribute("y", fx(y0)); s.rBg.setAttribute("width", fx(x1 - x0)); s.rBg.setAttribute("height", fx(y1 - y0)); }
         s.gRead.classList.add("on"); } else s.gRead.classList.remove("on");
-      hud.textContent = "AZ " + (((cam.yaw * 180 / Math.PI) % 360 + 360) % 360).toFixed(1).padStart(5, "0") + "°   EL " + (cam.pitch * 180 / Math.PI).toFixed(1) + "°   R " + Math.round(D) + (o ? "   T−" + (NOW - o.m.d[0]).toLocaleString("en-GB") + " YRS" : "");
-      hint.style.opacity = lastInput > 0 && now - lastInput < 6000 ? 0 : (s.anim ? cl(t - 3.2, 0, 1) : 1) * 0.85;
+      // year readout: a hovered circle gives its start year; otherwise the nearest record line within 14 px gives the
+      // year at that point, read back off the square-root scale and rounded to 10 years (never past the line's own span)
+      let hy = null, hc = null;
+      if (s.read) { hy = s.read.m.d[0]; hc = s.read.col; }
+      else if (ptr.in && !dragging) { let best = 14;
+        s.lines.forEach(L => { const wN = L._w || R0, N = 60; if (wN - R0 < 1) return; let q0 = null, w0 = R0;
+          for (let k = 0; k <= N; k++) { const w = R0 + (wN - R0) * k / N, q = pj(L.d[0] * w, L.d[1] * w, L.d[2] * w); if (q[3] < 60) { q0 = null; continue; }
+            if (q0) { const vx = q[0] - q0[0], vy = q[1] - q0[1], u = cl(((ptr.x - q0[0]) * vx + (ptr.y - q0[1]) * vy) / (vx * vx + vy * vy || 1), 0, 1), dd = Math.hypot(ptr.x - q0[0] - u * vx, ptr.y - q0[1] - u * vy);
+              if (dd < best) { best = dd; const age = Math.pow((w0 + u * (w - w0) - R0) / (RMAX - R0), 2) * MAX_AGE; hy = cl(Math.round((NOW - age) / 10) * 10, L.c.segs[0][0], NOW); hc = L.col; } }
+            q0 = q; w0 = w; } }); }
+      if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
     }
 
     host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit")) return; if (S) S.pin = null; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
-    host.addEventListener("pointermove", e => { if (!dragging) return; const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
+    host.addEventListener("pointermove", e => { const hr = host.getBoundingClientRect(); ptr.x = e.clientX - hr.left; ptr.y = e.clientY - hr.top; ptr.in = true; if (!dragging) return; const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
     const endDrag = () => { dragging = false; host.classList.remove("grab"); };
-    host.addEventListener("pointerup", endDrag); host.addEventListener("pointercancel", endDrag);
+    host.addEventListener("pointerup", endDrag); host.addEventListener("pointercancel", endDrag); host.addEventListener("pointerleave", () => { ptr.in = false; });
     host.addEventListener("wheel", e => { e.preventDefault(); cam.tDist = cl(cam.tDist * Math.exp(e.deltaY * 0.0011), 760, 3000); lastInput = performance.now(); }, { passive: false });
     host.addEventListener("dblclick", () => { cam.tYaw = HOME.yaw + Math.round((cam.yaw - HOME.yaw) / (Math.PI * 2)) * Math.PI * 2; cam.tPitch = HOME.pitch; cam.tDist = HOME.dist; lastInput = performance.now(); });
 
@@ -350,7 +361,7 @@
       play(on) { setPlaying(on); },
       playing() { return playing; },
       state() { return S && GLT ? { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3) } : null; },
-      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hint.remove(); hud.remove(); sky.remove(); },
+      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove(); },
     };
   }
 

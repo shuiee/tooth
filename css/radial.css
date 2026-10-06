@@ -18,10 +18,7 @@ html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow:hidden}
 button{font:inherit;color:inherit}
 
-/* ---- the page: running head and Replay, as on the prototype */
-.rh{position:fixed;left:28px;right:28px;top:16px;z-index:5;display:flex;gap:34px;font-family:var(--label);font-size:10.5px;line-height:1.4;color:var(--ink-3);pointer-events:none}
-.rh b{display:block;font-weight:600;color:var(--ink)}
-.rh span{display:block}
+/* ---- the page: Replay, as on the prototype */
 .btn{font-family:var(--label);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);background:var(--bg);padding:6px 12px;cursor:pointer}
 .btn:hover{background:var(--ink);color:var(--bg)}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -90,8 +87,7 @@ button{font:inherit;color:inherit}
 .rd-albl{fill:#8A93A8;font-size:9px;letter-spacing:.16em}
 .rd-arw{stroke:#E6E8EE;stroke-width:.7}
 .rd-arw.lit{stroke:var(--c);stroke-width:1.1}
-.rd-hint,.rd-hud{position:absolute;z-index:1;pointer-events:none;font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:#7F93C6}
-.rd-hint{left:50%;bottom:30px;transform:translateX(-50%);transition:opacity .8s ease}
+.rd-hud{position:absolute;z-index:1;pointer-events:none;font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:#7F93C6}
 .rd-hud{left:28px;bottom:30px;color:#BFD8FF;font-variant-numeric:tabular-nums}
 
 /* ---- the paper theme: the journal's light paper, ink and Lora. Later rules win, so keep this section last */
@@ -130,8 +126,8 @@ button{font:inherit;color:inherit}
 .rd3 .rd-read line{stroke:var(--ink)}
 .rd3 .rd-yr{fill:var(--ink);font-family:var(--label);font-size:15px;font-weight:600;letter-spacing:0;stroke:var(--bg)}
 .rd3 .rd-ct{fill:var(--ink-2);font-family:var(--label);font-size:13px;font-style:italic;text-transform:none;letter-spacing:0;stroke:var(--bg)}
-.rd-hint,.rd-hud{font-family:var(--label);font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);background:rgba(233,232,228,.9);padding:3px 8px}
-.rd-hud{color:var(--ink-2)}
+.rd-hud{font-family:var(--label);font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);background:rgba(233,232,228,.9);padding:3px 8px}
+.rd-hud{color:var(--ink-2);font-size:12px;font-weight:600;opacity:0;transition:opacity .15s ease}
 .rd-tgl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .rd-rbg{fill:#f3f2ee;fill-opacity:.96;stroke:var(--rule);stroke-width:1}
 .rd-teeth{display:none}

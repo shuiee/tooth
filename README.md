@@ -1,8 +1,8 @@
+**[Open the visualisation →](https://shuiee.github.io/tooth/)**
+
 # Radial timeline
 
 A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries as the timeline plays; five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
-
-**Live page:** <https://shuiee.github.io/tooth/>
 
 It is the baseline for a project that uses a tooth as a visual archive of human history. The story moves from what a tooth preserves (childhood development, years of wear and decay, lifetime exposure to pathogens and metals, and broader change in dental practice) to human intervention: fillings, appliances and restorations that repair, cover or alter that evidence. It asks: what can future observers still understand from a tooth after humans have changed it?
 

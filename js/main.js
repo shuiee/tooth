@@ -13,8 +13,7 @@
       animate,
       onOpen,
       onPlay: on => showPlaying(on),   // the radial pauses itself when a caries point is picked
-      padTop: () => document.getElementById("rh").getBoundingClientRect().bottom + 8,   // clear of the running head
-      padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,            // and of Replay
+      padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,   // clear of Replay
     });
   }
 
