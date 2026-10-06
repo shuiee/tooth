@@ -99,13 +99,27 @@
     // the ring); touched once the reader has moved it, which also brings the ring out under reduced motion
     const ring = { a: 0, moved: false, touched: false, hover: false };
     let ringDrag = false;
-    // the time period the reader has clicked, as [record key, index on its line], or null: it opens the pop-up
-    // (opts.onSelect, js/popup.js) and is ringed on its line and labelled with its years. Clicking another circle moves
-    // it there; clicking it again lets it go, as do the pop-up's Close and Escape (select()).
-    let sel = null;
+    // the time periods the reader has clicked, on one record's line: up to two at once, to compare them. Each is ringed
+    // on its line and labelled with its years; the last clicked opens the pop-up (opts.onSelect, js/popup.js), sel being
+    // [record key, index on its line] or null. With two picked on a line whose record changes the molar, the molar loops
+    // between the two periods for that record alone (cmp), every other record holding still. Clicking a picked circle
+    // lets it go; a third on the same line lets the older go; a circle on another line starts afresh. A click on empty
+    // space, or the pop-up's close and Escape (select()), lets them all go and stops the loop.
+    const MOLAR_KEYS = ["caries", "wear", "metals", "pathogens"];
+    let sel = null, selKey = null, selIdx = [], cmp = null;
     const pickOf = (k, i) => { const c = DATA.find(c2 => c2.key === k), d = c && c.dens[i]; return d ? { key: k, i, name: c.name, col: COLS[k], from: d[0], to: d[1], n: d[2], unit: c.unit, range: range(d[0], d[1]) } : null; };
     const setSel = next => { sel = next; if (opts.onSelect) opts.onSelect(sel ? pickOf(sel[0], sel[1]) : null); };
-    const choose = (k, i) => { const same = !!sel && sel[0] === k && sel[1] === i; setSel(same ? null : [k, i]); return !same; };
+    const clearSel = () => { selKey = null; selIdx = []; cmp = null; setSel(null); if (S && S.read && !S.read.byPtr) S.read.off(); };   // and the picked circle's readout
+    const choose = (k, i) => {
+      if (selKey === k && selIdx.includes(i)) { selIdx = selIdx.filter(j => j !== i); if (!selIdx.length) { clearSel(); return false; } setSel([k, selIdx[selIdx.length - 1]]); }
+      else { if (selKey !== k) { selKey = k; selIdx = []; } selIdx = selIdx.concat(i).slice(-2); setSel([k, i]); }
+      cmp = selIdx.length === 2 && MOLAR_KEYS.includes(k) ? { key: k, eras: selIdx.slice(), t0: performance.now() } : null;
+      return selIdx.includes(i); };
+    // the records the reader has hidden with the filter (opts.hidden, then show()): their lines, circles and names are
+    // not drawn and the molar shows nothing of them
+    const off = new Set(opts.hidden || []);
+    // their groups taken out of the page's flow (the circles are moved between groups every frame, so each carries the class itself)
+    const applyOff = () => { if (!S) return; S.lines.forEach(L => { const h = off.has(L.c.key); [L.g, L.card, L.lead].forEach(e => e.classList.toggle("rd-off", h)); L.ms.forEach(o => { o.mg.classList.toggle("rd-off", h); o.arrow.classList.toggle("rd-off", h); }); }); };
     const HOME = { yaw: -0.5, pitch: 0.3, dist: 1480 };
     const intro = !!opts.animate && !REDUCED;
     const cam = { yaw: HOME.yaw - (intro ? 1.1 : 0), pitch: intro ? 0.9 : HOME.pitch, dist: intro ? 2300 : HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist };
@@ -139,7 +153,7 @@
       const ink = new TH.Color("#2b2a27"), cA = new TH.Color("#E3A46A"), cB = new TH.Color("#C2611A"), cC = new TH.Color("#6F320B");
       // the crown's top and the enamel-root junction, in the drawing's units; the wear plane starts above the crown
       const Ytop = (MC.top - yMid) * k, Ycej = -yMid * k;
-      const U = { uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
+      const U = { uCd: { value: 0 }, uWd: { value: 0 }, uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
         cInk: { value: ink }, cA: { value: cA }, cB: { value: cB }, cC: { value: cC } };
       const FLY = "float fly(float d){ float e = clamp((uT - d) / 1.5, 0.0, 1.0); return 1.0 - pow(1.0 - e, 3.0); }";
       // Stress lines as bands of negative space: within a line's reach round the crown, crown points near the line are
@@ -166,10 +180,11 @@
       const pg = new TH.BufferGeometry(); pg.setAttribute("position", new TH.BufferAttribute(pos, 3)); pg.setAttribute("aStart", new TH.BufferAttribute(start, 3));
       pg.setAttribute("aRank", new TH.BufferAttribute(rank, 1)); pg.setAttribute("aDelay", new TH.BufferAttribute(delay, 1));
       const pts = new TH.Points(pg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse, uWearY; uniform vec3 cInk, cA, cB, cC; varying vec3 vC; varying float vA; " + FLY + LEHGL +
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uMid, uInn, uPx, uPulse, uWearY, uCd, uWd; uniform vec3 cInk, cA, cB, cC; varying vec3 vC; varying float vA; " + FLY + LEHGL +
           " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vec3 p = mix(aStart, w, e); vec4 mv = modelViewMatrix * vec4(p, 1.0);" +
           " float a = 1.0 - smoothstep(uOut - 0.012, uOut, aRank), b = 1.0 - smoothstep(uMid - 0.012, uMid, aRank), c = 1.0 - smoothstep(uInn - 0.012, uInn, aRank);" +
-          " vC = mix(mix(mix(cInk, cA, a), cB, b), cC, c); float car = max(a, 0.0); vC = mix(vC, tc, 0.75 * tn * (1.0 - car));" +
+          " vec3 k3 = mix(mix(cA, cB, b), cC, c); k3 = mix(k3, vec3(dot(k3, vec3(0.3, 0.59, 0.11))), uCd); vC = mix(cInk, k3, a * (1.0 - 0.5 * uCd));" +
+          " float car = max(a, 0.0) * (1.0 - 0.65 * uCd); vC = mix(vC, tc, 0.75 * tn * (1.0 - car) * (1.0 - 0.75 * uWd));" +
           " gl_PointSize = uPx * (0.95 + (0.75 + 1.1 * uPulse) * car) * 1480.0 / max(200.0, -mv.z); vA = (0.15 + 0.85 * e) * (aRank > 1.5 ? 0.34 : 0.5 + 0.45 * car) * (1.0 + 0.4 * tn); gl_Position = projectionMatrix * mv; }",
         fragmentShader: "varying vec3 vC; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25) discard; gl_FragColor = vec4(vC, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
       // the mesh over the decay: a line between each pair of neighbouring crown points, shown once both are carious
@@ -179,8 +194,8 @@
       const lg = new TH.BufferGeometry(); lg.setAttribute("position", new TH.BufferAttribute(lpos, 3)); lg.setAttribute("aStart", new TH.BufferAttribute(lst, 3));
       lg.setAttribute("aRank", new TH.BufferAttribute(lseg, 1)); lg.setAttribute("aDelay", new TH.BufferAttribute(ldel, 1));
       const lines = new TH.LineSegments(lg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uWearY; varying float vA; " + FLY + LEHGL +
-          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vA = (1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * e * 0.3; gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, w, e), 1.0); }",
+        vertexShader: "attribute vec3 aStart; attribute float aRank, aDelay; uniform float uT, uOut, uWearY, uCd; varying float vA; " + FLY + LEHGL +
+          " void main(){ float e = fly(aDelay); vec3 w = position; if (w.y > uWearY) w.y = uWearY; vec3 tc; float tn; w = lehPush(w, aRank, tc, tn); vA = (1.0 - smoothstep(uOut - 0.02, uOut, aRank)) * e * 0.3 * (1.0 - 0.75 * uCd); gl_Position = projectionMatrix * modelViewMatrix * vec4(mix(aStart, w, e), 1.0); }",
         fragmentShader: "uniform vec3 cB; varying float vA; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(cB, vA); }" }));
       // The worn-away crown: every crown point above the wear plane also rises, a few at a time, in the tooth's own ink, to hover above the tooth
       // as a separate cloud, at its own place lifted by LIFT, so the cloud is the lost cap and grows as the molar wears.
@@ -191,12 +206,12 @@
       wg.setAttribute("aPace", new TH.BufferAttribute(pace, 1)); const aLift = new TH.BufferAttribute(lift, 1); aLift.setUsage(TH.DynamicDrawUsage); wg.setAttribute("aLift", aLift);
       U.uLift = { value: LIFT };
       const lost = new TH.Points(wg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-        vertexShader: "attribute float aDelay, aPace, aLift; uniform float uT, uWearY, uLift, uPx; varying float vA; " + FLY +
+        vertexShader: "attribute float aDelay, aPace, aLift; uniform float uT, uWearY, uLift, uPx, uWd; varying float vA; " + FLY +
           " void main(){ if (aLift < 0.004) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }" +
           " float u = aLift * aLift * (3.0 - 2.0 * aLift); vec3 a = vec3(position.x, min(position.y, uWearY), position.z);" +
           " vec3 b = position + vec3(0.0, uLift, 0.0) + vec3(sin(uT * 0.7 + aPace * 9.0), sin(uT * 0.9 + aPace * 5.0), cos(uT * 0.6 + aPace * 7.0)) * 2.5;" +
           " vec3 p = mix(a, b, u) + vec3(position.x, 0.0, position.z) * 0.35 * sin(3.14159 * u);" +
-          " vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_PointSize = uPx * 1.25 * 1480.0 / max(200.0, -mv.z); vA = u * 0.55 * fly(aDelay); gl_Position = projectionMatrix * mv; }",
+          " vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_PointSize = uPx * 1.25 * 1480.0 / max(200.0, -mv.z); vA = u * 0.55 * fly(aDelay) * (1.0 - 0.65 * uWd); gl_Position = projectionMatrix * mv; }",
         fragmentShader: "uniform vec3 cInk; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25 || vA < 0.01) discard; gl_FragColor = vec4(cInk, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
       const molar = new TH.Group(); molar.add(lines); molar.add(pts); molar.add(lost); sc.add(molar);
       // a point rises when the wear plane passes below it and settles back when the plane passes above it
@@ -543,15 +558,16 @@
           const mgp = el("g", { class: "rd-mark", style: "--c:" + col }), halo = el("circle", { class: "rd-bokeh" }, mgp), dot = el("circle", { class: "rd-core" + (m.d[2] == null ? " nocount" : "") }, mgp),
             hit = el("circle", { class: "rd-hit", tabindex: 0, role: "button", "aria-label": c.name + ", " + range(m.d[0], m.d[1]) + ", " + amount(c, m.d) }, mgp);
           const arrow = el("line", { class: "rd-arw", "data-cat": c.key, style: "--c:" + col }, gArrows); const o = { c, m, mi, ci, arrow, mg: mgp, halo, dot, hit, col, ph: mi * 1.9 + ci, sz: m.d[2] == null ? 0.35 : 0.3 + 0.7 * Math.sqrt(m.d[2] / mx), blur: -1 };
-          const on = () => { mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); }; o.off = off;
+          // one circle hovered at a time: entering one lets the last go first
+          const on = () => { if (S.read && S.read !== o) S.read.off(); mgp.classList.add("on"); S.read = o; lit(ci, true); }, off = () => { mgp.classList.remove("on"); if (S.read === o) S.read = null; lit(ci, false); }; o.off = off;
           hit.addEventListener("mouseenter", () => { o.byPtr = true; on(); }); hit.addEventListener("mouseleave", off); hit.addEventListener("focus", () => { o.byPtr = false; on(); }); hit.addEventListener("blur", off);
           const fly = () => { const yaw = Math.atan2(d[0], d[2]), k = Math.round((cam.yaw - yaw) / (2 * Math.PI)); cam.tYaw = yaw + (k - 1) * 2 * Math.PI; cam.tPitch = cl(Math.asin(d[1]) + 0.15, -1.2, 1.35); cam.tDist = cl(o.m.w + 620, 780, 3000); lastInput = performance.now() + 5000; on(); };
           // picked on the press, not on "click": the marks are re-ordered in the page every frame (to draw them by depth),
-          // which can cancel a click between press and release. The press picks the period for the pop-up, or lets it go
-          // if it was picked. A caries point also moves the timeline to its period and pauses it there, so the molar shows
-          // that period's caries.
-          const pick = () => { if (!choose(c.key, mi)) return; if (c.key !== "caries" && c.key !== "wear" && c.key !== "metals" && c.key !== "pathogens") { fly(); return; }
-            on(); lastInput = performance.now() + 5000; seekYear((o.m.d[0] + o.m.d[1]) / 2); setPlaying(false); };   // the view stays put
+          // which can cancel a click between press and release. The press picks the period (or lets it go, see choose()).
+          // On a record the molar shows, it also moves the timeline to the first picked period and pauses it there, so the
+          // molar shows that period (and, with two picked, loops between them).
+          const pick = () => { const now2 = choose(c.key, mi); if (!MOLAR_KEYS.includes(c.key)) { if (now2) fly(); return; }
+            if (!selIdx.length) return; if (now2) on(); lastInput = performance.now() + 5000; const d0 = c.dens[selIdx[0]]; seekYear((d0[0] + d0[1]) / 2); setPlaying(false); };   // the view stays put
           hit.addEventListener("pointerdown", e => { e.stopPropagation(); pick(); }); hit.addEventListener("keydown", press(pick));
           return o;
         });
@@ -582,8 +598,8 @@
       const grip = el("g", { class: "rd-grip", tabindex: 0, role: "slider", "aria-label": "Timeline: drag to choose a year", "aria-valuemin": 0, "aria-valuemax": MAX_AGE }); svg.insertBefore(grip, gRead);
       const kHalo = el("circle", { class: "rd-khalo", r: 16 }, grip), knob = el("g", { class: "rd-knob" }, grip), kHit = el("circle", { class: "rd-khit", r: 16 }, grip);
       // the clicked period's years, in a box beside its circle
-      const gPin = el("g", { class: "rd-pin", "aria-hidden": "true" }); svg.insertBefore(gPin, grip);
-      const pin = { g: gPin, ln: el("line", {}, gPin), bx: el("rect", { height: 26 }, gPin), t: el("text", {}, gPin), o: null, w: 0 };
+      const pins = [0, 1].map(() => { const gPin = el("g", { class: "rd-pin", "aria-hidden": "true" }); svg.insertBefore(gPin, grip);
+        return { g: gPin, ln: el("line", {}, gPin), bx: el("rect", { height: 26 }, gPin), t: el("text", {}, gPin), o: null, w: 0 }; });
       el("path", { class: "rd-kbody", d: "M-10 0L0 -7L10 0L0 7Z" }, knob); el("path", { class: "rd-kfacet", d: "M-4.5 0L0 -3.2L4.5 0L0 3.2Z" }, knob);   // a diamond lying along the ring, with a small facet
       grip.addEventListener("pointerdown", e => { ringDrag = true; ring.touched = true; if (!ring.moved) { ring.moved = true; ring.a = S.ringA; } setPlaying(false);
         try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("ringgrab"); lastInput = performance.now(); });
@@ -591,13 +607,17 @@
         ring.touched = true; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, pt, dpr, pin, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      applyOff();
     }
 
     function frame(now) {
       raf = requestAnimationFrame(frame);
       const s = S; if (!s) return;
       const dt = Math.min(0.05, s.last ? (now - s.last) / 1000 : 0); s.last = now; const t = (now - s.born) / 1000;
+      // of two compared periods, the one the molar shows now: each held a while (the particles' records longer, since their
+      // streams take a few seconds to thin or thicken), then the other, in a loop
+      const cmpI = cmp ? cmp.eras[Math.floor((now - cmp.t0) / 1000 / ({ caries: 2.4, wear: 2.4, metals: 5, pathogens: 5 }[cmp.key] || 3)) % 2] : -1;
       if (!REDUCED && !dragging && now - lastInput > 4000 && (!s.anim || t > 3)) cam.tYaw += dt * 0.02;
       const kc = Math.min(1, dt * (dragging ? 9 : s.anim && t < 3.2 ? 1.3 : 3.5));
       cam.yaw += (cam.tYaw - cam.yaw) * kc; cam.pitch += (cam.tPitch - cam.pitch) * kc; cam.dist += (cam.tDist - cam.dist) * kc;
@@ -605,8 +625,15 @@
       const pos = [D * cp * sy, D * sp, D * cp * cy], fw = [-pos[0] / D, -pos[1] / D, -pos[2] / D], rt = [cy, 0, -sy], up = cross(rt, fw);
       // the pop-up, laid over the diagram (opts.cover(): the box it covers, at the right of the page or, on narrow pages,
       // along the bottom): the names, the time labels, the timeline's year and the readouts keep clear of it
-      const cv = opts.cover ? opts.cover() : null, inCv = (x, y, w, h) => !!cv && x < cv.x + cv.w + 6 && cv.x - 6 < x + w && y < cv.y + cv.h + 6 && cv.y - 6 < y + h;
+      const cv = opts.cover ? opts.cover() : null, mb = opts.menu ? opts.menu() : null;   // and the filter menu (opts.menu(): its button's box, top right)
+      const inBx = (q, x, y, w, h) => !!q && x < q.x + q.w + 6 && q.x - 6 < x + w && y < q.y + q.h + 6 && q.y - 6 < y + h, inCv = (x, y, w, h) => inBx(cv, x, y, w, h) || inBx(mb, x, y, w, h);
       const ctl = opts.controls ? opts.controls() : null;   // the page's own buttons (Pause, Replay), which the names keep clear of too
+      // while the pop-up is open, the diagram moves over and shrinks into the space beside it (left of it, or above it on
+      // narrow pages), so no circle lies under it and the reader can still pick a second period to compare
+      { let cx = s.C0[0], cy = s.C0[1], f = s.F0;
+        if (cv && cv.side === "right" && cv.x > s.W * 0.3) { const fw = cv.x - 16; cx = fw / 2; f = Math.min(s.F0, fw * 1.1); }
+        else if (cv && cv.side !== "right" && cv.y > s.pt + 140) { const fh = cv.y - 10 - s.pt; cy = s.pt + fh / 2; f = Math.min(s.F0, (fh - 40) * 1.95); }
+        const e = REDUCED ? 1 : Math.min(1, dt * 4); s.C = [s.C[0] + (cx - s.C[0]) * e, s.C[1] + (cy - s.C[1]) * e]; s.F += (f - s.F) * e; }
       const { C, F } = s, U = F / D; s.cb = { pos, fw, rt, up };   // the camera, kept for dragging the timeline's handle
       const pj = (x, y, z) => { const d0 = x - pos[0], d1 = y - pos[1], d2 = z - pos[2], zc = d0 * fw[0] + d1 * fw[1] + d2 * fw[2], q = F / Math.max(30, zc);
         return [C[0] + (d0 * rt[0] + d1 * rt[1] + d2 * rt[2]) * q, C[1] - (d0 * up[0] + d1 * up[1] + d2 * up[2]) * q, q, zc]; };
@@ -619,17 +646,23 @@
         const sw = REDUCED ? 0 : Math.sin(t * 0.45) * 0.35; GLT.molar.rotation.y = 0.5 + sw + t * 0.12;
         GLT.molar.position.y = REDUCED ? 0 : Math.sin(t * 0.7) * 6;
         const ku = Math.min(1, dt * 3), U2 = GLT.U; U2.uT.value = REDUCED || !s.anim ? 99 : t;
+        // comparing two periods of one record: the molar's other records fade and grey, while still following the same years
+        s.dim = s.dim || { caries: 0, wear: 0, metals: 0, pathogens: 0 };
+        for (const k in s.dim) s.dim[k] += ((cmp && cmp.key !== k ? 1 : 0) - s.dim[k]) * (REDUCED ? 1 : Math.min(1, dt * 3));
+        U2.uCd.value = s.dim.caries; U2.uWd.value = s.dim.wear;
         U2.uPulse.value = REDUCED ? 0 : Math.max(0, 1 - (now - (s.car.at || -1e9)) / 900);   // the swell after a change of period
         const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
         U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
         if (s.met.era !== s.met.cEra) { s.met.cEra = s.met.era; s.met.groups = s.met.era >= 0 ? metalGroups(s.met.era) : null; }
-        GLT.metalsStep(s.met.groups, t, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * (REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1)));
-        { const pa = REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1); U2.uNv && (U2.uNv.value = appear * pa);
+        // a record hidden with the filter fades from the molar at once (its particles go too, not just stop coming)
+        s.mtOn = (s.mtOn == null ? 1 : s.mtOn) + ((off.has("metals") ? 0 : 1) - (s.mtOn == null ? 1 : s.mtOn)) * (REDUCED ? 1 : Math.min(1, dt * 4));
+        GLT.metalsStep(s.met.groups, t, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * s.mtOn * (1 - 0.7 * s.dim.metals) * (REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1)));
+        { const pa = REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1); s.nvOn = (s.nvOn == null ? 1 : s.nvOn) + ((off.has("pathogens") ? 0 : 1) - (s.nvOn == null ? 1 : s.nvOn)) * (REDUCED ? 1 : Math.min(1, dt * 4)); U2.uNv && (U2.uNv.value = appear * pa * s.nvOn * (1 - 0.6 * s.dim.pathogens));
           if (s.pat.era !== s.pat.cEra) { s.pat.cEra = s.pat.era; s.pat.counts = s.pat.era >= 0 ? pathogenCounts(s.pat.era) : null; }
-          GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa); }
+          GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa * s.nvOn * (1 - 0.7 * s.dim.pathogens)); }
         U2.uOut.value += (s.car.out - U2.uOut.value) * (REDUCED ? 1 : ku); U2.uMid.value += (s.car.mid - U2.uMid.value) * (REDUCED ? 1 : ku); U2.uInn.value += (s.car.inn - U2.uInn.value) * (REDUCED ? 1 : ku);
         // the stress lines follow the same period as the caries, and show once the molar has mostly settled
-        if (GLT.leh) GLT.leh.update(dt, s.car.era == null ? -1 : s.car.era, REDUCED || !s.anim ? 1 : cl((t - 2.4) / 1, 0, 1), U2.uPulse.value);
+        if (GLT.leh) GLT.leh.update(dt, s.wear.era == null ? -1 : s.wear.era, (REDUCED || !s.anim ? 1 : cl((t - 2.4) / 1, 0, 1)) * (off.has("wear") ? 0 : 1) * (1 - 0.7 * s.dim.wear), U2.uPulse.value);
         GLT.tcv.style.opacity = appear; rd.render(GLT.sc, tc); }
       // sky
       const ctx = sky.getContext("2d"); ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0); ctx.clearRect(0, 0, s.W, s.H);
@@ -679,17 +712,19 @@
       // in no period the molar keeps the last period it passed (nothing before the first), and the caries line dims
       // until the wave reaches the next record.
       // The same for wear, on the Wear and LEH line: the molar's height is the period's wear.
+      const cmpL = cmp && s.lines.find(L2 => L2.c.key === cmp.key), cmpD = cmpL && cmpL.c.dens[cmpI], cmpY = cmpD ? (cmpD[0] + cmpD[1]) / 2 : null;
       ["caries", "wear", "metals", "pathogens"].forEach(key => { const L = s.lines.find(L2 => L2.c.key === key); if (!L) return;
-        const D = L.c.dens, y = s.waveYear;
+        const D = L.c.dens, y = cmpY != null ? cmpY : s.waveYear;   // comparing: the other records follow the compared period's years
         let at = D.findIndex((d, i) => y >= d[0] && (y < d[1] || (i === D.length - 1 && y <= d[1])));
         const inData = at >= 0;
         if (!inData) { at = -1; D.forEach((d, i) => { if (d[1] <= y) at = i; }); }
-        const era = at;
+        // two picked on this line: the molar loops between them (cmpI); a hidden record shows nothing on the molar
+        const era = off.has(key) ? -1 : cmp && cmp.key === key ? cmpI : at;
         if (key === "caries" && era !== s.car.era) { s.car.era = era; s.car.at = now; Object.assign(s.car, era >= 0 ? cariesShares(era) : { out: 0, mid: 0, inn: 0 }); }
         if (key === "wear" && era !== s.wear.era) { s.wear.era = era; s.wear.share = era >= 0 ? wearShare(era) : 0; }
         if (key === "metals") s.met.era = era;
         if (key === "pathogens") s.pat.era = era;
-        L.g.classList.toggle("rd-nodata", !inData && !REDUCED); });   // with reduced motion there is no wave: the latest period, undimmed
+        L.g.classList.toggle("rd-nodata", !inData && !REDUCED && !(cmp && cmp.key === key)); });   // with reduced motion there is no wave: the latest period, undimmed
       // ambient field: grey bodies drifting in the volume, focus-blurred by depth
       const ay = REDUCED ? 0 : t * 0.025;
       s.amb.forEach(o => { const ca = Math.cos(ay), sa = Math.sin(ay), x = o.p[0] * ca - o.p[2] * sa, z = o.p[0] * sa + o.p[2] * ca, y = o.p[1] + (REDUCED ? 0 : Math.sin(t * 0.4 + o.ph) * 10);
@@ -699,8 +734,11 @@
         o.c.style.opacity = (appear * cl(1.2 - (p[3] - D) / (RMAX * 1.8), 0.25, 0.9)).toFixed(2);
         if (o.t) { o.t.removeAttribute("visibility"); o.t.setAttribute("x", fx(p[0] + r + 6)); o.t.setAttribute("y", fx(p[1] + 3)); o.t.style.opacity = (appear * 0.8).toFixed(2); } });
       // records
-      const all = [], so = sel && (s.lines.find(L2 => L2.c.key === sel[0]) || { ms: [] }).ms[sel[1]];   // the clicked circle
+      { const ck = cmp ? cmp.key : null; if (s.cmpK !== ck) { s.cmpK = ck;
+          s.lines.forEach(L => { const f = !!ck && L.c.key !== ck; [L.g, L.card, L.lead].forEach(e => e.classList.toggle("rd-fade", f)); L.ms.forEach(o => { o.mg.classList.toggle("rd-fade", f); o.arrow.classList.toggle("rd-fade", f); }); }); } }
+      const selL = selKey && s.lines.find(L2 => L2.c.key === selKey), sos = selL ? selIdx.map(i => selL.ms[i]).filter(Boolean) : [], all = [];   // the clicked circles
       s.lines.forEach(L => {
+        if (off.has(L.c.key)) { L._s = null; L._w = R0; L._b = { L, vis: false }; L.ms.forEach(o => { o.top = null; }); return; }
         // the line grows out to its oldest record; its front runs 60 further, so the oldest circle swells to full size too
         const g = s.anim ? ease(cl((t - 0.7 - L.ci * 0.18) / 1.6, 0, 1)) : 1, wFront = R0 + (L.wEnd + 60 - R0) * g, wNow = Math.min(L.wEnd, wFront), at = w => pj(L.d[0] * w, L.d[1] * w, L.d[2] * w);
         const p0 = at(R0 * 0.6), pe = at(wNow); seg(L.base, p0, pe); L._s = p0[3] > 60 && pe[3] > 60 ? [p0, pe] : null; L._w = wNow;
@@ -710,10 +748,14 @@
           const pop = s.anim ? ease(cl((wFront - o.m.w) / 60, 0, 1)) : 1, ph = o.ph, hrx = 0;
           const x = L.d[0] * o.m.w + (L.n1[0] * Math.cos(ph) + L.n2[0] * Math.sin(ph)) * hrx, y = L.d[1] * o.m.w + (L.n1[1] * Math.cos(ph) + L.n2[1] * Math.sin(ph)) * hrx, z = L.d[2] * o.m.w + (L.n1[2] * Math.cos(ph) + L.n2[2] * Math.sin(ph)) * hrx;
           const p = pj(x, y, z); if (p[3] < 60) { o.mg.setAttribute("visibility", "hidden"); o.top = null; return; } o.mg.removeAttribute("visibility");
-          // a circle lights up only while the reader hovers a time period that it covers (s.hotP, set by the readout below)
-          const hp = s.hotP, d0 = o.m.d[0], d1 = o.m.d[1], want = hp && ((d0 < hp[1] && d1 > hp[0]) || (d0 === d1 && d0 >= hp[0] && d0 <= hp[1]) || (hp[0] === hp[1] && d0 <= hp[0] && hp[0] <= d1)) ? 1 : 0;
+          // a circle lights up only while it is the one hovered (or focused): one at a time, and none once the pointer leaves
+          const want = s.read === o ? 1 : 0;
+          // and its hovered look follows that too, every frame: re-stacking the circles can swallow a mouseleave, which would
+          // otherwise leave a circle the pointer has left still white
+          if ((s.read === o) !== !!o.onC) { o.onC = s.read === o; o.mg.classList.toggle("on", o.onC); }
           o.hz = (o.hz || 0) + (want - (o.hz || 0)) * (REDUCED ? 1 : Math.min(1, dt * 9)); if ((o.hz > 0.5) !== !!o.hot) { o.hot = o.hz > 0.5; o.mg.classList.toggle("hot", o.hot); }
-          const isSel = so === o; if (isSel !== !!o.sel) { o.sel = isSel; o.mg.classList.toggle("sel", isSel); }   // a picked circle: ringed in ink, a little larger
+          const isSel = sos.includes(o); if (isSel !== !!o.sel) { o.sel = isSel; o.mg.classList.toggle("sel", isSel); }   // a picked circle: ringed in ink, a little larger
+          const isCur = isSel && !!cmp && o.mi === cmpI; if (isCur !== !!o.cur) { o.cur = isCur; o.mg.classList.toggle("cur", isCur); }   // of two compared, the one on the molar now
           const r = cl((1.8 + 3.4 * o.sz) * p[2] / U, 1.5, 6.5) * pop * (1 + 0.45 * o.hz) * (o.sel ? 1.3 : 1); o.top = p; o.r = r; o.z = p[3];
           [o.halo, o.dot, o.hit].forEach((e, j) => { e.setAttribute("cx", fx(p[0])); e.setAttribute("cy", fx(p[1])); e.setAttribute("r", fx(j === 0 ? r * 2.6 : j === 2 ? r + 6 : r)); });
           const bl = 0;
@@ -733,7 +775,8 @@
       const cards = s.lines.map(L => L._b).filter(b => b.vis), yMin = s.pt + 6, yMax = s.H - 60;
       cards.forEach(b => { const bb = b.L._bb; if (bb) b.w = Math.max(b.w, bb.x + bb.width); });   // a name's measured width, once known (its letter-spaced capitals run past the estimate)
       const keep = b => { b.x = cl(b.x, 16, s.W - b.w - 16); b.y = cl(b.y, yMin, yMax - 46);
-        if (inCv(b.x, b.y, b.w, 46)) { if (cv.side === "right") b.x = Math.max(16, cv.x - b.w - 16); else b.y = cv.y - 52; }
+        if (inBx(cv, b.x, b.y, b.w, 46)) { if (cv.side === "right") b.x = Math.max(16, cv.x - b.w - 16); else b.y = cv.y - 52; }
+        if (inBx(mb, b.x, b.y, b.w, 46)) b.y = mb.y + mb.h + 10;
         if (ctl && b.x < ctl.x + ctl.w + 8 && ctl.x - 8 < b.x + b.w && b.y + 46 > ctl.y - 6) b.y = ctl.y - 52; };
       // the teeth at the centre: a circle around the hub, roughly the height of the molar on screen
       const tTop = pj(0, 170, 0), tR = Math.max(60, Math.hypot(tTop[0] - hb[0], tTop[1] - hb[1]) * 1.15);
@@ -765,16 +808,17 @@
       // the clicked period's years, in a box beside its circle: right of it, else left, below or above, whichever is first
       // clear of the names, the pop-up, the buttons, the timeline's handle and the page's edges; hidden if none is, or while its circle is hovered (the
       // readout says the same) or under the pop-up
-      const pinB = [], P = s.pin, o0 = so; let pinAt = null;
+      const pinB = [];
+      sos.concat([null, null]).slice(0, 2).forEach((o0, pj2) => { const P = s.pins[pj2]; let pinAt = null; P.g.classList.toggle("cur", !!(o0 && o0.cur));
       if (o0 && o0.top && s.read !== o0 && !inCv(o0.top[0] - o0.r, o0.top[1] - o0.r, 2 * o0.r, 2 * o0.r)) {
         if (P.o !== o0) { P.o = o0; P.t.textContent = range(o0.m.d[0], o0.m.d[1]); P.w = (P.t.getComputedTextLength() || 90) + 20; }
         const q = o0.top, r = o0.r, w = P.w, names = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; });
         pinAt = [[q[0] + r + 12, q[1] - 13, q[0] + r, q[1]], [q[0] - r - 12 - w, q[1] - 13, q[0] - r, q[1]], [q[0] - w / 2, q[1] + r + 10, q[0], q[1] + r], [q[0] - w / 2, q[1] - r - 36, q[0], q[1] - r]]
-          .find(([x, y]) => x > 8 && x + w < s.W - 8 && y > 8 && y + 26 < s.H - 8 && !inCv(x, y, w, 26) && !(ctl && x - 6 < ctl.x + ctl.w && ctl.x < x + w + 6 && y - 6 < ctl.y + ctl.h && ctl.y < y + 32) && !(s.kxy && x - 14 < s.kxy[0] && s.kxy[0] < x + w + 14 && y - 12 < s.kxy[1] && s.kxy[1] < y + 38) && !names.some(n => x - 6 < n[0] + n[2] && n[0] < x + w + 6 && y - 4 < n[1] + n[3] && n[1] < y + 30)) || null; }
+          .find(([x, y]) => x > 8 && x + w < s.W - 8 && y > 8 && y + 26 < s.H - 8 && !inCv(x, y, w, 26) && !(ctl && x - 6 < ctl.x + ctl.w && ctl.x < x + w + 6 && y - 6 < ctl.y + ctl.h && ctl.y < y + 32) && !(s.kxy && x - 14 < s.kxy[0] && s.kxy[0] < x + w + 14 && y - 12 < s.kxy[1] && s.kxy[1] < y + 38) && !names.some(n => x - 6 < n[0] + n[2] && n[0] < x + w + 6 && y - 4 < n[1] + n[3] && n[1] < y + 30) && !pinB.some(b2 => x - 6 < b2.x + b2.w && b2.x < x + w + 6 && y - 4 < b2.y + b2.h && b2.y < y + 30)) || null; }
       if (!pinAt) P.g.classList.remove("on");
       else { const [x, y, ax, ay] = pinAt; pinB.push({ x, y, w: P.w, h: 26 });
         P.bx.setAttribute("x", fx(x)); P.bx.setAttribute("y", fx(y)); P.bx.setAttribute("width", fx(P.w)); P.t.setAttribute("x", fx(x + 10)); P.t.setAttribute("y", fx(y + 17.5));
-        seg(P.ln, [ax, ay, 1, 999], [cl(ax, x, x + P.w), cl(ay, y, y + 26), 1, 999]); P.g.classList.add("on"); }
+        seg(P.ln, [ax, ay, 1, 999], [cl(ax, x, x + P.w), cl(ay, y, y + 26), 1, 999]); P.g.classList.add("on"); } });
       { // shell labels: pick the ray, in screen space, that keeps them clear of every record line and mark; hide any that still collide
         const segs = s.lines.map(L => L._s).filter(Boolean), dts = all.map(o => o.top), cards2 = cards;
         const dseg = (q, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], l2 = vx * vx + vy * vy || 1, u = cl(((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / l2, 0, 1); return Math.hypot(q[0] - a[0] - u * vx, q[1] - a[1] - u * vy); };
@@ -791,7 +835,7 @@
         const L = s.wl, lab = s.waveLab;
         if (L) { if (lab._t !== lab.textContent) { lab._t = lab.textContent; lab._w = lab.getComputedTextLength() || 60; }
           // each name's real extent (its letter-spaced capitals can run past the estimated width), measured once per build
-          const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14])).concat(pinB.map(b => [b.x, b.y, b.w, b.h])).concat(cv ? [[cv.x, cv.y, cv.w, cv.h]] : []);
+          const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14])).concat(pinB.map(b => [b.x, b.y, b.w, b.h])).concat(cv ? [[cv.x, cv.y, cv.w, cv.h]] : []).concat(mb ? [[mb.x, mb.y, mb.w, mb.h]] : []);
           const pick = [[L.nx, L.ny], [-L.nx, -L.ny], [0, 1], [0, -1]].map(([dx, dy]) => {
             const x = L.q[0] + dx * 20, y = L.q[1] + dy * 20 + 4 + (dy > 0.35 ? 6 : 0), anchor = dx > 0.35 ? "start" : dx < -0.35 ? "end" : "middle", x0 = anchor === "start" ? x : anchor === "end" ? x - tw : x - tw / 2;
             return { x, y, anchor, clear: x0 > 4 && x0 + tw < s.W - 4 && y > 16 && y < s.H - 6 && !boxes.some(b => x0 - 4 < b[0] + b[2] && b[0] < x0 + tw + 4 && y - 15 < b[1] + b[3] && b[1] < y + 5) }; }).find(c => c.clear);
@@ -832,6 +876,7 @@
           hard.push([0, s.H - 58, 170, s.H]);   // the year readout
           if (ctl) hard.push([ctl.x, ctl.y, ctl.x + ctl.w, ctl.y + ctl.h]); else hard.push([s.W - 160, s.H - 120, s.W, s.H]);   // Pause and Replay
           if (cv) hard.push([cv.x, cv.y, cv.x + cv.w, cv.y + cv.h]);   // the time period's pop-up, while it is open
+          if (mb) hard.push([mb.x, mb.y, mb.x + mb.w, mb.y + mb.h]);   // the filter menu
           // what a place would cover: 0 when clear; never off the page or over a hard box
           const M = 6, cost = (x, y) => { if (x < 8 || y < 8 || x + w > s.W - 8 || y + h > s.H - 8) return Infinity; const X0 = x - M, Y0 = y - M, X1 = x + w + M, Y1 = y + h + M;
             if (hard.some(q => q[0] < X1 && X0 < q[2] && q[1] < Y1 && Y0 < q[3])) return Infinity;
@@ -899,9 +944,6 @@
               if (dd < best) { best = dd; const age = Math.pow((w0 + u * (w - w0) - R0) / (RMAX - R0), 2) * MAX_AGE; hy = cl(Math.round((NOW - age) / 10) * 10, L.c.segs[0][0], NOW); hc = L.col; } }
             q0 = q; w0 = w; } }); }
       if (hy == null) hud.style.opacity = 0; else { hud.textContent = yr(hy); hud.style.color = hc; hud.style.opacity = 1; }
-      // the time period the reader is hovering, which lights the circles that cover it on every line (in the next frame):
-      // a hovered circle's own years, or the single year under the pointer on a line or at the timeline's knob
-      s.hotP = s.read && !(ring.hover || ringDrag) ? [s.read.m.d[0], s.read.m.d[1]] : hy == null ? null : [hy, hy];
     }
 
     // dragging the timeline's knob: the pointer's ray meets the ring's plane (y = 0); its angle there places the knob and
@@ -915,7 +957,10 @@
     host.addEventListener("pointerdown", e => { if (e.target.closest && e.target.closest(".rd-card,.rd-hit,.rd-grip")) return; dragging = true; px = e.clientX; py = e.clientY; try { host.setPointerCapture(e.pointerId); } catch (_) {} host.classList.add("grab"); lastInput = performance.now(); });
     host.addEventListener("pointermove", e => { const hr = host.getBoundingClientRect(); ptr.x = e.clientX - hr.left; ptr.y = e.clientY - hr.top; ptr.in = true; if (ringDrag) { toRing(e); lastInput = performance.now(); return; }
       if (!dragging) { ring.hover = !!(S && S.kxy) && Math.hypot(ptr.x - S.kxy[0], ptr.y - S.kxy[1]) < 16; return; } const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY; cam.tYaw -= dx * 0.006; cam.tPitch = cl(cam.tPitch + dy * 0.005, -1.2, 1.35); lastInput = performance.now(); });
-    const endDrag = () => { dragging = false; ringDrag = false; host.classList.remove("grab", "ringgrab"); };
+    let down = null;
+    host.addEventListener("pointerdown", e => { down = e.target.closest && e.target.closest(".rd-card,.rd-hit,.rd-grip") ? null : { x: e.clientX, y: e.clientY, t: performance.now() }; }, true);
+    const endDrag = e => { if (e && e.type === "pointerup" && down && selIdx.length && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5 && performance.now() - down.t < 600) clearSel();
+      down = null; dragging = false; ringDrag = false; host.classList.remove("grab", "ringgrab"); };
     host.addEventListener("pointerup", endDrag); host.addEventListener("pointercancel", endDrag); host.addEventListener("pointerleave", () => { ptr.in = false; });
     host.addEventListener("wheel", e => { e.preventDefault(); cam.tDist = cl(cam.tDist * Math.exp(e.deltaY * 0.0011), 760, 3000); lastInput = performance.now(); }, { passive: false });
     host.addEventListener("dblclick", () => { cam.tYaw = HOME.yaw + Math.round((cam.yaw - HOME.yaw) / (Math.PI * 2)) * Math.PI * 2; cam.tPitch = HOME.pitch; cam.tDist = HOME.dist; lastInput = performance.now(); });
@@ -926,7 +971,10 @@
       resize() { const b = S ? S.born : 0, a = S && S.anim; build(a); if (S) S.born = b; },
       play(on) { setPlaying(on); },
       // the clicked period: select({ key, i }) sets it, select(null) lets it go; either way opts.onSelect hears
-      select(q) { setSel(q ? [q.key, q.i] : null); },
+      select(q) { if (!q) clearSel(); else { selKey = q.key; selIdx = [q.i]; cmp = null; setSel([q.key, q.i]); } },
+      // the filter: hide (on = false) or show a record's line, circles, name and what it draws on the molar
+      show(key, on) { if (on) off.delete(key); else off.add(key); if (!on && selKey === key) clearSel(); applyOff(); },
+      hidden() { return [...off]; },
       playing() { return playing; },
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
         return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
@@ -944,5 +992,5 @@
     };
   }
 
-  window.ToothRadial = { mount, R0, RMAX, NOW };
+  window.ToothRadial = { mount, R0, RMAX, NOW, COLS };
 })();

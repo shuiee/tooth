@@ -163,3 +163,31 @@ button{font:inherit;color:inherit}
 .rd-pin rect{fill:var(--card);fill-opacity:.96;stroke:var(--ink);stroke-opacity:.4;stroke-width:1}
 .rd-pin text{fill:var(--ink);font-family:var(--label);font-size:13px}
 .rd-pin line{stroke:var(--ink);stroke-opacity:.5;stroke-width:.8}
+/* the filter: a hidden record's line, circles and name are not drawn */
+.rd3 .rd-off{display:none}
+/* picked periods (one, or two compared): each highlighted alike, white with an ink ring and a brighter glow; of two, the
+   one the molar shows now has the stronger years label */
+.rd3 .rd-mark.sel .rd-core{fill:#fff;stroke:var(--ink);stroke-width:2}
+.rd3 .rd-mark.sel .rd-bokeh{opacity:.6}
+.rd-pin.cur rect{stroke-opacity:1;stroke-width:1.6}
+.rd-pin.cur text{font-weight:600}
+/* comparing: the other records' lines, circles and names fade and grey */
+.rd3 .rd-fade{filter:opacity(.3) saturate(.2)}
+/* the filter menu, top right (js/main.js): a button that opens a list of the records, each with a checkbox in its colour */
+.flt{position:fixed;top:20px;right:28px;z-index:7;font-family:var(--label);width:236px}
+.flt-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;cursor:pointer;box-shadow:0 2px 10px rgba(26,26,24,.06)}
+.flt-btn:hover{border-color:var(--ink-3)}
+.flt-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.flt-chev{width:12px;height:8px;fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s ease}
+.flt.open .flt-chev{transform:rotate(180deg)}
+.flt-list{list-style:none;margin:6px 0 0;padding:6px;background:var(--card);border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 28px rgba(26,26,24,.12)}
+.flt-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--ink);cursor:pointer;user-select:none}
+.flt-row:hover{background:rgba(26,26,24,.05)}
+.flt-row input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.flt-box{flex:none;width:18px;height:18px;border:1.5px solid var(--rule);border-radius:4px;background:#fff;position:relative;transition:background .15s,border-color .15s}
+.flt-row input:checked + .flt-box{background:var(--c);border-color:var(--c)}
+.flt-row input:checked + .flt-box::after{content:"";position:absolute;left:5.5px;top:1.5px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.flt-row input:focus-visible + .flt-box{outline:2px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.flt-chev,.flt-box{transition:none}}
+@media (max-width:760px){.flt{top:12px;right:16px;width:200px}}
+

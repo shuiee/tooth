@@ -4,8 +4,10 @@ Build data/molar-cloud.js: the point cloud of the first molar drawn at the centr
 Source: the team's sculpted lower first molar, mandibular-first-molar.zip (ZBrush OBJ + colour map), from
 shuiee/tooth-untold, source/teeth models/. The steps:
   1. read the mesh and its colour map, and mark enamel (the white crown) against root per vertex;
-  2. orient it: crown up (+y), widest horizontal axis on x, the cement-enamel junction at y = 0
-     (the same steps as tooth-untold's build_models.py, whose parse_obj, enamel_mask and orient are copied here);
+  2. orient it: stood upright first (its long axis, the main axis of its vertices, turned to the vertical, so the
+     roots hang straight under the crown rather than leaning), then crown up (+y), widest horizontal axis on x, the
+     cement-enamel junction at y = 0 (the same steps as tooth-untold's build_models.py, whose parse_obj, enamel_mask
+     and orient are copied here);
   3. sample the surface, denser where it bends most (how sharply the normal turns across each triangle), so the
      cusps, ridges and fissures of the crown carry more points than the smooth root;
   4. order the crown for decay: occlusal caries starts in the fissures and pits and spreads over the chewing surface,
@@ -101,11 +103,22 @@ def orient(V, mask, length_mm, crown_mm):
 # -------------------------------------------------------------------------------------------------------------------
 
 
+def upright(V):
+    """Turn the mesh so its long axis (the main axis of its vertices) is vertical; orient() then puts the crown up."""
+    c = V.mean(0); ev, evec = np.linalg.eigh(np.cov((V - c).T)); a = evec[:, -1]
+    if a[1] < 0: a = -a
+    y = np.array([0.0, 1.0, 0.0]); v = np.cross(a, y); s_, c_ = np.linalg.norm(v), float(np.dot(a, y))
+    if s_ < 1e-9: return V
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]]) / s_
+    Rm = np.eye(3) + s_ * K + (1 - c_) * (K @ K)   # Rodrigues: turns a onto y
+    return (V - c) @ Rm.T + c
+
+
 def main(src):
     txt, tex = read_zip(src)
     V, VT, F, FT = parse_obj(txt)
     mask = enamel_mask(V, VT, F, FT, tex)
-    V = orient(V, mask, LENGTH_MM, CROWN_MM)
+    V = orient(upright(V), mask, LENGTH_MM, CROWN_MM)
     # face normals, areas and vertex normals
     a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
     fn = np.cross(b - a, c - a); area = np.linalg.norm(fn, axis=1) / 2; fn = fn / np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)

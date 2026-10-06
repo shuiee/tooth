@@ -3,7 +3,7 @@
    laid over the diagram at the right of the page (along the bottom on narrow pages), about a quarter of the page.
 
    A template of placeholders, still to be written. Only its header is filled, from the circle clicked:
-     when   "Selected time: 1000 – 1250 CE", the record's name in its colour; Close
+     when   "Selected time: 1000 – 1250 CE", the record's name in its colour; a close button (an X)
      lead   the key datapoint, one sentence (placeholder)
      body   grey slots for a picture, figures and notes, and a line for the source (placeholders)
    To write a record's pop-up, give CONTENT[key] a function of the period clicked that returns { lead, body }: lead is
@@ -57,7 +57,7 @@
       panel.className = "pp"; panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
         "<div class='pp-body'><p class='pp-when pp-in' style='--i:0'><span>Selected time: " + esc(pick.range) + "</span><span class='pp-rec'>" + esc(pick.name) + "</span></p>" +
-        "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>Close</button>" +
+        "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
         "<p class='pp-lead pp-in' style='--i:1'>" + esc(c.lead) + "</p>" + c.body + "</div>";
       panel.querySelector(".pp-x").addEventListener("click", () => opts.onClose && opts.onClose());
       box0.appendChild(panel); live.textContent = pick.name + ", " + pick.range + ". " + c.lead;
