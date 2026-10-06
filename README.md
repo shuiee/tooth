@@ -14,7 +14,7 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Play/Pause** (the icons at the foot of the page) holds the timeline, a click on a circle opens that time period's pop-up (and, on a caries, pathogens, wear or metals circle, shows that period on the molar), a second click on the same line compares the two on the molar, a click on empty space lets them go; the menu at the top right hides or shows records; **Replay** (the curved arrow) runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Play/Pause** (the icons at the foot of the page) holds the timeline, a click on a circle opens that time period's pop-up (and, on a caries, pathogens, wear or metals circle, shows that period on the molar), a second click on the same line compares the two on the molar, a click on empty space lets them go; the menu at the top right hides or shows records; **Replay** (the curved arrow) runs the opening again. **Fast forward** (bottom right) opens the look ahead: the molar divides in two, the repair projected on the right, with the storyboard's text (Play/Pause and Replay work there too); **Rewind** (bottom left) goes back.
 
 ## Structure
 
@@ -22,7 +22,7 @@ Open <http://localhost:8770>. There is no build step and nothing to install. Dra
 index.html            the page
 css/radial.css        theme tokens and the diagram's styles
 css/popup.css         the pop-up's styles and motion
-js/main.js            mounts the diagram; Pause, Replay, resize, the pop-up, the onOpen hook
+js/main.js            mounts the diagram; Pause, Replay, Fast forward and Rewind, resize, the pop-up, the onOpen hook
 js/popup.js           the pop-up for a clicked time period (placeholders for now)
 js/caries-data.js     caries per period, for the molar
 js/wear-data.js       molar wear per period and age, for the molar's height
