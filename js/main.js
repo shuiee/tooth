@@ -3,7 +3,7 @@
    when its name is clicked; while it is null the names are plain text, not links. */
 (function () {
   "use strict";
-  const host = document.getElementById("radial"), again = document.getElementById("again");
+  const host = document.getElementById("radial"), again = document.getElementById("again"), pause = document.getElementById("pause");
   const onOpen = null;   // e.g. key => showRecord(key)
   let radial = null;
 
@@ -12,12 +12,17 @@
     radial = window.ToothRadial.mount(host, {
       animate,
       onOpen,
+      onPlay: on => showPlaying(on),   // the radial pauses itself when a caries point is picked
       padTop: () => document.getElementById("rh").getBoundingClientRect().bottom + 8,   // clear of the running head
       padBottom: () => innerHeight - again.getBoundingClientRect().top + 8,            // and of Replay
     });
   }
 
-  again.addEventListener("click", () => mount(true));
+  // pause and play the timeline (the reading wave, and the caries it plays on the molar)
+  function showPlaying(on) { pause.textContent = on ? "Pause" : "Play"; pause.setAttribute("aria-pressed", on ? "false" : "true"); }
+  pause.addEventListener("click", () => { if (radial) radial.play(!radial.playing()); });
+  again.addEventListener("click", () => { mount(true); showPlaying(true); });
+  window.__radial = () => radial;   // for checking in the console: __radial().state()
   let rz;
   addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => radial && radial.resize(), 150); });
   // wait for Lora, so the names are measured in the right font

@@ -40,7 +40,7 @@ GEOMETRY.
   overlap, and stay inside the page.
 - At the hub, the 3D tooth model in the journal's ink: transparent, rim-lit, finely hatched in horizontal lines,
   turning with the camera. A small dot and slowly turning dashed rings mark the hub.
-- A "reading wave": a ring that sweeps out from today to the oldest record about every 13 seconds, labelled with
+- A "reading wave", the timeline: a ring that sweeps in from the oldest record to today about every 22 seconds (pausable), labelled with
   the year it has reached. Circles swell as it passes them.
 
 LOOK. Light journal paper (#e9e8e4) with a soft radial vignette, ink #1a1a18, greys #55544f and #8a8983, and one

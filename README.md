@@ -1,6 +1,6 @@
 # Radial timeline
 
-A 3D radial timeline of dental evidence: how far back each kind of record reaches. A tooth model sits at the centre; five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
+A 3D radial timeline of dental evidence: how far back each kind of record reaches. A first molar sits at the centre as a point cloud, showing each period's caries as the timeline plays; five lines leave it, one each for caries, pathogens, wear and stress lines, metals in enamel, and artificial interventions. Distance from the tooth is how long ago a year is, and each record is a circle sized by how much was gathered.
 
 **Live page:** <https://shuiee.github.io/tooth/>
 
@@ -14,17 +14,19 @@ The diagram starts from Plate II of *The Tooth Untold* (live prototype: <https:/
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Replay** runs the opening again.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, double-click to reset; **Pause** holds the timeline, a click on a caries circle shows that period on the molar; **Replay** runs the opening again.
 
 ## Structure
 
 ```text
 index.html            the page
 css/radial.css        theme tokens and the diagram's styles
-js/main.js            mounts the diagram; Replay, resize, the onOpen hook
+js/main.js            mounts the diagram; Pause, Replay, resize, the onOpen hook
+js/caries-data.js     caries per period, for the molar
 js/radial.js          the diagram (window.ToothRadial)
 js/radial-data.js     the data (window.RADIAL_DATA), with its sources
-data/tooth-mesh.js    the tooth model at the centre
+data/molar-cloud.js   the molar at the centre, as a point cloud
+tools/build_molar_cloud.py  builds it from the team's sculpted molar
 vendor/three.min.js   three.js r128, for the tooth only
 tools/overlap-audit.js  checks that no text overlaps
 docs/prompts.md       prompts to rebuild or edit the diagram

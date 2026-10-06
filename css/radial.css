@@ -26,6 +26,8 @@ button{font:inherit;color:inherit}
 .btn:hover{background:var(--ink);color:var(--bg)}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 #again{position:fixed;right:28px;bottom:26px;z-index:6}
+#pause{position:fixed;right:28px;bottom:64px;z-index:6;min-width:86px}   /* above Replay, clear of the hint line */
+#again{min-width:86px}
 
 /* ---- the radial (radial.js) */
 #radial{position:fixed;inset:0;z-index:3;background:var(--bg)}
@@ -137,3 +139,7 @@ button{font:inherit;color:inherit}
 .rd-wlab{fill:var(--dentine-ink);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .rd-pulse{fill:var(--c,var(--ink));filter:none}
 .rd-shell{animation:rdDash 14s linear infinite}
+/* the caries line while the timeline is between records: paler, until the wave reaches the next one */
+.rd3 [data-cat].rd-nodata{opacity:.32;filter:saturate(.35);transition:opacity .4s ease,filter .4s ease}
+/* the caries point whose period the molar is showing */
+.rd-mark.now .rd-core{stroke:var(--c);stroke-width:2;stroke-opacity:1}
