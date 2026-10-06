@@ -361,7 +361,10 @@
       play(on) { setPlaying(on); },
       playing() { return playing; },
       state() { return S && GLT ? { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3) } : null; },
-      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove(); },
+      // Replay mounts a fresh diagram: take the molar's canvas and its WebGL context with this one, or the old molar
+      // stays behind as a frozen second tooth
+      destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove();
+        if (GLT) { try { GLT.rd.dispose(); GLT.rd.forceContextLoss(); } catch (_) { /* ignore */ } GLT.tcv.remove(); GLT = null; } },
     };
   }
 
