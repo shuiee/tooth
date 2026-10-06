@@ -12,6 +12,8 @@ python3 -m http.server 8770
 
 Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, and click a circle to open its time period.
 
+The whole prototype is one self-contained file, `index.html`: its code, images and fonts are packed inside it, so it can also be opened directly in a browser. The earlier multi-file version is kept at the git tag `pre-new-prototype`.
+
 ## Credits
 
 Data from the Global History of Health Project (European module); AncientMetagenomeDir (SPAAM community, CC-BY 4.0); Montgomery et al. 2010 and Kamenov et al. 2018; Monaco et al. 2022, Dittmar et al. 2026, Waters-Rist et al. 2013 and the Adult Dental Health Survey 2009. The 3D version is by Ali Qureshi; three.js is MIT-licensed. Sources, the file structure and the working rules are in `CLAUDE.md`.
