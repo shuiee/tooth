@@ -44,7 +44,7 @@
 
   // a period's caries as shares of the crown: any decay on the prototype's expanded scale, then the cavitated and the
   // core shares from the period's own severity mix (see js/caries-data.js)
-  const CR = window.CARIES_RATES || [];
+  const CR = window.CARIES_RATES || [], LR = window.LEH_RATES || [];   // caries and stress lines per period, for the molar
   const frac = r => Math.max(0.03, Math.min(0.86, 0.08 + 0.72 * (r - 51) / (77 - 51)));
   function cariesShares(i) {
     const R = CR[i]; if (!R) return { out: 0, mid: 0, inn: 0 };
@@ -152,6 +152,80 @@
           lift[i] = tgt ? Math.min(1, v + dt * pace[i] / 1.1) : Math.max(0, v - dt * pace[i] / 0.9); moved = true; }
         if (moved) aLift.needsUpdate = true; };
       GLT = { rd, sc, tc, tcv, molar, U, Ytop, Ycej, wearStep, lift };
+      // Stress lines (js/leh-data.js), as a current over the side of the crown rather than grooves cut into it: particles
+      // stream round the crown and gather into two wavy lines. The first reaches round by the period's share of adults
+      // with any line, the second, fainter, by the share with two or more (all the way round = 100%). The band's place,
+      // its waves and the flow are a drawing rule, not data. Each particle is a short streak, brightest at its head.
+      if (window.LEH_RATES) {
+        // the crown's side wall as a radius map, angle round the crown's axis by height, from the cloud's own crown
+        // points (model units: the enamel-root junction at y = 0; the wall runs to about 0.42, the chewing surface above)
+        const Y0 = 0.08, Y1 = 0.40, NA = 96, NY = 8, bins = Array.from({ length: NA * NY }, () => []), wall = [];
+        for (let i = 0; i < n; i++) { if (RK[i] === 65535) continue; const y = P16[3 * i + 1] / 32767 * MC.s; if (y > Y0 - 0.03 && y < Y1 + 0.03) wall.push([P16[3 * i] / 32767 * MC.s, y, P16[3 * i + 2] / 32767 * MC.s]); }
+        const cx = wall.reduce((a, p) => a + p[0], 0) / wall.length, cz = wall.reduce((a, p) => a + p[2], 0) / wall.length;
+        wall.forEach(([x, y, z]) => { const a = Math.floor(((Math.atan2(z - cz, x - cx) / (2 * Math.PI) + 1) % 1) * NA) % NA, b = Math.round(cl((y - Y0) / (Y1 - Y0), 0, 1) * (NY - 1)); bins[b * NA + a].push(Math.hypot(x - cx, z - cz)); });
+        const R = new Float32Array(NA * NY);
+        for (let b = 0; b < NY; b++) {
+          const row = []; for (let a = 0; a < NA; a++) { const v = bins[b * NA + a].sort((p, q) => p - q); row.push(v.length ? v[Math.floor(v.length * 0.7)] : null); }
+          const got = row.map((v, a) => v == null ? null : a).filter(a => a != null);   // gaps: from the nearest bins either side, round the circle
+          if (!got.length) { R.set(b ? R.subarray((b - 1) * NA, b * NA) : new Float32Array(NA).fill(0.6), b * NA); continue; }
+          for (let a = 0; a < NA; a++) if (row[a] == null) { const L0 = got.reduce((m, g) => ((a - g + NA) % NA) < ((a - m + NA) % NA) ? g : m, got[0]), R0b = got.reduce((m, g) => ((g - a + NA) % NA) < ((m - a + NA) % NA) ? g : m, got[0]);
+            const dl = (a - L0 + NA) % NA, dr = (R0b - a + NA) % NA; row[a] = (row[L0] * dr + row[R0b] * dl) / ((dl + dr) || 1); }
+          for (let pass = 0; pass < 2; pass++) { const c = row.slice(); for (let a = 0; a < NA; a++) row[a] = (c[(a + NA - 1) % NA] + 2 * c[a] + c[(a + 1) % NA]) / 4; }
+          R.set(row, b * NA);
+        }
+        const rho = (s, h) => { const fa = (((s % 1) + 1) % 1) * NA, a0 = Math.floor(fa) % NA, a1 = (a0 + 1) % NA, ta = fa - Math.floor(fa), fb = cl(h, 0, 1) * (NY - 1), b0 = Math.floor(fb), b1 = Math.min(NY - 1, b0 + 1), tb = fb - b0;
+          return (R[b0 * NA + a0] * (1 - ta) + R[b0 * NA + a1] * ta) * (1 - tb) + (R[b1 * NA + a0] * (1 - ta) + R[b1 * NA + a1] * ta) * tb; };
+        // the particles: lane 0 the line for any stress line, lane 1 for two or more; about half sit tight on their line,
+        // the rest drift loosely round it, a haze; each travels round the crown, seen only short of its lane's reach
+        const NL = [4400, 2400], NP = NL[0] + NL[1], ps = new Float32Array(NP), ph = new Float32Array(NP), po = new Float32Array(NP), pv = new Float32Array(NP), pq = new Float32Array(NP), pl = new Uint8Array(NP);
+        for (let i = 0; i < NP; i++) { const lane = i < NL[0] ? 0 : 1, tight = rnd() < 0.5; pl[i] = lane; ps[i] = rnd(); po[i] = (rnd() - 0.5) * (tight ? 0.035 : 0.62) * (lane ? 0.7 : 1); ph[i] = 0.5; pv[i] = 0.022 + rnd() * 0.022; pq[i] = rnd() * 6.283; }
+        const MID = [0.64, 0.3], line = (lane, s, t) => MID[lane] + 0.075 * Math.sin(6.2832 * 3 * s + 1.7 * lane + 0.22 * t) + 0.035 * Math.sin(6.2832 * 7 * s + 0.6 + 2.1 * lane - 0.31 * t) + 0.018 * Math.sin(6.2832 * 13 * s + 4.1 + 0.4 * t);
+        const vpos = new Float32Array(NP * 6), vnrm = new Float32Array(NP * 6), valp = new Float32Array(NP * 2), vlan = new Float32Array(NP * 2);
+        for (let i = 0; i < NP; i++) { vlan[2 * i] = vlan[2 * i + 1] = pl[i]; ph[i] = line(pl[i], ps[i], 0) + po[i]; }
+        const sg = new TH.BufferGeometry(); sg.setAttribute("position", new TH.BufferAttribute(vpos, 3)); sg.setAttribute("aN", new TH.BufferAttribute(vnrm, 3));
+        sg.setAttribute("aA", new TH.BufferAttribute(valp, 1)); sg.setAttribute("aLane", new TH.BufferAttribute(vlan, 1));
+        const UL = { uShow: { value: 0 }, c0: { value: new TH.Color(COLS.wear) }, c1: { value: new TH.Color("#0B5E4F") } };
+        const streaks = new TH.LineSegments(sg, new TH.ShaderMaterial({ uniforms: UL, transparent: true, depthWrite: false,
+          vertexShader: "attribute vec3 aN; attribute float aA, aLane; uniform float uShow; uniform vec3 c0, c1; varying vec3 vC; varying float vA;" +
+            " void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float face = dot(normalize(normalMatrix * aN), normalize(-mv.xyz));" +
+            " vC = mix(c0, c1, aLane); vA = aA * uShow * mix(0.16, 1.0, smoothstep(-0.15, 0.35, face)); gl_Position = projectionMatrix * mv; }",
+          fragmentShader: "varying vec3 vC; varying float vA; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(vC, vA); }" }));
+        // and a dot at each streak's head (lines are a single pixel wide in WebGL): the same buffers, read every other vertex
+        const ib = (arr, w) => new TH.InterleavedBuffer(arr, w), bPos = ib(vpos, 6), bNrm = ib(vnrm, 6), bAlp = ib(valp, 2), bLan = ib(vlan, 2), hg = new TH.BufferGeometry();
+        hg.setAttribute("position", new TH.InterleavedBufferAttribute(bPos, 3, 0)); hg.setAttribute("aN", new TH.InterleavedBufferAttribute(bNrm, 3, 0));
+        hg.setAttribute("aA", new TH.InterleavedBufferAttribute(bAlp, 1, 0)); hg.setAttribute("aLane", new TH.InterleavedBufferAttribute(bLan, 1, 0));
+        UL.uPx = { value: Math.min(2, devicePixelRatio || 1) };
+        const heads = new TH.Points(hg, new TH.ShaderMaterial({ uniforms: UL, transparent: true, depthWrite: false,
+          vertexShader: "attribute vec3 aN; attribute float aA, aLane; uniform float uShow, uPx; uniform vec3 c0, c1; varying vec3 vC; varying float vA;" +
+            " void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float face = dot(normalize(normalMatrix * aN), normalize(-mv.xyz));" +
+            " vC = mix(c0, c1, aLane); vA = aA * uShow * mix(0.12, 1.0, smoothstep(-0.15, 0.35, face)); gl_PointSize = uPx * (aLane > 0.5 ? 1.3 : 1.65) * 1480.0 / max(200.0, -mv.z); gl_Position = projectionMatrix * mv; }",
+          fragmentShader: "varying vec3 vC; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25 || vA < 0.01) discard; gl_FragColor = vec4(vC, vA * (1.0 - smoothstep(0.1, 0.25, d))); }" }));
+        molar.add(streaks); molar.add(heads);
+        // each lane's reach round the crown (eased); the angle the lines start from; the band's top, which stays a little
+        // under the wear plane (U.uWearY), so on a worn crown the band closes down onto the wall that is left
+        const ext = [0, 0], A0 = 0.6; let Yt = Y1;
+        const place = (s, h, out, o) => { const y = Y0 + cl(h, 0, 1) * (Yt - Y0), r = rho(s, (y - Y0) / (Y1 - Y0)) * 1.02, th = A0 + 6.2832 * s, c = Math.cos(th), sn = Math.sin(th);
+          out[o] = (cx + r * c) * k; out[o + 1] = (y - yMid) * k; out[o + 2] = (cz + r * sn) * k; return [c, sn]; };
+        let tt = 0;
+        const advect = dt => { tt += dt; for (let i = 0; i < NP; i++) {
+          ps[i] = (ps[i] + pv[i] * dt) % 1;
+          const tgt = line(pl[i], ps[i], tt) + po[i], turb = 0.07 * Math.sin(6.2832 * (5 * ps[i] + 9 * ph[i]) + 0.8 * tt + pq[i]);
+          ph[i] += (tgt - ph[i]) * Math.min(1, dt * 1.6) + turb * dt; } };
+        if (REDUCED) for (let j = 0; j < 240; j++) advect(1 / 30);   // with reduced motion: settled once, then still
+        GLT.leh = { update(dt, era, show, pulse) {
+          const rate = era >= 0 && window.LEH_RATES[era], tgt = rate ? [rate.any / 100, rate.multi / 100] : [0, 0];
+          for (let l = 0; l < 2; l++) ext[l] += (tgt[l] - ext[l]) * (REDUCED ? 1 : Math.min(1, dt * 2.5));
+          if (!REDUCED && dt > 0) advect(dt);
+          Yt = cl(U.uWearY.value / k + yMid - 0.03, Y0 + 0.1, Y1);
+          UL.uShow.value = show * (1 + 0.5 * pulse);
+          for (let i = 0; i < NP; i++) {
+            const e = ext[pl[i]], s = ps[i], tw = Math.min(0.05, e * 0.3), a = e < 0.002 || s > e ? 0 : Math.min(1, s / tw) * Math.min(1, (e - s) / tw), len = 0.007 + 0.009 * ((i * 0.618) % 1);
+            const n0 = place(s, ph[i], vpos, 6 * i), n1 = place(s - len, ph[i] - (line(pl[i], s, tt) - line(pl[i], s - len, tt)), vpos, 6 * i + 3);
+            vnrm[6 * i] = n0[0]; vnrm[6 * i + 2] = n0[1]; vnrm[6 * i + 3] = n1[0]; vnrm[6 * i + 5] = n1[1];
+            valp[2 * i] = a * (pl[i] ? 0.7 : 1); valp[2 * i + 1] = 0; }
+          sg.attributes.position.needsUpdate = sg.attributes.aN.needsUpdate = sg.attributes.aA.needsUpdate = true; bPos.needsUpdate = bNrm.needsUpdate = bAlp.needsUpdate = true; },
+          reach() { return ext.map(v => +v.toFixed(3)); } };
+      }
     } catch (e) { GLT = null; }
 
     function build(animate) {
@@ -256,6 +330,8 @@
         const plane = s.wear.share > 0 ? GLT.Ycej + (GLT.Ytop - GLT.Ycej) * (1 - s.wear.share) : GLT.Ytop + 2;
         U2.uWearY.value += (plane - U2.uWearY.value) * (REDUCED ? 1 : Math.min(1, dt * 2.2)); GLT.wearStep(plane, REDUCED ? 99 : dt);
         U2.uOut.value += (s.car.out - U2.uOut.value) * (REDUCED ? 1 : ku); U2.uMid.value += (s.car.mid - U2.uMid.value) * (REDUCED ? 1 : ku); U2.uInn.value += (s.car.inn - U2.uInn.value) * (REDUCED ? 1 : ku);
+        // the stress lines follow the same period as the caries, and show once the molar has mostly settled
+        if (GLT.leh) GLT.leh.update(dt, s.car.era == null ? -1 : s.car.era, REDUCED || !s.anim ? 1 : cl((t - 2.4) / 1, 0, 1), U2.uPulse.value);
         GLT.tcv.style.opacity = appear; rd.render(GLT.sc, tc); }
       // sky
       const ctx = sky.getContext("2d"); ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0); ctx.clearRect(0, 0, s.W, s.H);
@@ -405,9 +481,14 @@
       // (above), and moving a hovered node can swallow the browser's mouseleave, leaving its tooltip up and the rest dimmed
       if (s.read && s.read.byPtr && (!ptr.in || !s.read.top || Math.hypot(ptr.x - s.read.top[0], ptr.y - s.read.top[1]) > s.read.r + 6)) s.read.off();
       const o = s.read || s.pin;
-      if (o && o.top) { const left = o.top[0] + 200 > s.W, x = left ? o.top[0] - o.r - 14 : o.top[0] + o.r + 14, y = o.top[1] - o.r - 10;
+      if (o && o.top) {
+        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "")
+          + (o.c.key === "wear" && LR[o.mi] ? " · " + LR[o.mi].any.toFixed(1) + "% with a stress line" : "");
+        // the side with room for the text, measured (the caries and wear readouts run long); if neither side has room,
+        // the right, pulled back inside the page
+        const tw = Math.max(s.rYr.getComputedTextLength(), s.rCt.getComputedTextLength()) + 22, room = s.W - 8, xr = o.top[0] + o.r + 14, xl = o.top[0] - o.r - 14;
+        const left = xr + tw > room && xl - tw >= 8, x = left ? xl : Math.min(xr, room - tw), y = o.top[1] - o.r - 10;
         s.rLine.setAttribute("x1", fx(o.top[0] + (left ? -o.r : o.r))); s.rLine.setAttribute("y1", fx(o.top[1])); s.rLine.setAttribute("x2", fx(x)); s.rLine.setAttribute("y2", fx(y));
-        s.rYr.textContent = range(o.m.d[0], o.m.d[1]); s.rCt.textContent = amount(o.c, o.m.d) + (o.c.key === "caries" && CR[o.mi] ? " · " + CR[o.mi].std.toFixed(1) + "% with caries" : "") + (o.c.key === "wear" && wearOf(o.mi) != null ? " · wear to Smith stage " + wearOf(o.mi).toFixed(1) : "");
         [[s.rYr, 0], [s.rCt, 17]].forEach(([e, d]) => { e.setAttribute("x", fx(x + (left ? -4 : 4))); e.setAttribute("y", fx(y + d)); e.setAttribute("text-anchor", left ? "end" : "start"); });
         { const b1 = s.rYr.getBBox(), b2 = s.rCt.getBBox(), x0 = Math.min(b1.x, b2.x) - 9, y0 = b1.y - 6, x1 = Math.max(b1.x + b1.width, b2.x + b2.width) + 9, y1 = b2.y + b2.height + 6; s.rBg.setAttribute("x", fx(x0)); s.rBg.setAttribute("y", fx(y0)); s.rBg.setAttribute("width", fx(x1 - x0)); s.rBg.setAttribute("height", fx(y1 - y0)); }
         s.gRead.classList.add("on"); } else s.gRead.classList.remove("on");
@@ -449,7 +530,7 @@
       playing() { return playing; },
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
         return { era: S.car.era, period: CR[S.car.era] ? CR[S.car.era].p : null, share: +GLT.U.uOut.value.toFixed(3), target: +S.car.out.toFixed(3),
-          wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up } }; },
+          wear: { era: S.wear.era, stage: wearOf(S.wear.era), lost: +S.wear.share.toFixed(3), plane: +GLT.U.uWearY.value.toFixed(1), top: +GLT.Ytop.toFixed(1), lifted: up }, leh: GLT.leh ? GLT.leh.reach() : null }; },
       // Replay mounts a fresh diagram: take the molar's canvas and its WebGL context with this one, or the old molar
       // stays behind as a frozen second tooth
       destroy() { cancelAnimationFrame(raf); if (svg) svg.remove(); svg = null; S = null; hud.remove(); sky.remove();
