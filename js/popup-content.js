@@ -19,7 +19,12 @@
 
    Metals (js/metals-data.js): the main chart, the prototype's radial chart (its Plate 4.A), one petal for the period
    clicked (bloomChart; two compared, one petal morphing between them in step with the molar); the supporting chart, its
-   line graph (Plate 4.B), drawn for the period clicked alone (lineChart). No events yet, so two slides. */
+   line graph (Plate 4.B), drawn for the period clicked alone (lineChart). No events yet, so two slides. 
+   Wear and LEH (js/wear-data.js, js/leh-data.js): two cards for one period (popup.js, SUBS). Molar wear: the prototype's
+   wear landscape with the period clicked raised (wearChart), its peaks opening Smith's stage diagram (smithHTML), and
+   the team's milling events. Stress lines, on the lower canine: the share with a line (lehBar), by age with each
+   cemetery's slope (lehAge), by severity with each cemetery's share (lehSev), and the team's events on childhood
+   stress. */
 (function () {
   "use strict";
   const P = window.ToothPopup; if (!P) return;
@@ -34,7 +39,8 @@
   const charts = draws => ({ body: k => "<div class='pp-chart' data-k='" + k + "'></div>",
     mount: panel => panel.querySelectorAll(".pp-chart[data-k]").forEach(el => { const f = draws[+el.dataset.k]; if (!f) return;
       const go = () => { const w = Math.floor(el.clientWidth); if (w > 40 && !(Math.abs(w - (el._w || 0)) < 6)) { el._w = w; const d = f(w); el.innerHTML = d.html || d; if (d.wire) d.wire(el); } };
-      if (window.ResizeObserver) new ResizeObserver(go).observe(el); requestAnimationFrame(go); }) });
+      // redrawn on the next frame, not inside the observer's callback, where the new drawing's height would be a resize of its own
+      if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(go)).observe(el); requestAnimationFrame(go); }) });
   const T = (x, y, s, o) => { o = o || {}; return "<text x='" + fx(x) + "' y='" + fx(y) + "'" + (o.a ? " text-anchor='" + o.a + "'" : "") + " font-size='" + (o.s || 11) + "' fill='" + (o.c || "#55544f") + "'" + (o.w ? " font-weight='" + o.w + "'" : "") + (o.i ? " font-style='italic'" : "") + ">" + esc(s) + "</text>"; };
   const L = (x1, y1, x2, y2, c, w, dash) => "<line x1='" + fx(x1) + "' y1='" + fx(y1) + "' x2='" + fx(x2) + "' y2='" + fx(y2) + "' stroke='" + c + "' stroke-width='" + (w || 1) + "'" + (dash ? " stroke-dasharray='" + dash + "'" : "") + "/>";
   const low = p => p.charAt(0).toLowerCase() + p.slice(1);
@@ -718,5 +724,445 @@
     const slides = [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }];
     if (evs.length) slides.push({ html: metLead3(evs, ps), body: metEventsHTML(evs) });
     return { slides, mount: ch.mount, source: metSource(ps) };
+  };
+  // ---- wear (the Wear and LEH line's first card)
+  const WD = window.WEAR_DATA, WE = window.WEAR_EVENTS || { events: [] };
+  // colours mixed in Lab, as the prototype's d3.interpolateLab
+  const toLab = h => { const c = [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    const x = (c[0] * 0.4124 + c[1] * 0.3576 + c[2] * 0.1805) / 0.95047, y = c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722, z = (c[0] * 0.0193 + c[1] * 0.1192 + c[2] * 0.9505) / 1.08883;
+    const f = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))]; };
+  const fromLab = ([l, a, b]) => { const fy = (l + 16) / 116, fa = a / 500 + fy, fb = fy - b / 200, g = t => t * t * t > 0.008856 ? t * t * t : (t - 16 / 116) / 7.787;
+    const X = g(fa) * 0.95047, Y = g(fy), Z = g(fb) * 1.08883;
+    return "#" + [X * 3.2406 - Y * 1.5372 - Z * 0.4986, -X * 0.9689 + Y * 1.8758 + Z * 0.0415, X * 0.0557 - Y * 0.2040 + Z * 1.0570]
+      .map(v => v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055).map(v => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0")).join(""); };
+  const labMix = (c1, c2, t) => { const a = toLab(c1), b = toLab(c2); return fromLab(a.map((v, k) => v + (b[k] - v) * t)); };
+  // as on the prototype's landscape: each age band's colour, blue at 18–24 to orange at 60+, greyed towards little wear
+  const AGE0 = "#2f66d0", AGE1 = "#e8841f";
+  const ageCol = j => labMix(AGE0, AGE1, j / 7);
+  const wearCol = (v, j) => labMix("#cfcdc6", ageCol(j), 0.3 + 0.7 * Math.max(0, Math.min(1, (v - 2) / 3.9)));
+  // the prototype's crown: a lower first molar's chewing surface as a height field over its footprint (u, w from -1 to 1),
+  // a low dome, five cusps, the central fissure and its grooves, and a light crenellation (a drawing, not data)
+  const CUSPS = [[-0.5, 0.42, 1], [0.06, 0.5, 0.95], [0.58, 0.22, 0.8], [-0.42, -0.42, 0.96], [0.36, -0.44, 0.9]];
+  const rip = (x, z) => 0.5 * Math.sin(x * 9.1 + z * 3.7) + 0.5 * Math.sin(x * 4.3 - z * 7.9);
+  function crown(u, w, off) {
+    const r = Math.cbrt(Math.abs(u / 0.98) ** 3 + Math.abs(w / 0.88) ** 3); if (r >= 1) return 0;
+    let h = 0.42 * Math.sqrt(1 - r);
+    for (const c of CUSPS) h += 0.44 * c[2] * Math.exp(-((u - c[0]) ** 2 + (w - c[1]) ** 2) / (2 * 0.25 * 0.25));
+    h -= 0.17 * Math.exp(-(w * w) / (2 * 0.055 * 0.055)) * (1 - 0.5 * Math.abs(u));
+    h -= 0.11 * Math.exp(-((u + 0.2) ** 2) / (2 * 0.05 * 0.05)) * Math.exp(-(w * w) / 0.45);
+    h -= 0.09 * Math.exp(-((u - 0.34) ** 2) / (2 * 0.05 * 0.05)) * Math.exp(-(w * w) / 0.45);
+    h += 0.07 * rip(u * 0.45 + off[0], w * 0.45 + off[1]);
+    return Math.max(0, h * Math.min(1, (1 - r) / 0.14));
+  }
+  // each cell's mesh, worked out once: six lines each way across the cell, each 31 points of [along the periods, along
+  // the ages, height 0 to 1], and the crown's top
+  let MESH = null;
+  function meshes() {
+    if (MESH || !WD) return MESH; MESH = {};
+    const fp = 0.43, N = 6, S = 30, G = 30;
+    WD.periods.forEach((P, i) => WD.ages.forEach((a, j) => { if (!P.cells[a]) return;
+      const off = [i * 0.37 + j * 0.11, j * 0.53 - i * 0.07]; let max = 0, top = [0.5, 0.5];
+      for (let b = 0; b < G; b++) for (let c = 0; c < G; c++) { const h = crown(c / (G - 1) * 2 - 1, b / (G - 1) * 2 - 1, off); if (h > max) { max = h; top = [0.5 + (b / (G - 1) * 2 - 1) * fp, 0.5 + (c / (G - 1) * 2 - 1) * fp]; } }
+      const hAt = (su, sv) => crown((su - 0.5) / fp, (sv - 0.5) / fp, off) / max, lines = [];
+      for (let k = 0; k <= N; k++) { const q = k / N, lu = [], lv = [];
+        for (let m = 0; m <= S; m++) { const r = m / S; lu.push([q, r, hAt(r, q)]); lv.push([r, q, hAt(q, r)]); }
+        lines.push(lu, lv); }
+      MESH[i + ":" + j] = { lines, top }; }));
+    return MESH;
+  }
+  // a convex hull (Andrew's monotone chain), for the light fill over each crown's silhouette
+  function hull(pts) {
+    if (pts.length < 3) return null; const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = []; p.forEach(q => { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); });
+    for (let k = p.length - 1; k >= 0; k--) { const q = p[k]; while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  const stageTxt = v => v.toFixed(1);
+
+  // The main chart: the prototype's wear landscape (its Fig. 3.2), mean molar wear (Smith 1984 stage, 1 unworn to 8) by
+  // period and age at death on isometric axes, each cell a peak shaped like a molar's crown, as tall as its stage above
+  // 1. The period clicked is drawn at full height and colour; the other periods flatter and fainter, their stages still
+  // shown, dimmer. As the card opens, the clicked period's peaks rise one by one from the youngest age to the oldest
+  // (two compared: both rows together). Clicking a peak picks it, up to two (a third replaces the older), and opens the
+  // Smith diagram under the chart with the stages its mean falls between; a click anywhere else lets them go.
+  function wearChart(sel, st) {
+    const M = meshes(), P = WD.periods, A = WD.ages, nI = P.length, nJ = A.length, cos = Math.cos(Math.PI / 6);
+    return W => {
+      const G = "#8a8983";
+      // the margins, no wider than the text needs: on the left, room for each period's name where it sits (each row's
+      // further right, down the edge); on the right, room for the last age, set out from the edge. Both move with the
+      // cells' size, and that with them, so they are settled in a few rounds
+      const vOf = c => Math.max(0.5, Math.max(15, 15 + (20 - c) * 1.1) / c), tl = tw(A[nJ - 1], 11);
+      let labL = Math.ceil(Math.max(...P.map(q => tw(title(q.p), 11.5) * 1.06))) + 12, padR = Math.ceil(tl / 2) + 22, c = 0;
+      for (let k = 0; k < 4; k++) { c = (W - labL - padR) / (cos * (nI + nJ)); const v = vOf(c), nl = Math.hypot(cos, v), nx = v / nl, ny = cos / nl;
+        labL = Math.ceil(Math.max(...P.map((q, i) => tw(title(q.p), 11.5) * (sel.includes(i) ? 1.1 : 1.04) + 10 - cos * (i + 0.5) * c))) + 2;
+        padR = Math.ceil(Math.max(8, nx * Math.max(14, (tl / 2 + 2) * nx + 8 * ny + 3) + 0.55 * tl + 4 - 0.5 * cos * c)); }
+      c = (W - labL - padR) / (cos * (nI + nJ));
+      const hs = c * 0.42, hsDim = hs * 0.26;
+      const vmax = Math.max(...P.map(q => Math.max(...A.map(a => q.cells[a] ? q.cells[a][0] : 0))));
+      // isometric where the cells are big enough; in a narrow box the floor tilts steeper (each step down a row or along the
+      // ages drops further), so every label still has a line to itself
+      const v = vOf(c), ox = labL, oy = 24 + (vmax - 1) * hs + v * nJ * c, X = (i, j) => ox + (cos * i + cos * j) * c, Y = (i, j) => oy + (v * i - v * j) * c;
+      const on = i => sel.includes(i), hOf = (i, v, k) => (v - 1) * (on(i) ? hs : hsDim) * (k == null ? 1 : k);
+      // a cell's mesh and fill at a share k of its height
+      const draw = (i, j, k) => { const v = P[i].cells[A[j]][0], h = hOf(i, v, k), m = M[i + ":" + j], pts = [];
+        const d = m.lines.map(l => "M" + l.map(([gi, gj, z]) => { const x = X(i + gi, j + gj), y = Y(i + gi, j + gj) - z * h; if (z > 0.004) pts.push([x, y]); return fx(x) + "," + fx(y); }).join("L")).join("");
+        const hl = hull(pts); return { d, b: hl ? "M" + hl.map(q => fx(q[0]) + "," + fx(q[1])).join("L") + "Z" : "" }; };
+      const topAt = (i, j, k) => { const m = M[i + ":" + j], v = P[i].cells[A[j]][0]; return [X(i + m.top[0], j + m.top[1]), Y(i + m.top[0], j + m.top[1]) - hOf(i, v, k) - 6]; };
+      // the text placed so far, so nothing is set over anything else
+      const boxes = [], boxOf = (x, y, t, px, an) => { const w = tw(t, px) * 1.1 + 3, x0 = an === "end" ? x - w : an === "middle" ? x - w / 2 : x; return [x0, y - px * 1.02 - 1, x0 + w, y + px * 0.34 + 1]; };
+      const hits = b => b[1] < 0 || b[0] < 0 || b[2] > W || boxes.some(q => q[0] < b[2] && b[0] < q[2] && q[1] < b[3] && b[1] < q[3]);
+      let s = "<path d='M" + [[0, 0], [0, nJ], [nI, nJ], [nI, 0]].map(q => fx(X(q[0], q[1])) + "," + fx(Y(q[0], q[1]))).join("L") + "Z' fill='rgba(26,26,24,.025)' stroke='#1a1a18' stroke-width='1'/>";
+      // every period named down the left edge, at least a line apart: the one clicked in ink, the others dimmer
+      let py = -1e9;
+      P.forEach((q, i) => { const t = title(q.p), x = X(i + 0.5, 0) - 8, y = Math.max(Y(i + 0.5, 0) + 4, py + 13.5); py = y; boxes.push(boxOf(x, y, t, 11.5, "end"));
+        s += "<text x='" + fx(x) + "' y='" + fx(y) + "' text-anchor='end' font-size='11.5' fill='" + (on(i) ? "#1a1a18" : "#8a8983") + "'" + (on(i) ? " font-weight='600'" : "") + ">" + esc(t) + "</text>"; });
+      // the ages under the front-right edge, each centred on a line parallel to it (every other where the cells are too
+      // small for all eight to stand apart); the axis's name beyond them, centred on the edge
+      const nl = Math.hypot(cos, v), nx = v / nl, ny = cos / nl, gapA = 14, aw = Math.max(...A.map(a => tw(a, 11))) + 4;
+      const stepA = [1, 2, 3, 4].find(k => k * v * c >= 15 || k * cos * c >= aw) || 4;
+      let bottom = Y(nI, 0) + 6;
+      // both ends shown, the rest a step apart, each set out far enough that its own width clears the edge
+      A.forEach((a, j) => { const last = nJ - 1; if ((j % stepA && j !== last) || (j !== last && j && last - j < stepA)) return;
+        const d = Math.max(gapA, (tw(a, 11) / 2 + 2) * nx + 8 * ny + 3), x = X(nI, j + 0.5) + nx * d, y = Y(nI, j + 0.5) + ny * d + 4, b = boxOf(x, y, a, 11, "middle"); boxes.push(b); bottom = Math.max(bottom, b[3]);
+        s += T(x, y, a, { a: "middle", s: 11, c: ageCol(j) }); });
+      // the axis's name out from the middle of the edge, just beyond the ages: the nearest spot clear of them (in a box
+      // too narrow to have one, under them)
+      { const t = "Age at Death", half = tw(t, 11) * 0.55 + 2, at = d => [Math.max(half, Math.min(W - half, X(nI, nJ / 2) + nx * d)), Y(nI, nJ / 2) + ny * d + 4];
+        let d = Math.max(gapA + 6, half * nx + 12 * ny + 4); while (d < 120 && hits(boxOf(...at(d), t, 11, "middle"))) d += 2;
+        const [x, y] = d < 120 ? at(d) : [at(0)[0], bottom + 13], b = boxOf(x, y, t, 11, "middle"); boxes.push(b); bottom = Math.max(bottom, b[3]); s += T(x, y, t, { a: "middle", s: 11, c: G, i: true }); }
+      const H = bottom + 6;
+      // every peak's stage: the clicked period's on its peak, in ink; the others dimmer, on their flatter peaks, or where
+      // that would meet other text, elsewhere in their own cell
+      const spots = [], fv = c < 12 ? 10.5 : 11.5;   // the clicked period's stages a size smaller where the cells are smallest
+      sel.forEach(i => A.forEach((a, j) => { if (!P[i].cells[a]) return; const [x, y] = topAt(i, j, 1), t = stageTxt(P[i].cells[a][0]); boxes.push(boxOf(x, y, t, fv, "middle")); spots.push({ i, j, x, y, t, on: true }); }));
+      for (let i = nI - 1; i >= 0; i--) for (let j = 0; j < nJ; j++) { if (on(i) || !P[i].cells[A[j]]) continue; const t = stageTxt(P[i].cells[A[j]][0]), h = hOf(i, P[i].cells[A[j]][0], 1);
+        // over the cell's middle, raised by its (low) peak; else a little above or below that; else elsewhere on its floor;
+        // else all of these a size smaller, then smaller again
+        const cx = X(i + 0.5, j + 0.5), cy = Y(i + 0.5, j + 0.5), cands = [[cx, cy - h + 2], [cx, cy - h - 7], [cx, cy + 9]]
+          .concat([[0.86, 0.5], [0.5, 0.9], [0.5, 0.1], [0.14, 0.5], [0.86, 0.85], [0.86, 0.15], [0.14, 0.85], [0.14, 0.15]].map(([gi, gj]) => [X(i + gi, j + gj), Y(i + gi, j + gj) + 3.5]))
+          .concat([0.3, 0.7].flatMap(gi => [0.3, 0.7].map(gj => [X(i + gi, j + gj), Y(i + gi, j + gj) + 3.5])), [-0.3, 0.3].map(d => [cx + d * cos * c, cy - h - 2]), [[cx, cy - h - 15], [cx, cy + 18], [cx, cy - h - 26], [cx - 0.9 * cos * c, cy - h - 10], [cx + 0.9 * cos * c, cy - h - 10]]);
+        let px = 9.5, at = cands.find(([x, y]) => !hits(boxOf(x, y, t, 9.5, "middle")));
+        if (!at) { px = 8.5; at = cands.find(([x, y]) => !hits(boxOf(x, y, t, 8.5, "middle"))); }
+        if (!at) { px = 7.5; at = cands.find(([x, y]) => !hits(boxOf(x, y, t, 7.5, "middle"))); }
+        if (!at) { px = 7.5; const ov = b => boxes.reduce((n, q) => n + Math.max(0, Math.min(q[2], b[2]) - Math.max(q[0], b[0])) * Math.max(0, Math.min(q[3], b[3]) - Math.max(q[1], b[1])), 0);
+          at = cands.map(q => [q, ov(boxOf(q[0], q[1], t, 7.5, "middle"))]).sort((a, b) => a[1] - b[1])[0][0]; }   // no spot free: the one that meets the least
+        boxes.push(boxOf(at[0], at[1], t, px, "middle")); spots.push({ i, j, x: at[0], y: at[1], t, on: false, px }); }
+      let peaks = "", labs = "";
+      for (let i = 0; i < nI; i++) for (let j = nJ - 1; j >= 0; j--) { const cell = P[i].cells[A[j]]; if (!cell) continue;
+        const k0 = on(i) && !st.risen ? 0 : 1, g = draw(i, j, k0), col = wearCol(cell[0], j);
+        peaks += "<g class='wp-peak" + (on(i) ? " on" : "") + "' data-i='" + i + "' data-j='" + j + "' opacity='" + (on(i) ? 1 : 0.42) + "'><path class='wp-body' d='" + g.b + "' fill='" + col + "'/><path class='wp-mesh' d='" + g.d + "' stroke='" + col + "'/></g>"; }
+      spots.forEach(q => { labs += q.on ? "<text class='wp-v on' data-i='" + q.i + "' data-j='" + q.j + "' x='" + fx(q.x) + "' y='" + fx(q.y) + "' text-anchor='middle' font-size='" + fv + "' font-weight='600' fill='#1a1a18'" + (st.risen ? "" : " opacity='0'") + ">" + q.t + "</text>"
+        : "<text class='wp-v' data-i='" + q.i + "' data-j='" + q.j + "' x='" + fx(q.x) + "' y='" + fx(q.y) + "' text-anchor='middle' font-size='" + q.px + "' fill='#8a8983'>" + q.t + "</text>"; });
+      const html = "<div class='wp'>" + svg(W, H, s + "<g class='wp-peaks'>" + peaks + "</g><g class='wp-labs'>" + labs + "</g>", "Mean molar wear by period and age at death, " + sel.map(i => P[i].p).join(" and ") + " picked out", "wp-svg") +
+        "<div class='wp-smith' aria-live='polite'></div></div>";
+
+      const wire = el => {
+        const sv = el.querySelector(".wp-svg"), box = el.querySelector(".wp-smith"), cells = {};
+        sv.querySelectorAll(".wp-peak").forEach(g => { cells[g.dataset.i + ":" + g.dataset.j] = { g, body: g.querySelector(".wp-body"), mesh: g.querySelector(".wp-mesh") }; });
+        sv.querySelectorAll(".wp-v").forEach(t => { const c = cells[t.dataset.i + ":" + t.dataset.j]; if (c) c.t = t; });
+        // the picks: each peak's look, and the Smith diagram under the chart
+        const show = () => { Object.values(cells).forEach(c => c.g.classList.remove("sel")); sv.querySelectorAll(".wp-v.sel").forEach(t => t.classList.remove("sel"));
+          st.picks.forEach(p => { const c = cells[p.i + ":" + p.j]; if (c) { c.g.classList.add("sel"); if (c.t) c.t.classList.add("sel"); } });
+          box.innerHTML = smithHTML(st.picks, el.clientWidth); };
+        Object.entries(cells).forEach(([id, c]) => { const [i, j] = id.split(":").map(Number), cell = P[i].cells[A[j]]; if (!on(i)) return;   // the other periods' peaks are context, not picked
+          const html = "<b>" + esc(title(P[i].p)) + ", died " + A[j] + "</b><br>mean wear stage " + stageTxt(cell[0]) + ", n = " + cell[1];
+          c.g.addEventListener("pointermove", ev => tip(html, ev)); c.g.addEventListener("pointerleave", () => tip(null));
+          c.g.addEventListener("click", ev => { ev.stopPropagation(); tip(null); const k = st.picks.findIndex(p => p.i === i && p.j === j);
+            if (k >= 0) st.picks.splice(k, 1); else { st.picks.push({ i, j }); if (st.picks.length > 2) st.picks.shift(); } show(); }); });
+        // a click anywhere else on the card lets the picks go
+        const panel = el.closest(".pp"); if (panel) { if (el._clr) panel.removeEventListener("click", el._clr);
+          el._clr = ev => { if (!st.picks.length || ev.target.closest(".wp-peak,.wp-smith")) return; st.picks = []; show(); }; panel.addEventListener("click", el._clr); }
+        show();
+        // the clicked period's peaks rise from flat, one by one, youngest first (two compared: both rows together)
+        if (!st.risen) { st.risen = true;
+          const DUR = 520, GAP = 240, T0 = performance.now() + 450, todo = [];
+          sel.forEach(i => A.forEach((a, j) => { const c = cells[i + ":" + j]; if (c) todo.push({ i, j, c, d: j * GAP }); }));
+          if (REDUCED) todo.forEach(o => { const g = draw(o.i, o.j, 1); o.c.mesh.setAttribute("d", g.d); o.c.body.setAttribute("d", g.b); if (o.c.t) o.c.t.removeAttribute("opacity"); });
+          else { const step = now => { let live = false;
+              todo.forEach(o => { if (o.done) return; const k = Math.max(0, Math.min(1, (now - T0 - o.d) / DUR)); if (k < 1) live = true; if (k <= 0) return;
+                const e = 1 - Math.pow(1 - k, 3), g = draw(o.i, o.j, e); o.c.mesh.setAttribute("d", g.d); o.c.body.setAttribute("d", g.b);
+                if (o.c.t) o.c.t.setAttribute("opacity", Math.max(0, (k - 0.6) / 0.4).toFixed(2)); if (k >= 1) o.done = true; });
+              if (live && sv.isConnected) requestAnimationFrame(step); };
+            requestAnimationFrame(step); } }
+      };
+      return { html, wire };
+    };
+  }
+
+  // Smith's (1984) molar wear stages as the GHHP codebook draws them (its Figure 14, after Smith 1984, Figure 7): a
+  // crown's chewing surface at each stage, with its common variants, redrawn. Dentin (black) spreads as enamel wears
+  // through: none at 1 and 2, pinpoints at 3, separate patches at 4, two joined at 5, an island of enamel left at 6, a
+  // rim of enamel round an all-dentin surface at 7, no rim at 8.
+  const SMV = [1, 2, 3, 3, 3, 3, 3, 3];   // variants drawn for each stage
+  function smithIcon(st, v, cx, cy, s, ink) {
+    const R = s / 2, seed = st * 7 + v * 3, jit = k => Math.sin(seed * 12.9898 + k * 78.233) * 0.5;
+    const closed = (pts) => { const m = pts.length; let d = "M" + fx(pts[0][0]) + " " + fx(pts[0][1]);
+      for (let k = 0; k < m; k++) { const p0 = pts[(k + m - 1) % m], p1 = pts[k], p2 = pts[(k + 1) % m], p3 = pts[(k + 2) % m];
+        d += "C" + [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]].map(fx).join(" "); } return d + "Z"; };
+    // the crown's outline: rounded, with the lobes of its cusps; at stage 8 it pinches in at the middle, like a root
+    const outline = (sc, pinch) => { const P2 = []; for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2, lobe = 1 + 0.07 * Math.cos(5 * a + seed) + 0.03 * jit(k);
+        const sx = Math.cos(a) * R * 0.96 * lobe * sc, sy = Math.sin(a) * R * 0.86 * lobe * sc * (1 - pinch * Math.exp(-Math.pow(Math.cos(a) * 2.2, 2)));
+        P2.push([cx + sx, cy + sy]); } return closed(P2); };
+    const blob = (x, y, r, k) => { const P2 = []; for (let q = 0; q < 8; q++) { const a = q / 8 * Math.PI * 2, rr = r * (1 + 0.28 * jit(k * 9 + q)); P2.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); } return closed(P2); };
+    const line = d => "<path d='" + d + "' fill='none' stroke='" + ink + "' stroke-width='1' stroke-linecap='round'/>";
+    const fill = (d, c) => "<path d='" + d + "' fill='" + (c || ink) + "'/>";
+    let g = "";
+    if (st <= 7) g += "<path d='" + outline(1, 0) + "' fill='#f3f2ee' stroke='" + ink + "' stroke-width='1.3'/>";
+    const fiss = (n) => { let d = "M" + fx(cx - R * 0.5) + " " + fx(cy + jit(1) * R * 0.3) + "L" + fx(cx) + " " + fx(cy) + "L" + fx(cx + R * 0.5) + " " + fx(cy + jit(2) * R * 0.3) +
+      "M" + fx(cx) + " " + fx(cy) + "L" + fx(cx + jit(3) * R * 0.3) + " " + fx(cy - R * 0.55) + "M" + fx(cx) + " " + fx(cy) + "L" + fx(cx + jit(4) * R * 0.4) + " " + fx(cy + R * 0.55);
+      if (n > 1) d += "M" + fx(cx - R * 0.5) + " " + fx(cy) + "L" + fx(cx - R * 0.7) + " " + fx(cy - R * 0.35) + "M" + fx(cx + R * 0.5) + " " + fx(cy) + "L" + fx(cx + R * 0.66) + " " + fx(cy + R * 0.38) +
+        "M" + fx(cx - R * 0.25) + " " + fx(cy + R * 0.42) + "q" + fx(R * 0.1) + " " + fx(R * 0.16) + " " + fx(R * 0.28) + " " + fx(R * 0.1) + "M" + fx(cx + R * 0.2) + " " + fx(cy - R * 0.45) + "q" + fx(R * 0.12) + " " + fx(-R * 0.1) + " " + fx(R * 0.26) + " 0";
+      return line(d); };
+    if (st === 1) g += fiss(2);
+    else if (st === 2) g += fiss(v === 0 ? 1 : 2);
+    else if (st === 3) { g += fiss(1); for (let k = 0; k < v + 1; k++) g += fill(blob(cx + Math.cos(k * 2.1 + seed) * R * 0.55, cy + Math.sin(k * 2.1 + seed) * R * 0.5, R * 0.09, k)); }
+    else if (st === 4) { const n = 3 + v; for (let k = 0; k < n; k++) g += fill(blob(cx + Math.cos(k / n * 6.28 + seed) * R * 0.5, cy + Math.sin(k / n * 6.28 + seed) * R * 0.45, R * (0.13 + 0.04 * jit(k)), k)); }
+    else if (st === 5) { g += fill(blob(cx - R * 0.05, cy - R * 0.2, R * 0.38, 1)) + fill(blob(cx + R * 0.15, cy - R * 0.18, R * 0.3, 2)); for (let k = 0; k < 2; k++) g += fill(blob(cx + (k ? 0.45 : -0.45) * R, cy + R * 0.4, R * 0.12, k + 5)); }
+    else if (st === 6) { g += fill(outline(0.8, 0)); g += v === 1 ? fill(blob(cx, cy, R * 0.18, 3), "#f3f2ee") : fill(blob(cx + (v ? R * 0.3 : -R * 0.32), cy + R * 0.32, R * 0.16, 4), "#f3f2ee"); }
+    else if (st === 7) g += fill(outline(0.8, v === 2 ? 0.12 : 0));
+    else g += fill(outline(v === 0 ? 0.92 : 0.86, 0.25 + v * 0.15));
+    return g;
+  }
+  // the diagram for the peaks picked: every stage, the ones each mean falls between in ink (the others grey), with
+  // their words and what a mean stage means
+  function smithHTML(picks, W) {
+    if (!picks.length) return "<p class='pd-hint'>Click one of the highlighted peaks to see the stage of wear it stands for. Click a second to compare them.</p>";
+    const P = WD.periods, A = WD.ages, w = Math.max(220, Math.min(W, 520)), cw = w / 8, s = Math.min(26, cw * 0.62), G = "#b9b7b0";
+    const span = v => { const lo = Math.max(1, Math.floor(v + 1e-6)), hi = Math.min(8, Math.ceil(v - 1e-6)); return lo === hi ? [lo] : [lo, hi]; };
+    const ps = picks.map(p => ({ p, v: P[p.i].cells[A[p.j]][0], n: P[p.i].cells[A[p.j]][1], col: ageCol(p.j) })), hiSet = new Set(ps.flatMap(q => span(q.v)));
+    let g = "", H = 0;
+    for (let st = 1; st <= 8; st++) { const x = cw * (st - 0.5), ink = hiSet.has(st) ? "#1a1a18" : G;
+      g += T(x, 13, String(st), { a: "middle", s: 12.5, c: hiSet.has(st) ? "#1a1a18" : "#8a8983", w: hiSet.has(st) ? 600 : 0 });
+      ps.forEach((q, k) => { if (span(q.v).includes(st)) g += "<circle cx='" + fx(x + (ps.length > 1 ? (k ? 5 : -5) : 0)) + "' cy='19.5' r='2.6' fill='" + q.col + "'/>"; });
+      for (let v = 0; v < SMV[st - 1]; v++) { const y = 26 + s / 2 + v * (s + 12); if (v) g += L(x, y - s / 2 - 10, x, y - s / 2 - 3, ink, 1); g += smithIcon(st, v, x, y, s, ink); H = Math.max(H, y + s / 2 + 4); } }
+    const words = [...hiSet].sort((a, b) => a - b).map(st => "<li><b>" + st + "</b>" + esc(WD.smith[st - 1]) + "</li>").join("");
+    const said = ps.map(q => { const sp = span(q.v);
+      return "<p><i class='pp-kd' style='background:" + q.col + "'></i><b>" + esc(title(P[q.p.i].p)) + ", died " + A[q.p.j] + "</b>: mean stage <b>" + stageTxt(q.v) + "</b>, n = " + q.n + (sp.length > 1 ? ", between stages " + sp[0] + " and " + sp[1] : ", stage " + sp[0]) + ".</p>"; }).join("");
+    const diff = ps.length > 1 ? "<p>The second is " + B(Math.abs(ps[1].v - ps[0].v).toFixed(1)) + " stage" + (Math.abs(ps[1].v - ps[0].v) >= 1.05 ? "s" : "") + " " + (ps[1].v < ps[0].v ? "less" : "more") + " worn.</p>" : "";
+    return "<div class='wp-sm'>" + svg(w, H, g, "Smith molar wear stages 1 to 8, with " + [...hiSet].join(" and ") + " picked out") + "</div><ul class='wp-words'>" + words + "</ul>" + said + diff +
+      "<p class='wp-note'>Molar wear is scored in whole stages, from 1 (unworn) to 8. A mean such as " + stageTxt(ps[0].v) + " is the average of " + ps[0].n + " adults' scores, not a stage itself: on average, their molars were worn " + (span(ps[0].v).length > 1 ? "between stages " + span(ps[0].v).join(" and ") : "to stage " + span(ps[0].v)[0]) + ".</p>";
+  }
+
+  // the wear card's lines of text, from the grid
+  function wearLead(sel) {
+    const P = WD.periods, A = WD.ages, pooled = WD.pooled || [], first = i => A.find(a => P[i].cells[a]), last = i => A.slice().reverse().find(a => P[i].cells[a]), at = (i, a) => P[i].cells[a][0];
+    const ph2 = i => "the " + low(P[i].p) + " period";
+    if (sel.length > 1) { const [a, b] = sel, la = last(a), lb = last(b);
+      return "Pooled over every age, molar wear " + (pooled[b][0] < pooled[a][0] ? "fell" : "rose") + " from stage " + B(pooled[a][0].toFixed(2)) + " in " + ph2(a) + " to " + B(pooled[b][0].toFixed(2)) + " in " + ph2(b) + ".<br>" +
+        (la === lb ? "At " + la + ", molars were worn to " + B(stageTxt(at(a, la))) + " and " + B(stageTxt(at(b, lb))) + "." : "The oldest were worn to " + B(stageTxt(at(a, la))) + " (" + la + ") and " + B(stageTxt(at(b, lb))) + " (" + lb + ")."); }
+    const i = sel[0], f = first(i), l = last(i), all = pooled.map(q => q[0]);
+    return "In " + ph2(i) + ", molar wear built from stage " + B(stageTxt(at(i, f))) + " at " + f + " to " + B(stageTxt(at(i, l))) + " at " + (l === "60+" ? "60 and over" : l) + ".<br>" +
+      "Over every age it averaged " + B(pooled[i][0].toFixed(2)) + (pooled[i][0] === Math.max(...all) ? ", the most of any period." : pooled[i][0] === Math.min(...all) ? ", the least of any period." : ".");
+  }
+  // the events of a period (or two), as the other records' last slides
+  const overlapsY = (e, y0, y1) => e.from < y1 && e.to >= y0;
+  const ghhpSpan = i => { const cl = (window.RADIAL_DATA || []).find(c => c.key === "wear"); return cl ? [cl.dens[i][0], cl.dens[i][1]] : [0, 0]; };
+  function evsFor(list, sel) { return list.filter(e => sel.some(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); })).sort((p, q) => p.from - q.from); }
+  const evWhen = e => e.from === e.to ? String(e.from) : e.from + "–" + e.to;
+  function wlEventsHTML(E, evs, effect, note) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (E.line ? "<p class='pp-evi'>" + (E.head ? "<b>" + esc(E.head) + "</b>" : "") + esc(E.line) + "</p>" : "") +
+      evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + evWhen(e) + "</span><p>" + esc(e.line) + "</p>" + (effect ? "<p>" + effect(e) + "</p>" : "") + "</figcaption></figure>").join("") +
+      "<p class='pp-evn'>" + note + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  }
+  const evLeadFor = (evs, sel, nm) => { const cs = e => andList(sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i => "the " + low(nm(i)) + " period"));
+    const groups = []; evs.forEach(e => { const g = groups.find(x => x.cs === cs(e)); if (g) g.evs.push(e); else groups.push({ cs: cs(e), evs: [e] }); });
+    return groups.map(g => cap(g.cs) + " overlap" + (g.cs.indexOf(" and ") < 0 ? "s " : " ") + andList(g.evs.map(e => (e.note || e.name) + " (" + evWhen(e) + ")")) + ".").join("<br>"); };
+
+  P.CONTENT.wear = pick => {
+    if (!WD || !WD.periods) return {};
+    const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !WD.periods[i])) return {};
+    const st = { picks: [], risen: false }, ch = charts([wearChart(sel, st)]), evs = evsFor(WE.events || [], sel), pooled = WD.pooled || [];
+    const slides = [{ html: wearLead(sel), body: ch.body(0) }];
+    if (evs.length) slides.push({ html: evLeadFor(evs, sel, i => WD.periods[i].p), body: wlEventsHTML(WE, evs, e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i =>
+      "Mean molar wear in the " + low(WD.periods[i].p) + " period: stage " + B(pooled[i][0].toFixed(2)) + (i ? ", " + (pooled[i][0] < pooled[i - 1][0] ? "down" : "up") + " from " + pooled[i - 1][0].toFixed(2) + " in the " + low(WD.periods[i - 1].p) : "") + ".").join(" "),
+      "Event dates are historical context. Wear is the mean Smith stage of adults' molars, from 1 (unworn) to 8.") });
+    return { slides, mount: ch.mount, source: "Global History of Health Project (Europe) · adults 18–69 · Smith (1984) stages · n = " + sel.map(i => pooled[i] ? pooled[i][1].toLocaleString("en-GB") : "").join(" and ") };
+  };
+
+  // ---- stress lines (the Wear and LEH line's second card): the lower canine, after the team's C10, C9 and C8
+  const LC = window.LEH_CANINE, LE = window.LEH_EVENTS || { events: [] };
+  // a label broken into lines no wider than w (at its size), and those lines drawn one under another from y
+  const wrapLines = (t, px, w) => { const out = []; let cur = ""; t.split(" ").forEach(word => { const nx = cur ? cur + " " + word : word; if (cur && tw(nx, px) > w) { out.push(cur); cur = word; } else cur = nx; }); if (cur) out.push(cur); return out; };
+  const TW = (x, y, t, o, w) => { const ls = wrapLines(t, o.s, w); return { svg: ls.map((l, k) => T(x, y + k * (o.s + 3), l, o)).join(""), n: ls.length, h: ls.length * (o.s + 3) }; };
+  const sgn = (v, d) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d == null ? 1 : d);
+  // in the Wear and LEH line's own colour (the ink); two compared, the earlier in a grey of it
+  const lehCols = (sel, col) => { const c = /^#[0-9a-f]{6}$/i.test(col || "") ? col.toLowerCase() : "#1a1a18"; return sel.length > 1 ? [mix(c, "#ffffff", 0.5), c] : [c]; };
+  const tint = (c, t) => mix(c, "#ffffff", t);
+
+  // the main chart: the share of adults with at least one line on the lower canine, a bar for the period clicked (two
+  // compared: one each, the earlier lighter), with its 95% interval and its count
+  function lehBar(sel, cols, W) {
+    const E = LC.eras, two = sel.length > 1, G = "#8a8983", x0 = two ? Math.ceil(Math.max(...sel.map(i => tw(title(E[i].p), 12.5)))) + 14 : 0;
+    const X = v => x0 + (W - x0) * v / 100, bh = two ? 28 : 36, gap = 16, y0 = 6;
+    let s = "";
+    const TK = W - x0 < 170 ? [0, 50, 100] : [0, 25, 50, 75, 100];
+    TK.forEach(v => { s += L(X(v) - (v === 100 ? 1 : 0), y0 - 2, X(v) - (v === 100 ? 1 : 0), y0 + sel.length * bh + (sel.length - 1) * gap + 4, "rgba(26,26,24,.08)"); });
+    sel.forEach((i, k) => { const e = E[i], y = y0 + k * (bh + gap), m = y + bh / 2;
+      if (two) s += T(x0 - 12, m + 4.5, title(e.p), { a: "end", s: 12.5, c: "#1a1a18" });
+      s += "<rect class='lb-bar' data-i='" + i + "' x='" + fx(X(0)) + "' y='" + y + "' width='" + fx(X(e.pct) - X(0)) + "' height='" + bh + "' fill='" + cols[k] + "'/>";
+      s += L(X(e.ci[0]), m, X(e.ci[1]), m, "#1a1a18", 1.2) + L(X(e.ci[0]), m - 6, X(e.ci[0]), m + 6, "#1a1a18", 1.2) + L(X(e.ci[1]), m - 6, X(e.ci[1]), m + 6, "#1a1a18", 1.2);
+      const lx = X(e.ci[1]) + 10, cnt = e.k.toLocaleString("en-GB") + " of " + e.n.toLocaleString("en-GB") + " adults";
+      s += T(lx, m - 1, e.pct.toFixed(1) + "%", { s: 13.5, c: "#1a1a18", w: 600 }) + T(lx, m + 13, lx + tw(cnt, 11) <= W ? cnt : e.k + "/" + e.n, { s: 11, c: G }); });
+    const ya = y0 + sel.length * bh + (sel.length - 1) * gap + 8;
+    s += L(x0, ya, W - 1, ya, "rgba(26,26,24,.3)");
+    TK.forEach(v => { const x = X(v) - (v === 100 ? 1 : 0); s += L(x, ya, x, ya + 5, G) + T(x, ya + 20, v + "%", { a: v ? v === 100 ? "end" : "middle" : "start", s: 12, c: G }); });
+    const at = TW(W / 2, ya + 40, "Share of Adults with a Line on the Lower Canine", { a: "middle", s: 12.5, c: G, i: true }, W - 4);
+    const nt = TW(0, ya + 42 + at.h, "The whisker is the 95% interval.", { s: 11, c: G }, W);
+    s += at.svg + nt.svg;
+    const html = svg(W, ya + 46 + at.h + nt.h, s, "Share of adults with a stress line on the lower canine, " + sel.map(i => E[i].p).join(" and "));
+    const wire = el => el.querySelectorAll(".lb-bar").forEach(b => { const e = E[+b.dataset.i];
+      const h = "<b>" + esc(title(e.p)) + "</b><br>" + e.k + " of " + e.n + " adults, " + e.pct.toFixed(1) + "%<br><span class='m'>95% interval " + e.ci[0] + "–" + e.ci[1] + "%; age-standardised " + e.std.toFixed(1) + "%</span>";
+      b.addEventListener("pointermove", ev => tip(h, ev)); b.addEventListener("pointerleave", () => tip(null)); });
+    return { html, wire };
+  }
+
+  // the supporting chart by age (the team's C9): a line forms in childhood, so the share with one should not change with
+  // age at death. Above, each age band's share as points from the period's own (a dot, filled where it rests on at least
+  // 40 adults), and the fitted line through them; below, the slope in each of the period's cemeteries, a row each.
+  // Hovering a cemetery draws its own slope over the line graph; two compared, hovering a period's line shows its cemeteries.
+  function lehAge(sel, cols, st) {
+    const E = LC.eras, A = LC.ages, two = sel.length > 1;
+    return W => {
+      const G = "#8a8983", m = { l: 42, r: 8, t: 34, b: 38 }, lim0 = Math.max(...sel.map(i => Math.max(...E[i].cells.map(c => Math.max(Math.abs(c[4]), Math.abs(c[5]))))));
+      const lim = Math.ceil((lim0 + 1) / 5) * 5, step = lim > 20 ? 10 : 5, Y = v => m.t + (H - m.t - m.b) * (lim - v) / (2 * lim);
+      const X = j => m.l + 10 + (W - m.l - m.r - 20) * j / (A.length - 1), every = (W - m.l - m.r) / (A.length - 1) < tw("18–24", 11) + 8 ? 2 : 1;
+      let s = "";
+      // the key: each period's colour, name and slope
+      let kx = 0, ky = 11; sel.forEach((i, k) => { const t = title(E[i].p) + ": " + sgn(E[i].slope, 2) + " per decade", w = 19 + tw(t, 11.5); if (kx && kx + w > W) { kx = 0; ky += 17; }
+        s += "<rect x='" + fx(kx) + "' y='" + (ky - 5) + "' width='14' height='3' fill='" + cols[k] + "'/>" + T(kx + 19, ky, t, { s: 11.5, c: "#1a1a18" }); kx += w + 18; });
+      m.t = ky + 23; const H = m.t + 196;
+      for (let v = -lim; v <= lim; v += step) s += L(m.l, Y(v), W - m.r, Y(v), v ? "rgba(26,26,24,.08)" : "rgba(26,26,24,.45)", v ? 1 : 1.1) + T(m.l - 6, Y(v) + 4, (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v), { a: "end", s: 11, c: G });
+      A.forEach((a, j) => { const lastJ = A.length - 1; if ((j % every === 0 && !(every > 1 && j === lastJ - 1)) || j === lastJ) s += T(X(j), H - m.b + 17, a, { a: "middle", s: 11, c: "#55544f" }); });
+      s += T((m.l + W - m.r) / 2, H - 4, "Age at Death", { a: "middle", s: 12, c: G, i: true });
+      s += "<text x='11' y='" + fx((m.t + H - m.b) / 2) + "' text-anchor='middle' font-size='11' font-style='italic' fill='" + G + "' transform='rotate(-90 11 " + fx((m.t + H - m.b) / 2) + ")'>" + (H - m.t - m.b >= tw("Points from the Period's Share", 11) ? "Points from the Period's Share" : "Points from Share") + "</text>";
+      s += "<g class='lc-site'></g>";
+      sel.forEach((i, k) => { const e = E[i], c = cols[k], pts = e.cells.map((q, j) => [X(j), Y(q[4])]), fit = e.cells.map((q, j) => [X(j), Y(q[5])]);
+        s += "<g class='lc-p' data-i='" + i + "'><polyline points='" + pts.map(p => fx(p[0]) + "," + fx(p[1])).join(" ") + "' fill='none' stroke='" + c + "' stroke-width='1' stroke-opacity='.6'/>" +
+          "<polyline points='" + fit.map(p => fx(p[0]) + "," + fx(p[1])).join(" ") + "' fill='none' stroke='" + c + "' stroke-width='2.6' stroke-linecap='round'/>" +
+          e.cells.map((q, j) => "<circle class='lc-dot' data-i='" + i + "' data-j='" + j + "' cx='" + fx(pts[j][0]) + "' cy='" + fx(pts[j][1]) + "' r='3.2' fill='" + (q[1] >= 40 ? c : "#f3f2ee") + "' stroke='" + c + "' stroke-width='1.3'/>").join("") +
+          "<polyline class='lc-hit' points='" + fit.map(p => fx(p[0]) + "," + fx(p[1])).join(" ") + "'/></g>"; });
+      const html = "<div class='lc'>" + svg(W, H, s, "Stress lines by age at death, as points from the period's share, " + sel.map(i => E[i].p).join(" and "), "lc-a") + "<div class='lc-b'></div>" +
+        "<p class='pd-hint'>Filled dots: 40 adults or more. Hover a cemetery to draw its slope above" + (two ? ", or a period's line to see its cemeteries." : ".") + "</p></div>";
+
+      const wire = el => {
+        const sa = el.querySelector(".lc-a"), bx = el.querySelector(".lc-b"), over = sa.querySelector(".lc-site"), lines = [...sa.querySelectorAll(".lc-p")];
+        // the slope in each cemetery of one period (the team's C9B), a row each: its name, a bar from zero to its slope,
+        // the slope; the period's own at the foot. Two compared: the later period's first, the other's while the pointer
+        // is on its line
+        if (st.focus == null || !sel.includes(st.focus)) st.focus = sel[sel.length - 1];
+        const drawB = i => { const e = E[i], c = cols[sel.indexOf(i)], rows = e.sites.filter(q => q[4] != null).map(q => ({ name: q[0], n: q[1], pct: q[2], slope: q[4] })).concat([{ name: "All Cemeteries", n: e.n, pct: e.pct, slope: e.slope, all: true }]);
+          const rh = 21, lw = Math.min(W * 0.36, Math.max(...rows.map(r => tw(r.name, 11.5))) + 10), vw = tw("+15.11", 11.5) * 1.06 + 8, xl = Math.max(4, Math.ceil(Math.max(...rows.map(r => Math.abs(r.slope))) * 1.1 + 0.5));
+          const h1 = TW(0, 13, title(e.p) + ": Slope in Each Cemetery", { s: 12.5, c: "#1a1a18", w: 600 }, W * 0.92), h2 = TW(0, 13 + h1.h + 1, "Cemeteries with at least " + LC.sitesMin + " scorable canines (" + (rows.length - 1) + " of " + e.sitesAll + ")", { s: 11, c: G }, W);
+          const XB = v => lw + (W - lw - vw - 8) * (v + xl) / (2 * xl), top = 22 + h1.h + h2.h, HB = top + rows.length * rh + 40;
+          const fitName = t => { if (tw(t, 11.5) <= lw - 10) return t; let u = t; while (u.length > 3 && tw(u + "…", 11.5) > lw - 10) u = u.slice(0, -1); return u.trim() + "…"; };
+          const unit = (W - lw - vw - 8) / (2 * xl), tk = [1, 2, 4, 5, 10, 20].find(q => q * unit >= 28) || 20;
+          let b = h1.svg + h2.svg + "<rect x='" + fx(XB(-xl)) + "' y='" + (top - 4) + "' width='" + fx(XB(0) - XB(-xl)) + "' height='" + (rows.length * rh + 4) + "' fill='rgba(26,26,24,.035)'/>";
+          for (let v = -Math.floor(xl / tk) * tk; v <= xl; v += tk) { const x = XB(v); b += L(x, top - 4, x, top + rows.length * rh, v ? "rgba(26,26,24,.08)" : "rgba(26,26,24,.45)") + T(x, top + rows.length * rh + 14, (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v), { a: "middle", s: 11, c: G }); }
+          b += T((XB(-xl) + XB(xl)) / 2, HB - 6, "Slope, Points per Decade of Age", { a: "middle", s: 12, c: G, i: true }) + T(W, top - 6, "Slope", { a: "end", s: 11, c: G });
+          rows.forEach((r, q) => { const y = top + q * rh + rh / 2, x = XB(r.slope);
+            b += "<g class='lc-row" + (r.all ? " all" : "") + "' data-q='" + q + "'><rect x='0' y='" + fx(y - rh / 2) + "' width='" + fx(W) + "' height='" + rh + "' fill='transparent'/>" +
+              T(lw - 8, y + 4, fitName(r.name), { a: "end", s: 11.5, c: "#1a1a18", w: r.all ? 600 : 0 }) + L(XB(0), y, x, y, c, r.all ? 4 : 3) +
+              "<circle cx='" + fx(x) + "' cy='" + fx(y) + "' r='" + (r.all ? 5 : 4) + "' fill='" + c + "' stroke='#f3f2ee' stroke-width='1.2'/>" +
+              T(W, y + 4, sgn(r.slope, 2), { a: "end", s: 11.5, c: "#1a1a18", w: r.all ? 600 : 0 }) + "</g>"; });
+          bx.innerHTML = svg(W, HB, b, "Slope of stress lines on age at death in each cemetery of the " + e.p + " period", "lc-bs");
+          // a cemetery under the pointer: its own slope drawn over the line graph, through the period's mean age
+          bx.querySelectorAll(".lc-row").forEach(g => { const r = rows[+g.dataset.q];
+            g.addEventListener("pointerenter", () => { g.classList.add("on"); const pts = LC.mids.map((a, j) => [X(j), Y(r.slope * (a - e.meanAge) / 10)]);
+              over.innerHTML = "<polyline points='" + pts.map(p2 => fx(p2[0]) + "," + fx(p2[1])).join(" ") + "' fill='none' stroke='" + c + "' stroke-width='2' stroke-dasharray='5 4'/>" + T(X(A.length - 1) - 2, Y(r.slope * (LC.mids[A.length - 1] - e.meanAge) / 10) - 7, r.name, { a: "end", s: 11, c: "#1a1a18" });
+              lines.forEach(l => l.classList.toggle("dim", +l.dataset.i !== i)); });
+            g.addEventListener("pointermove", ev => tip("<b>" + esc(r.name) + "</b><br>" + sgn(r.slope, 2) + " points per decade of age<br><span class='m'>" + r.n.toLocaleString("en-GB") + " scorable canines, " + r.pct + "% with a line</span>", ev));
+            g.addEventListener("pointerleave", () => { g.classList.remove("on"); over.innerHTML = ""; lines.forEach(l => l.classList.remove("dim")); tip(null); }); }); };
+        drawB(st.focus);
+        lines.forEach(l => { const i = +l.dataset.i;
+          l.addEventListener("pointerenter", () => { if (two && st.focus !== i) { st.focus = i; drawB(i); } lines.forEach(z => z.classList.toggle("dim", z !== l)); });
+          l.addEventListener("pointerleave", () => lines.forEach(z => z.classList.remove("dim"))); });
+        sa.querySelectorAll(".lc-dot").forEach(d => { const e = E[+d.dataset.i], q = e.cells[+d.dataset.j];
+          d.addEventListener("pointermove", ev => tip("<b>" + esc(title(e.p)) + ", died " + q[0] + "</b><br>" + q[2] + " of " + q[1] + " adults, " + q[3] + "% (" + sgn(q[4], 1) + " points from " + e.pct + "%)" + (q[1] < 40 ? "<br><span class='m'>fewer than 40 adults</span>" : ""), ev));
+          d.addEventListener("pointerleave", () => tip(null)); });
+      };
+      return { html, wire };
+    };
+  }
+
+  // the supporting chart by severity (the team's C8): adults by how many lines the canine carries, and each cemetery's
+  // share with two or more, sized by its adults, against the period's own; two compared, hovering one period picks it
+  // out in both
+  function lehSev(sel, cols) {
+    const E = LC.eras, two = sel.length > 1;
+    return W => {
+      const G = "#8a8983", segC = k => ["#dcdad3", tint(cols[k], 0.55), cols[k]], names = ["No Line", "One Line", "Two or More Lines"];
+      const x0 = two ? Math.ceil(Math.max(...sel.map(i => tw(title(E[i].p), 12.5)))) + 14 : 0, X = v => x0 + (W - x0) * v / 100, bh = two ? 26 : 34, gap = 12;
+      let s = "", lx = 0, ly = 2;
+      names.forEach((t, q) => { const w = 17 + tw(t, 12); if (lx && lx + w > W) { lx = 0; ly += 19; } s += "<rect x='" + fx(lx) + "' y='" + ly + "' width='12' height='12' fill='" + segC(sel.length - 1)[q] + "'/>" + T(lx + 17, ly + 10.5, t, { s: 12 }); lx += w + 16; });
+      const y0 = ly + 24;
+      sel.forEach((i, k) => { const e = E[i], y = y0 + k * (bh + gap); let a = 0;
+        s += "<g class='ls-row' data-i='" + i + "'>" + (two ? T(x0 - 12, y + bh / 2 + 4.5, title(e.p), { a: "end", s: 12.5, c: "#1a1a18" }) : "");
+        e.comp.forEach((v, q) => { const x = X(a), w = X(a + v) - x; s += "<rect class='ls-seg' data-q='" + q + "' x='" + fx(x) + "' y='" + y + "' width='" + fx(Math.max(0, w - (q < 2 ? 2 : 0))) + "' height='" + bh + "' fill='" + segC(k)[q] + "'/>";
+          if (w > 28) s += T(x + w / 2 - 1, y + bh / 2 + 5, Math.round(v) + "", { a: "middle", s: 13, c: q === 2 ? "#fff" : "#1a1a18", w: 600 }); a += v; });
+        s += "</g>"; });
+      const ya = y0 + sel.length * bh + (sel.length - 1) * gap + 8;
+      s += L(x0, ya, W - 1, ya, "rgba(26,26,24,.3)");
+      (W - x0 < 170 ? [0, 50, 100] : [0, 25, 50, 75, 100]).forEach(v => { const x = X(v) - (v === 100 ? 1 : 0); s += L(x, ya, x, ya + 5, G) + T(x, ya + 20, v + "%", { a: v ? v === 100 ? "end" : "middle" : "start", s: 12, c: G }); });
+      const at = TW(W / 2, ya + 40, "Share of Adults with a Scorable Lower Canine", { a: "middle", s: 12.5, c: G, i: true }, W - 4); s += at.svg;
+      const HA = ya + 32 + at.h;
+      // each cemetery's share with two or more lines, a column per period
+      const b1 = TW(0, 13, "Each Cemetery's Share with Two or More Lines", { s: 12.5, c: "#1a1a18", w: 600 }, W * 0.92), b2 = TW(0, 13 + b1.h + 1, "Sized by its adults; the bar is the period's own share", { s: 11, c: G }, W);
+      const top = 22 + b1.h + b2.h, HB = top + 150, yMax = Math.max(40, Math.ceil(Math.max(...sel.map(i => Math.max(E[i].comp[2], ...E[i].sites.map(q => q[3])))) / 10) * 10);
+      const YB = v => top + (HB - top - 40) * (yMax - v) / yMax, cw = (W - 40) / sel.length, nMax = Math.max(...sel.flatMap(i => E[i].sites.map(q => q[1])));
+      let b = b1.svg + b2.svg;
+      for (let v = 0; v <= yMax; v += yMax > 40 ? 20 : 10) b += L(36, YB(v), W, YB(v), "rgba(26,26,24,.08)") + T(30, YB(v) + 4, v + "%", { a: "end", s: 11, c: G });
+      sel.forEach((i, k) => { const e = E[i], cx = 40 + cw * (k + 0.5);
+        b += "<g class='ls-col' data-i='" + i + "'><rect x='" + fx(cx - cw / 2) + "' y='" + top + "' width='" + fx(cw) + "' height='" + (HB - top) + "' fill='transparent'/>" +
+          L(cx - cw * 0.3, YB(e.comp[2]), cx + cw * 0.3, YB(e.comp[2]), "#1a1a18", 1.6) + (cx + cw * 0.3 + 6 + tw(e.comp[2].toFixed(1) + "%", 11) * 1.06 <= W ? T(cx + cw * 0.3 + 4, YB(e.comp[2]) + 4, e.comp[2].toFixed(1) + "%", { s: 11, c: "#1a1a18", w: 600 })
+            : T(cx - cw * 0.3 - 4, YB(e.comp[2]) + 4, e.comp[2].toFixed(1) + "%", { a: "end", s: 11, c: "#1a1a18", w: 600 })) +
+          T(cx, HB - 20, title(e.p), { a: "middle", s: 12, c: "#1a1a18" }) + T(cx, HB - 5, e.sites.length + " cemeteries", { a: "middle", s: 11, c: G });
+        e.sites.forEach((q, z) => { const jx = cx + (((z * 0.618) % 1) - 0.5) * cw * 0.5, r = Math.max(2.6, 9 * Math.sqrt(q[1] / nMax));
+          b += "<circle class='ls-dot' data-i='" + i + "' data-z='" + z + "' cx='" + fx(jx) + "' cy='" + fx(YB(q[3])) + "' r='" + fx(r) + "' fill='" + cols[k] + "' fill-opacity='.7' stroke='#f3f2ee' stroke-width='.8'/>"; });
+        b += "</g>"; });
+      const html = "<div class='ls'>" + svg(W, HA, s, "Adults by how many stress lines the lower canine carries, " + sel.map(i => E[i].p).join(" and "), "ls-a") + svg(W, HB, b, "Each cemetery's share with two or more lines", "ls-b") + "</div>";
+      const wire = el => {
+        const rows = [...el.querySelectorAll(".ls-row")], colsB = [...el.querySelectorAll(".ls-col")];
+        const focus = i => { rows.concat(colsB).forEach(g => g.classList.toggle("dim", i != null && +g.dataset.i !== i)); };
+        if (two) rows.concat(colsB).forEach(g => { g.addEventListener("pointerenter", () => focus(+g.dataset.i)); g.addEventListener("pointerleave", () => focus(null)); });
+        el.querySelectorAll(".ls-seg").forEach(r => { const e = E[+r.closest(".ls-row").dataset.i], q = +r.dataset.q;
+          r.addEventListener("pointermove", ev => tip("<b>" + esc(title(e.p)) + "</b><br>" + names[q].toLowerCase() + ": " + e.compN[q] + " of " + e.n + " adults, " + e.comp[q] + "%", ev)); r.addEventListener("pointerleave", () => tip(null)); });
+        el.querySelectorAll(".ls-dot").forEach(d => { const e = E[+d.dataset.i], q = e.sites[+d.dataset.z];
+          d.addEventListener("pointermove", ev => tip("<b>" + esc(q[0]) + "</b>, " + esc(low(e.p)) + "<br>" + q[3] + "% with two or more lines<br><span class='m'>" + q[1] + " scorable canines</span>", ev)); d.addEventListener("pointerleave", () => tip(null)); });
+      };
+      return { html, wire };
+    };
+  }
+
+  // the stress-line card's lines of text, from the counts
+  const lphr = i => "the " + low(LC.eras[i].p) + " period";
+  function lehLead(sel, n) {
+    const E = LC.eras, two = sel.length > 1;
+    if (n === 0) { if (two) { const [a, b] = sel.map(i => E[i]), ov = Math.min(a.ci[1], b.ci[1]) >= Math.max(a.ci[0], b.ci[0]);
+        return "From " + lphr(sel[0]) + " to " + lphr(sel[1]) + ", the share with a line on the lower canine " + (b.pct > a.pct ? "rose" : b.pct < a.pct ? "fell" : "held") + " from " + B(a.pct.toFixed(1) + "%") + " to " + B(b.pct.toFixed(1) + "%") + ".<br>" +
+          (ov ? "Their 95% intervals overlap, so the difference may be chance." : "Their 95% intervals (" + a.ci[0] + "–" + a.ci[1] + "% and " + b.ci[0] + "–" + b.ci[1] + "%) do not overlap."); }
+      const i = sel[0], e = E[i], pv = E[i - 1];
+      return B(e.pct.toFixed(1) + "%") + " of adults had at least one stress line on the lower canine (" + e.k.toLocaleString("en-GB") + " of " + e.n.toLocaleString("en-GB") + ").<br>" +
+        (pv ? (e.pct > pv.pct ? "Up" : e.pct < pv.pct ? "Down" : "The same as") + " from " + B(pv.pct.toFixed(1) + "%") + " in " + lphr(i - 1) + "." : "A line forms in childhood, before about age six, and stays for life."); }
+    if (n === 1) { const one = "A line forms in childhood, so the share with one should not change with age at death.<br>";
+      if (two) return one + "It shifts by " + B(sgn(E[sel[0]].slope)) + " points per decade of age in " + lphr(sel[0]) + " and " + B(sgn(E[sel[1]].slope)) + " in " + lphr(sel[1]) + ".";
+      const e = E[sel[0]], down = e.sites.filter(q => q[4] < 0).length;
+      return one + "In " + lphr(sel[0]) + " it shifts by " + B(sgn(e.slope)) + " points per decade of age, and " + B(down) + " of its " + B(e.sites.length) + " cemeteries slope down."; }
+    if (two) { const [a, b] = sel.map(i => E[i]);
+      return "Two or more lines: " + B(a.comp[2].toFixed(1) + "%") + " in " + lphr(sel[0]) + " and " + B(b.comp[2].toFixed(1) + "%") + " in " + lphr(sel[1]) + ".<br>One line: " + B(a.comp[1].toFixed(1) + "%") + " and " + B(b.comp[1].toFixed(1) + "%") + "."; }
+    const e = E[sel[0]], ss = e.sites.slice().sort((p, q) => p[3] - q[3]), lo = ss[0], hi = ss[ss.length - 1];
+    return B(e.comp[2].toFixed(1) + "%") + " had two or more lines, and " + B(e.comp[1].toFixed(1) + "%") + " had one.<br>" +
+      (lo && hi && lo !== hi ? "Across its cemeteries, two or more ranged from " + B(lo[3] + "%") + " (" + esc(lo[0]) + ") to " + B(hi[3] + "%") + " (" + esc(hi[0]) + ")." : "");
+  }
+
+  P.CONTENT.leh = pick => {
+    if (!LC || !LC.eras) return {};
+    const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !LC.eras[i])) return {};
+    const cols = lehCols(sel, pick.col), st = {}, ch = charts([W => lehBar(sel, cols, W), lehAge(sel, cols, st), lehSev(sel, cols)]), evs = evsFor(LE.events || [], sel);
+    const slides = [0, 1, 2].map(n => ({ html: lehLead(sel, n), body: ch.body(n) }));
+    if (evs.length) slides.push({ html: evLeadFor(evs, sel, i => LC.eras[i].p), body: wlEventsHTML(LE, evs, e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i => { const c = LC.eras[i], pv = LC.eras[i - 1];
+      return "In the " + low(c.p) + " period, " + B(c.pct.toFixed(1) + "%") + " of adults had a line on the lower canine" + (pv ? ", " + (c.pct >= pv.pct ? "up" : "down") + " from " + pv.pct.toFixed(1) + "% in the " + low(pv.p) : "") + "."; }).join(" "),
+      "Event dates are historical context. Shares are of adults 18–69 with a scorable lower canine.") });
+    return { slides, mount: ch.mount, source: "Global History of Health Project (Europe) · adults 18–69, scorable lower canine · Schultz (1988) · n = " + sel.map(i => LC.eras[i].n.toLocaleString("en-GB")).join(" and ") };
   };
 })();

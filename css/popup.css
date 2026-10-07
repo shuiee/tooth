@@ -289,3 +289,58 @@
 .mt-tail.m{opacity:0;transition:opacity .3s}
 .mt-g.on .mt-tail.m{opacity:1}
 @media (prefers-reduced-motion: reduce){.mt-svg .mt-g,.mt-ln,.mt-tail.m{transition:none}}
+/* two cards stacked (the Wear and LEH line): one folds to its header where both would not fit (popup.js, folds()) */
+.pp-fold{position:absolute;z-index:1;top:9px;right:44px;border:0;background:none;padding:6px 7px;color:var(--ink-2);cursor:pointer;line-height:0}
+.pp-fold svg{width:13px;height:9px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.pp-fold:hover{color:var(--ink)}
+.pp-fold:focus-visible{outline:1.5px solid var(--ink);outline-offset:-1px}
+.pp.min .pp-fold svg{transform:rotate(180deg)}
+.pp.min .pp-car,.pp.min .pp-src{display:none}
+.pp.min .pp-when{cursor:pointer}
+.pp:has(.pp-fold) .pp-when{margin-right:72px;padding-bottom:4px}   /* clear of the fold button and the X, and the body (its scroll bar) starts below them */
+.pp:has(.pp-fold) .pp-lead{margin-top:4px}
+.pp:has(.pp-fold) .pp-when.pair{margin-right:0}
+.pp:has(.pp-fold) .pp-when.pair>span:nth-child(2){margin-right:62px}
+/* molar wear: the landscape (wearChart) and Smith's stages (smithHTML) */
+.wp-peak.on{cursor:pointer}
+.wp-peak:not(.on){pointer-events:none}   /* the other periods' peaks are context: not picked, and a click on them is a click on the card */
+.wp-body{fill-opacity:.14;stroke:none;transition:fill-opacity .3s}
+.wp-mesh{fill:none;stroke-opacity:.85;stroke-width:.55;stroke-linejoin:round;transition:stroke-opacity .3s,stroke-width .3s}
+.wp-peak.on .wp-mesh{stroke-opacity:1;stroke-width:.8}
+.wp-peak:hover .wp-body,.wp-peak.sel .wp-body{fill-opacity:.32}
+.wp-peak:hover .wp-mesh{stroke-width:1}
+.wp-peak.sel .wp-mesh{stroke:var(--ink);stroke-width:1.1}
+.wp-v{paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
+.wp-v.sel{font-size:13px}
+.wp-smith{margin-top:6px}
+.wp-sm{margin:4px 0 8px}
+.wp-words{margin:0 0 8px;padding:0;list-style:none;font-size:12.5px;line-height:1.4;color:var(--ink-2)}
+.wp-words li{display:flex;gap:8px}
+.wp-words b{flex:0 0 12px;color:var(--ink);font-weight:600}
+.wp-smith p{margin:0 0 6px;font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.wp-smith p b{color:var(--ink);font-weight:600}
+.wp-smith .wp-note{font-size:11.5px;font-style:italic;color:var(--ink-3)}
+/* stress lines: by age (lehAge) and by severity (lehSev), each linked to its cemeteries */
+.lc-hit{fill:none;stroke:transparent;stroke-width:14}
+.lc-p{transition:opacity .25s}
+.lc-p.dim{opacity:.25}
+.lc-row{cursor:default}
+.lc-row.on rect:first-child{fill:rgba(26,26,24,.05)}
+.lc-b{margin-top:8px}
+.lc .pd-hint,.wp .pd-hint{min-height:0}
+.ls-row,.ls-col{transition:opacity .25s}
+.ls-row.dim,.ls-col.dim{opacity:.25}
+.ls-b{margin-top:14px}
+@media (prefers-reduced-motion: reduce){.pp-fold svg,.wp-body,.wp-mesh,.lc-p,.ls-row,.ls-col{transition:none}}
+/* two cards stacked (the Wear and LEH line): they share the pop-up's height, each scrolling inside its own frame where
+   its content is taller than its share, so nothing (text, charts, the slide dots, the source) runs outside a card */
+@media (min-width:900px){
+  .pp-box.two .pp{flex:0 1 auto;min-height:0;max-height:calc(50% - 11px)}   /* half the height each (the gap is 22px) */
+  .pp-box.two .pp.min~.pp,.pp-box.two .pp:has(~.pp.min){max-height:100%}   /* the whole height while the other is folded */
+  .pp-box.two .pp .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin;scrollbar-gutter:stable;overscroll-behavior:contain}
+}
+.pp-box.two .pp-view:has(.pp-chart),.pp-box.two .pp-view:has(.pp-evs){height:auto}
+.pp-box.two .pp-evs.sc{max-height:none;overflow:visible;padding-right:0}   /* the card itself scrolls, so its events list does not scroll inside it */
+/* the scroll bar out in the card's right margin, under the X, with a clear gap between it and the slides (their arrows,
+   charts and labels) */
+.pp-box.two .pp .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable}

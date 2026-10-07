@@ -50,7 +50,9 @@
   const pairLine = (pick, f) => pick.pair.map(q => "<span class='pp-tm' data-id='" + q.key + ":" + q.i + "'>" + when(q, f) + "</span>").join(" / ");
   const CHEV = d => "<svg viewBox='0 0 12 22' aria-hidden='true'><path d='" + d + "'/></svg>";
   // each record's pop-up, from the period clicked: the template's placeholders for now
-  const CONTENT = { caries: placeholder, pathogens: placeholder, wear: placeholder, metals: placeholder, interventions: placeholder };
+  const CONTENT = { caries: placeholder, pathogens: placeholder, wear: placeholder, leh: placeholder, metals: placeholder, interventions: placeholder };
+  // the Wear and LEH line opens two cards for one period (or two compared), stacked: molar wear and stress lines (sub)
+  const SUBS = { wear: [["wear", "Molar Wear"], ["leh", "Stress Lines (LEH)"]] };
 
   function create(opts) {
     opts = opts || {};
@@ -75,12 +77,17 @@
     }
 
     function open(pick) {
-      const c = (CONTENT[pick.key] || placeholder)(pick), sl = c.slides && c.slides.length ? c.slides : SLIDES, panel = document.createElement("section");
+      const c = (CONTENT[pick.sub || pick.key] || placeholder)(pick), sl = c.slides && c.slides.length ? c.slides : SLIDES, panel = document.createElement("section");
       panel.className = "pp"; panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
+      const head = "<p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span class='pp-rec'>" + esc(pick.name) + "</span><span>" + (pick.pair ? "Selected Times:</span><span class='pp-pl'>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span></p>";
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
         // the X on the card itself, not in its body (which scrolls, and clips, on narrow pages)
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
-        "<div class='pp-body'><p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span class='pp-rec'>" + esc(pick.name) + "</span><span>" + (pick.pair ? "Selected Times:</span><span class='pp-pl'>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span></p>" +
+        // of two stacked cards, a button to fold this one to its header, or open it again
+        (pick.sub ? "<button class='pp-fold pp-in' style='--i:0' type='button' aria-expanded='true' aria-label='Fold " + esc(pick.name) + "'><svg viewBox='0 0 14 9' aria-hidden='true'><path d='M1 8l6-6 6 6'/></svg></button>" : "") +
+        // the header: of two stacked cards (whose bodies scroll), above the body, so it stays put and the scroll bar starts
+        // below the X
+        (pick.sub ? head : "") + "<div class='pp-body'>" + (pick.sub ? "" : head) +
         "<div class='pp-car pp-in' style='--i:1'><div class='pp-leads'>" + sl.map((x, j) => "<p class='pp-lead" + (j ? "" : " on") + "'>" + (x.html || esc(x.lead)) + "</p>").join("") + "</div>" +
         "<div class='pp-stage'><button class='pp-arw prev' type='button' aria-label='Previous'>" + CHEV("M10 1 1 11l9 10") + "</button>" +
         "<div class='pp-views'>" + sl.map((x, j) => "<div class='pp-view" + (j ? "" : " on") + "'>" + (x.body || "") + "</div>").join("") + "</div>" +
@@ -117,18 +124,29 @@
       panel.style.top = panel.offsetTop + "px"; panel.classList.add("out"); setTimeout(() => panel.remove(), 460);
     }
 
+    // Two stacked cards (the Wear and LEH line): both open as they appear, sharing the pop-up's height, each scrolling
+    // inside its own frame where its content is taller than its share (css/popup.css, .pp-box.two). A fold button
+    // beside each X folds that card to its header, or opens it again; so does a click on a folded card's header.
+    const setMin = (c, on) => { c.panel.classList.toggle("min", on); const b = c.panel.querySelector(".pp-fold"); if (b) { b.setAttribute("aria-expanded", on ? "false" : "true"); b.setAttribute("aria-label", (on ? "Open " : "Fold ") + c.panel.getAttribute("aria-label").split(",")[0]); } measure(); };
+    function wireFold(c) {
+      c.panel.querySelector(".pp-fold").addEventListener("click", () => setMin(c, !c.panel.classList.contains("min")));
+      c.panel.querySelector(".pp-when").addEventListener("click", () => { if (c.panel.classList.contains("min")) setMin(c, false); });
+    }
+
     return {
       // picks: the periods clicked ({ key, i, name, col, from, to, n, unit, range }), one or two (or a single pick), or null
       show(picks) {
         const want = (picks ? [].concat(picks) : []).slice().sort((p1, p2) => p1.from - p2.from);
-        // two compared: one card for both
-        const cards = want.length === 2 ? [Object.assign({}, want[0], { pair: want, range: want[0].range + " and " + want[1].range })] : want;
-        const ids = cards.map(p2 => p2.pair ? p2.pair.map(q => q.key + ":" + q.i).join("+") : p2.key + ":" + p2.i);
+        // two compared: one card for both; the Wear and LEH line: a card for each of its two records, stacked
+        const cards = (want.length === 2 ? [Object.assign({}, want[0], { pair: want, range: want[0].range + " and " + want[1].range })] : want)
+          .flatMap(p2 => SUBS[p2.key] ? SUBS[p2.key].map(([sub, name]) => Object.assign({}, p2, { sub, name })) : [p2]);
+        const ids = cards.map(p2 => (p2.pair ? p2.pair.map(q => q.key + ":" + q.i).join("+") : p2.key + ":" + p2.i) + (p2.sub ? "/" + p2.sub : ""));
         if (ids.join("|") === cur.map(c => c.id).join("|")) return;
         cur.filter(c => !ids.includes(c.id)).forEach(c => close(c.panel));
         cur = cards.map((p2, k) => cur.find(c => c.id === ids[k]) || { id: ids[k], panel: open(p2) });
         cur.forEach(c => box0.appendChild(c.panel));   // in order, earliest on top
         box0.classList.toggle("on", cur.length > 0); box0.classList.toggle("two", cur.length > 1); if (!cur.length) live.textContent = "";
+        cur.forEach(c => { if (!c.wired && c.panel.querySelector(".pp-fold")) { c.wired = true; wireFold(c); } });
         measure();
       },
       // the width the diagram leaves it (px), or null for its usual width; its cards stretch, their margins stay
