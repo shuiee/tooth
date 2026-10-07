@@ -208,14 +208,17 @@ body.story .flt,body.story .ffwd{opacity:0;visibility:hidden;transition:opacity 
 .rd-story{position:absolute;inset:0;z-index:1;pointer-events:none;font-family:var(--serif);color:var(--ink)}
 .rd-story:not(.on){display:none}
 .st-f{position:absolute;font-size:15px;line-height:1.5}
-/* a section between the molars: left-aligned, its box drawn in to its widest line and set in the page's middle */
+/* a section between the molars: left-aligned, its box drawn in to its widest line and set in the page's middle; its
+   width chosen for the rag (rag() in js/radial.js), so the lines wrap plainly */
 .st-s{font-size:clamp(14px,calc(.36vw + 10px),16.5px);line-height:1.55}
-.st-s p{text-wrap:balance}
+.st-big p{text-wrap:balance}
 /* the end: large, alone in the middle of the page */
 .st-big{font-size:clamp(22px,calc(1.6vw + 9px),36px);line-height:1.3}
 .st-i{opacity:0;visibility:hidden;margin:0 0 16px}
 .st-f > .st-i:last-child{margin-bottom:0}
 .rd-story b{font-weight:600}
+.st-nb{white-space:nowrap}
+.rd-story.tight .st-nb{white-space:normal}
 .st-pp{margin:0}
 /* the reasons for more repair, in the interventions' colour, each with an arrow up */
 .st-up{display:flex;gap:9px;align-items:flex-start;color:var(--int);font-size:15px;font-weight:500;line-height:1.3;margin-bottom:18px}

@@ -142,46 +142,53 @@
     // their groups taken out of the page's flow (the circles are moved between groups every frame, so each carries the class itself)
     const applyOff = () => { if (!S) return; S.lines.forEach(L => { const h = off.has(L.c.key); [L.g, L.card, L.lead].forEach(e => e.classList.toggle("rd-off", h)); L.ms.forEach(o => { o.mg.classList.toggle("rd-off", h); o.arrow.classList.toggle("rd-off", h); }); }); };
     // The look ahead (Fast forward, story(true)): the radial fades away and the molar divides in two, the halves gliding
-    // apart to either side of the page's middle. The left one, the molar as before, loops through every record it shows
-    // but Artificial interventions, from the start of the timeline (the earliest record), whatever the filter hides. The
-    // right one shows the repair alone, with the nerve, keeping time with the left: the repair period of the left one's
+    // apart to either side of the page's middle. The left one, the molar as before, goes once through every record it
+    // shows but Artificial interventions, from the start of the timeline (the earliest record), whatever the filter hides.
+    // The right one shows the repair, with the nerve, keeping time with the left: the repair period of the left one's
     // year (the share of the decay repaired, as on the radial), to 2009. Once the left one has been through the timeline
     // it holds its last period, still turning, while the right one runs on into a projection, which is a drawing of where
     // the trend points, not data: the repair covers the whole chewing surface, then grows in patches round the crown's
-    // sides; then the blue goes back and both start again (phase "A", the timeline; phase "B", the projection). On the
-    // first projection, the reasons for the repair come up one by one beside it (STORY[0]), and go in the same order;
+    // sides (phase "A", the timeline; phase "B", the projection). There it holds: both molars keep their last state, still
+    // turning, until they scatter at the end. Both carry the pathogens' and the metals' streams, dimmed. On the
+    // projection, the reasons for the repair come up one by one between the molars (STORY[0]), each a little before its stage, and go in the same order;
     // the text keeps time from there. Then the questions it raises, one section at a time, each in
     // the same place between the molars, in the middle of the page, left-aligned: each fades in once the one before has
     // faded out; the last stays. Below each molar, the era it shows (eraOf()), and "Projected" once the right one runs
     // past 2009. Rewind (story(false)) brings the radial back as it was. Where the page is too narrow for the text
     // beside and between the molars, it sits below them.
-    // seconds: phase B (2009 held on the right, the projection's four stages, a rest, the blue going back); the reasons'
-    // hold and the text's fades
-    const ST_T = { glide: 0.3, hold9: 2.2, step: 2.4, rest: 2.4, back: 1.6, hold: 2.8, fade: 0.9 };
-    const ST_B = ST_T.hold9 + 4 * ST_T.step + ST_T.rest + ST_T.back;   // phase B's length
+    // seconds: phase B (2009 held on the right, then the projection's four stages); the reasons' hold and the text's fades
+    const ST_T = { glide: 0.3, hold9: 2.2, step: 2.4, lead: 3.7, hold: 2.8, fade: 0.9 };   // lead: each reason comes up this long before its stage, the first before 2009's repair flies in
+    const ST_A = 1 / 0.045;   // phase A's length: the timeline once through, at the radial's pace
+    const p0Of = () => (REDUCED ? 0 : ST_A) + ST_T.hold9;   // when the projection starts, on the look ahead's clock: the text keeps time from it
+    const ST_B = ST_T.hold9 + 4 * ST_T.step;   // phase B's length, after which both molars hold
     const IND = CR.find(r => r.p === "Industrial");   // its share of adults with no carious tooth (sev[0])
     const STORY = [
       { up: ["Dental care as healthcare", "Innovation in oral hygiene", "Fluoride remineralization", "Cosmetic procedures"] },
-      { items: [["p", (IND ? IND.sev[0].toFixed(1) : "24.1") + "% of industrial adults reached death with no caries at all."]] },
+      { items: [["p", "<b>" + (IND ? IND.sev[0].toFixed(1) : "24.1") + "%</b> of industrial adults reached death with <b>no caries at all.</b>"]] },
       // ADHS 2009, Theme 4, Table 4.3.1: dentate adults aged 25 to 34 in England, a mean of 3.6 restored, otherwise sound
       // teeth (3.8 age-adjusted)
-      { items: [["p", "A modern adult with no visible decay might still have three or four filled teeth by thirty."]] },
-      { items: [["p", "If we met those two people as skeletons, <b>could we tell which one was actually healthier, or lived a better life?</b>"]] },
-      { items: [["p", "Imagine this:"], ["li", "28 teeth"], ["li", "no caries"], ["li", "almost no wear"], ["li", "little calculus"], ["li", "enamel intact"]] },
+      { items: [["p", "A modern adult with <b>no visible decay</b> might still have <b>three or four filled teeth</b> by thirty."]] },
+      { items: [["p", "If we met these two people as skeletons, <b>could we tell which one was actually healthier, or lived a better life?</b>"]] },
+      { items: [["p", "Imagine"], ["li", "28 teeth"], ["li", "no caries"], ["li", "almost no wear"], ["li", "little calculus"], ["li", "enamel intact"]] },
       // in parts: the sentence's start, then its three inferences one by one, then its end (seconds after each)
-      { items: [["p", [["A bioarchaeologist trained on our data might infer a", 1.6], ["<b>short-lived,</b>", 0.9], ["<b>well-fed,</b>", 0.9], ["<b>low-stress</b>", 1.0], ["person of high status.", 0]]]] },
+      { items: [["p", [["A bioarchaeologist trained on this data might infer a", 1.6], ["<b>short-lived,</b>", 0.9], ["<b>well-fed,</b>", 0.9], ["<b>low-stress</b>", 1.0], ["person of high status.", 0]]]] },
       { items: [["p", "Every one of those inferences <b>could be wrong</b> after intervention."]] },
       { items: [["p", "What will our teeth continue to say about us?"]] },
       // the end: once that has gone, both molars scatter and fade, then in large type the statement, then the last
       // question, which stays (until Rewind, Play or Replay)
-      { big: true, items: [["p", "The human tooth is a permanent data artifact. Artificial interventions allow us to edit that record."]] },
+      { big: true, items: [["p", "The human tooth is a permanent data artifact. Artificial interventions allow us to <b>edit that record</b>."]] },
       { big: true, items: [["p", "What truths does a tooth tell now?"]], last: true } ];
     let story = null, split = 0, stL = null;   // story: { on, t0, out, back: what the radial showed }; split: 0 one molar, 1 two
-    const RT = { ri: -1, pg: -1, back: 0, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], last: -1, at: -1e9, pulse: 0, formT: 0, gone: 0 };   // and formT: how far the second molar has formed (seconds); gone: the end's scattering (0 to 1)   // the second molar: its repair period, projection (0 to 1), going back (0 to 1), repaired share, patch radii, its last period and when it changed, the swell
+    const RT = { ri: -1, pg: -1, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], last: -1, at: -1e9, pulse: 0, formT: 0, gone: 0 };   // the second molar: its repair period, projection (0 to 1), repaired share, patch radii, its last period and when it changed, the swell; formT: how far it has formed (seconds); gone: the end's scattering (0 to 1)
+    // the second molar from scratch (the look ahead's start, and Replay): it forms out of the first again, with no repair,
+    // rebuilt crown or filled bands, cleared at once (RT.fresh: snapped, so nothing lifts away), and the timeline's year
+    // read afresh from waveU, so the first frame does not take the last one's (2009's repair) and then let it go
+    const afresh = start => { Object.assign(RT, { ri: -1, pg: -1, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], formT: 0, fresh: true }, start ? { last: -1, at: -1e9, pulse: 0, gone: 0 } : {});
+      if (S) S.waveYear = Math.round(NOW - MAX_AGE * (1 - waveU) ** 2); };
     const hid = k => story && story.on ? k === "interventions" : off.has(k);   // what the molar leaves out
     const stl = document.createElement("div"); stl.className = "rd-story"; stl.setAttribute("role", "region"); stl.setAttribute("aria-label", "Looking ahead"); stl.setAttribute("aria-live", "polite");
     stl.style.setProperty("--int", COLS.interventions); host.appendChild(stl);
-    // the text, each line with the times it fades in and out (seconds from the first projection): the reasons one after another
+    // the text, each line with the times it fades in and out (seconds from the projection): the reasons one after another
     // and out in the same order; then each section once the last has gone, its lines (the points of "Imagine this")
     // coming in one after another, and going together, after time to read them
     const sched = [], frames = [];
@@ -195,8 +202,9 @@
           if (Array.isArray(html)) { e.className = "st-pp"; html.forEach(([h2, gap], j) => { if (j) e.appendChild(document.createTextNode(" ")); const sp2 = document.createElement("span"); sp2.innerHTML = h2; sp2.className = "st-i"; e.appendChild(sp2);
             its.push({ el: sp2, kind: "part", gap, words: sp2.textContent.trim().split(/\s+/).length, a: -1 }); }); return; }
           if (kind === "up") { e.innerHTML = '<svg viewBox="0 0 14 18" aria-hidden="true"><path d="M7 16.5V2.5M2 7.5 7 2.5l5 5"/></svg><span></span>'; e.lastChild.textContent = html; } else e.innerHTML = html;
+          e.querySelectorAll("b").forEach(bb => { if (bb.textContent.length <= 28) bb.className = "st-nb"; });   // a short bold phrase is not broken across lines
           e.className = "st-i" + (kind === "up" ? " st-up" : ""); its.push({ el: e, kind, words: e.textContent.trim().split(/\s+/).length, a: -1 }); });
-        if (Fr.up) { const out = its.length * ST_T.step + ST_T.hold; its.forEach((o, i) => { o.tin = i * ST_T.step; o.tout = out + i * 0.6; }); tEnd = out + (its.length - 1) * 0.6 + ST_T.fade; }
+        if (Fr.up) { const out = its.length * ST_T.step + ST_T.hold; its.forEach((o, i) => { o.tin = i * ST_T.step - ST_T.lead; o.tout = out + i * 0.6; }); tEnd = out + (its.length - 1) * 0.6 + ST_T.fade; }
         else { if (Fr.big && tGone === Infinity) { tGone = tEnd; tEnd += 2.5; }   // the molars scatter first
           let tt = tEnd + 0.3; if (Fr.last) tFinal = tt + ST_T.fade; its.forEach((o, i) => { o.tin = tt; if (its[i + 1]) tt += o.kind === "part" ? o.gap : o.kind === "li" ? 0.5 : 1.2; });
           const out = tt + ST_T.fade + Math.max(2.4, its.reduce((a2, o) => a2 + o.words, 0) * 0.32);
@@ -205,6 +213,21 @@
     // each molar's era, small, below it
     const caps = [0, 1].map(() => { const e = document.createElement("span"); e.className = "st-yr"; stl.appendChild(e); return e; });
     // a section's box drawn in to its widest line, so the left-aligned text sits in the middle of the page
+    // a paragraph's line lengths, as laid out now
+    const lines = el => { const r = document.createRange(), rows = new Map(); r.selectNodeContents(el);
+      for (const q of r.getClientRects()) { if (q.width < 1) continue; const k = Math.round(q.top), v = rows.get(k); rows.set(k, v ? [Math.min(v[0], q.left), Math.max(v[1], q.right)] : [q.left, q.right]); }
+      return [...rows.keys()].sort((a, b) => a - b).map(k => rows.get(k)[1] - rows.get(k)[0]); };
+    // the width, between lo and hi, that gives a section the best rag: no line longer than the one before (which reads
+    // as a concave edge), the lines above the last well filled, no short last line, few lines, and wide rather than narrow
+    const rag = (el, lo, hi) => { const ps = [...el.querySelectorAll(":scope > p")]; if (!ps.length || el.querySelector("ul")) return hi;
+      let best = hi, bs = Infinity;
+      for (let w = Math.floor(hi); w >= lo; w -= 3) { el.style.width = w + "px"; let sc = (hi - w) * 0.1;
+        ps.forEach(pp => { const L = lines(pp), n2 = L.length; sc += n2 * 24;
+          for (let i = 1; i < n2; i++) sc += Math.max(0, L[i] - L[i - 1] - 2) * 4;
+          for (let i = 0; i < n2 - 1; i++) sc += (w - L[i]) * 0.25;
+          if (n2 > 1 && L[n2 - 1] < 0.5 * L[0]) sc += (0.5 * L[0] - L[n2 - 1]) * 2; });
+        if (sc < bs) { bs = sc; best = w; } }
+      return best; };
     const fit = (el, mw) => { el.style.width = mw.toFixed(1) + "px"; const L0 = el.getBoundingClientRect().left, tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), r = document.createRange(); let mx = 0;
       for (let nd = tw.nextNode(); nd; nd = tw.nextNode()) { r.selectNodeContents(nd); for (const q of r.getClientRects()) mx = Math.max(mx, q.right - L0); }
       if (mx > 1) el.style.width = Math.min(mw, Math.ceil(mx + 1)) + "px"; };
@@ -214,48 +237,48 @@
       split = REDUCED ? (on ? 1 : 0) : cl(split + (on ? (T > ST_T.glide ? 1 : 0) : -1) * dt / 1.8, 0, 1);
       if (story && !on && split <= 0 && now - story.out > 600) story = null;
       stl.classList.toggle("on", !!story); if (!story) { stL = null; return; }
-      // where the molars go: wide pages, a little over a quarter of the way in from either side, the reasons right of the
-      // right one, the sections between them, in the middle of the page; where that leaves too little room, higher up,
+      // where the molars go: wide pages, a little over a quarter of the way in from either side, the reasons and the
+      // sections between them, in the middle of the page; where that leaves too little room, higher up,
       // with the text below them
-      const U0 = s.F0 / cam.dist, half = (GLT ? GLT.rMax : 120) * U0 * 0.8, mg = Math.max(56, s.W * 0.06), gapR = Math.max(48, s.W * 0.04);
-      const lw = s.W - 28 - (s.W * 0.72 + half + gapR), bw = s.W * 0.44 - 2 * half - 2 * mg, narrow = s.W < 900 || lw < 140 || bw < 190;
+      const U0 = s.F0 / cam.dist, half = (GLT ? GLT.rMax : 120) * U0 * 0.8, mg = Math.max(44, s.W * 0.045);
+      const bw = s.W * 0.44 - 2 * half - 2 * mg, narrow = s.W < 900 || bw < 190;
       const yT = narrow ? s.pt + (s.H - s.pt - s.pb) * 0.33 : s.C0[1], xL = s.W * (narrow ? 0.27 : 0.28), xR = s.W * (narrow ? 0.73 : 0.72);
       stL = { xL, xR, yT };
       const key = [s.W, s.H, Math.round(U0 * 400)].join(); if (key !== stl._k) { stl._k = key;
+        stl.classList.toggle("tight", !narrow && bw < 260);   // little room between the molars: the bold phrases may break
         frames.forEach(f => { const b = f.box.style;
-          if (f.big) { b.left = (s.W / 2).toFixed(1) + "px"; b.top = ((s.pt + s.H - s.pb) / 2).toFixed(1) + "px"; b.transform = "translate(-50%, -50%)"; fit(f.box, Math.min(680, s.W - (narrow ? 32 : 64))); return; }   // the end: alone, in the middle
+          const fs = parseFloat(getComputedStyle(f.box).fontSize) || 15;
+          if (f.big) { b.left = (s.W / 2).toFixed(1) + "px"; b.top = ((s.pt + s.H - s.pb) / 2).toFixed(1) + "px"; b.transform = "translate(-50%, -50%)"; fit(f.box, Math.min(680, s.W - (narrow ? 32 : 64))); return; }   // the end: alone, in the middle, its lines balanced
           if (narrow) { b.left = (s.W / 2).toFixed(1) + "px"; b.top = Math.max(yT + 290 * U0, yT + 168 * U0 + 60).toFixed(1) + "px"; b.transform = "translateX(-50%)"; }   // below the eras too, which may take two lines
-          else if (f.up) { b.left = (xR + half + gapR).toFixed(1) + "px"; b.top = yT.toFixed(1) + "px"; b.transform = "translateY(-50%)"; }
-          else { b.left = (s.W / 2).toFixed(1) + "px"; b.top = yT.toFixed(1) + "px"; b.transform = "translate(-50%, -50%)"; }
-          if (f.up) b.width = (narrow ? Math.min(300, s.W - 32) : Math.min(230, lw)).toFixed(1) + "px";
-          else fit(f.box, narrow ? Math.min(420, s.W - 32) : Math.min(330, bw)); });
+          else { b.left = (s.W / 2).toFixed(1) + "px"; b.top = yT.toFixed(1) + "px"; b.transform = "translate(-50%, -50%)"; }   // between the molars, the reasons too
+          if (f.up) { if (narrow) b.width = Math.min(300, s.W - 32).toFixed(1) + "px"; else fit(f.box, Math.min(260, bw)); }
+          else { const hi = narrow ? Math.min(420, s.W - 32) : Math.min(25 * fs, bw); fit(f.box, rag(f.box, Math.min(15 * fs, hi * 0.8), hi)); } });
         caps.forEach((e, j) => { e.style.left = (j ? xR : xL).toFixed(1) + "px"; e.style.top = (yT + 168 * U0).toFixed(1) + "px"; e.style.maxWidth = (s.W * 0.42).toFixed(0) + "px"; }); }
       // the second molar. Phase A: the repair period of the left one's year (the timeline's; none before the first).
       // Phase B (from when the timeline reaches 2009, below): 2009 a moment, then the projection in four stages, one for
       // each reason: over the first two the repair spreads from the decay to the whole chewing surface (on in the decay
-      // order); then small patches grow round the crown's sides; then two larger ones, and the small ones a little larger;
-      // a rest; the blue goes back; and both molars start again from the oldest record (with reduced motion, it stays at
-      // the projection's end). A period's few repaired points swell as it comes in, so they can be found.
-      if (on) { let uB = story.phase === "B" ? story.clk - story.tB : -1;
-        if (uB >= ST_B && !REDUCED) { story.phase = "A"; waveU = 0; uB = -1; }
-        if (REDUCED) uB = Math.min(uB, ST_T.hold9 + 4 * ST_T.step);
+      // order); then small patches grow round the crown's sides; then two larger ones, and the small ones a little larger.
+      // Then it holds there, as the left one holds 2009, both still turning, until they scatter at the end. A period's few
+      // repaired points swell as it comes in, so they can be found.
+      if (on) { const uB = story.phase === "B" ? Math.min(story.clk - story.tB, ST_B) : -1;
         RT.ri = uB >= 0 ? ID.periods.length - 1 : s.waveYear != null ? eraAt("interventions", s.waveYear) : -1;
-        RT.pg = uB >= ST_T.hold9 ? cl((uB - ST_T.hold9) / (4 * ST_T.step), 0, 1) : -1; RT.back = uB >= ST_B - ST_T.back ? cl((uB - ST_B + ST_T.back) / ST_T.back, 0, 1) : 0;
-        if (RT.pg >= 0 && story.p0 == null) story.p0 = story.clk - (uB - ST_T.hold9);
-        // the crown rebuilt and the bands filled, from when repair takes off (2009) through the projection; gone as the blue goes
-        RT.reb = uB < 0 || RT.back > 0 ? 0 : ease(cl(uB / (ST_T.hold9 + 4 * ST_T.step), 0, 1)); }   // the first projection: the text keeps time from it
+        RT.pg = uB >= ST_T.hold9 ? cl((uB - ST_T.hold9) / (4 * ST_T.step), 0, 1) : -1;
+        // the crown rebuilt and the bands filled, from when repair takes off (2009) through the projection
+        RT.reb = uB < 0 ? 0 : ease(cl(uB / ST_B, 0, 1)); }
       if (RT.ri !== RT.last) { RT.last = RT.ri; RT.at = now; }
       RT.pulse = REDUCED ? 0 : Math.max(0, 1 - (now - RT.at) / 1100);
-      const occl = (MC && MC.occl) || 0.5, b9 = repBase(ID.periods.length - 1), g = RT.pg < 0 ? 0 : RT.pg * 4, gone = 1 - ease(RT.back);
-      const tgt = RT.back > 0 ? 0 : RT.pg >= 0 ? b9 + (occl - b9) * ease(cl(g / 2, 0, 1)) : RT.ri >= 0 ? repShare(RT.ri) * repBase(RT.ri) : 0;
-      RT.rep += (tgt - RT.rep) * (REDUCED ? 1 : Math.min(1, dt * (RT.back > 0 ? 2.6 : 1.4)));
+      const occl = (MC && MC.occl) || 0.5, b9 = repBase(ID.periods.length - 1), g = RT.pg < 0 ? 0 : RT.pg * 4;
+      const tgt = RT.pg >= 0 ? b9 + (occl - b9) * ease(cl(g / 2, 0, 1)) : RT.ri >= 0 ? repShare(RT.ri) * repBase(RT.ri) : 0;
+      RT.rep += (tgt - RT.rep) * (REDUCED ? 1 : Math.min(1, dt * 1.4));
       const Hc = GLT ? GLT.Ytop - GLT.Ycej : 130;
-      RT.pr = RT.pr.map((_, j) => gone * (j < 4 ? Hc * (0.15 * ease(cl((g - 2) * 1.6 - j * 0.2, 0, 1)) + 0.05 * ease(cl(g - 3, 0, 1))) : Hc * 0.27 * ease(cl((g - 3) * 1.5 - (j - 4) * 0.35, 0, 1))));
-      // the text: each line in and out at its times, from the first projection; all of it quickly on Rewind
-      const outK = on ? 1 : cl(1 - (now - story.out) / 450, 0, 1), FD = ST_T.fade, TT = story.p0 != null ? story.clk - story.p0 : -1e9;
-      // the second molar forms once the first has glided over (and unforms, back into it, on Rewind); at the end both
-      // scatter, and once the last line is in the look ahead holds (Play or Replay starts it again)
-      RT.formT = REDUCED ? (on ? 9 : 0) : on ? Math.min(9, RT.formT + (T > ST_T.glide + 1.6 ? dt : 0)) : Math.max(0, RT.formT - dt * 2.4);
+      RT.pr = RT.pr.map((_, j) => (j < 4 ? Hc * (0.15 * ease(cl((g - 2) * 1.6 - j * 0.2, 0, 1)) + 0.05 * ease(cl(g - 3, 0, 1))) : Hc * 0.27 * ease(cl((g - 3) * 1.5 - (j - 4) * 0.35, 0, 1))));
+      // the text: each line in and out at its times, from the projection; all of it quickly on Rewind
+      const outK = on ? 1 : cl(1 - (now - story.out) / 450, 0, 1), FD = ST_T.fade, TT = story.clk - story.p0;
+      // the second molar forms once the first has glided over (and unforms, back into it, on Rewind: from where it is fully
+      // formed, 3, not from 9, so it is back inside the first before the two have glided together, never left on its own
+      // over the radial); at the end both scatter, and once the last line is in the look ahead holds (Play or Replay
+      // starts it again)
+      RT.formT = REDUCED ? (on ? 9 : 0) : on ? Math.min(9, RT.formT + (T > ST_T.glide + 1.6 ? dt : 0)) : Math.max(0, Math.min(RT.formT, 3) - dt * 3);
       { const g = on ? (REDUCED ? (TT >= tGone ? 1 : 0) : ease(cl((TT - tGone) / 2.2, 0, 1))) : 0;   // on the look ahead's clock, done before the large text; back more gently (Replay, Rewind)
         RT.gone = g >= RT.gone ? g : Math.max(g, RT.gone - dt * 1.2); }
       if (on && !story.ended && TT >= tFinal) { story.ended = true; story.paused = true; if (opts.onPlay) opts.onPlay(false); }
@@ -307,7 +330,7 @@
             const ang = Math.atan2(pos[3 * i + 2] - az, pos[3 * i] - ax), da = Math.abs(Math.atan2(Math.sin(ang - a), Math.cos(ang - a)));
             const sc2 = Math.hypot(pos[3 * i] - ax, pos[3 * i + 2] - az) * 0.02 - da * 4 - Math.abs(hf - h) * 6; if (sc2 > bs) { bs = sc2; best = i; } }
           return best < 0 ? [0, 0, 0] : [pos[3 * best], pos[3 * best + 1], pos[3 * best + 2]]; }); })();
-      const U = { uCd: { value: 0 }, uWd: { value: 0 }, uRep: { value: 0 }, uRd: { value: 0 }, cR: { value: new TH.Color(COLS.interventions) }, uAll: { value: 1 }, uRepOn: { value: 1 }, uRebOn: { value: 0 }, uClk: { value: 100 }, uFly: { value: 1.4 }, uForm: { value: 99 }, uFromV: { value: new TH.Vector3() }, uGone: { value: 0 }, uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
+      const U = { uCd: { value: 0 }, uWd: { value: 0 }, uRep: { value: 0 }, uRd: { value: 0 }, cR: { value: new TH.Color(COLS.interventions) }, uAll: { value: 1 }, uRepOn: { value: 1 }, uRebOn: { value: 0 }, uClk: { value: 100 }, uFly: { value: 1.4 }, uForm: { value: 99 }, uFromV: { value: new TH.Vector3() }, uGone: { value: 0 }, uSA: { value: 1 }, uWearY: { value: Ytop + 2 }, uPulse: { value: 0 }, uT: { value: 0 }, uOut: { value: 0 }, uMid: { value: 0 }, uInn: { value: 0 }, uPx: { value: Math.min(2, devicePixelRatio || 1) },
         cInk: { value: ink }, cA: { value: cA }, cB: { value: cB }, cC: { value: cC } };
       const FLY = "float fly(float d){ float e = clamp((uT - d) / 1.5, 0.0, 1.0); return 1.0 - pow(1.0 - e, 3.0); }";
       // Stress lines as bands of negative space: within a line's reach round the crown, crown points near the line are
@@ -399,7 +422,7 @@
         fragmentShader: "varying vec3 vC; varying float vA; void main(){ vec2 q = gl_PointCoord - 0.5; float d = dot(q, q); if (d > 0.25 || vA < 0.01) discard; gl_FragColor = vec4(vC, vA * (1.0 - smoothstep(0.12, 0.25, d))); }" }));
       repPts.renderOrder = 2;
       const molar = new TH.Group(); molar.add(lines); molar.add(pts); molar.add(lost); molar.add(repPts); sc.add(molar);
-      const solo = [lost];   // what only the first molar draws (the look ahead's second shows its repair, nerve, wear and stress lines): the worn-away cloud, the pathogens, the metals
+      const solo = [lost];   // what only the first molar draws (the look ahead's second has its crown rebuilt): the worn-away cloud
       const duo = [];   // and what only the second draws: the particles filling the stress lines' bands
       // a point rises when the wear plane passes below it and settles back when the plane passes above it
       const wearStep = (plane, dt) => { let moved = false;
@@ -487,18 +510,18 @@
         const hg = new TH.BufferGeometry(), aHP = new TH.BufferAttribute(hp, 3), aHA = new TH.BufferAttribute(ha, 1), aHS = new TH.BufferAttribute(hs, 1), aHC = new TH.BufferAttribute(hc, 3);
         [aHP, aHA, aHS, aHC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); hg.setAttribute("position", aHP); hg.setAttribute("aA", aHA); hg.setAttribute("aS", aHS); hg.setAttribute("aC", aHC);
         const glowMat = new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA; vC = aC;" +
+          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx, uSA; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA * uSA; vC = aC;" +
             " gl_PointSize = aA < 0.004 ? 0.0 : uPx * aS * 1480.0 / max(200.0, -mv.z); gl_Position = projectionMatrix * mv; }",
           fragmentShader: "varying float vA; varying vec3 vC; void main(){ vec2 q = gl_PointCoord - 0.5; float d = length(q) * 2.0; if (d > 1.0) discard;" +
             " float core = 1.0 - smoothstep(0.18, 0.34, d), glow = exp(-d * d * 4.0); vec3 c = mix(vC * 1.12, vC * 0.7, core); gl_FragColor = vec4(c, vA * clamp(core + glow * 0.42, 0.0, 1.0)); }" });
         const heads = new TH.Points(hg, glowMat), guides = new TH.Points(gg, glowMat);
         const tg = new TH.BufferGeometry(), aTP = new TH.BufferAttribute(tp, 3), aTA = new TH.BufferAttribute(ta, 1), aTC = new TH.BufferAttribute(tcol, 3);
         [aTP, aTA, aTC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); tg.setAttribute("position", aTP); tg.setAttribute("aA", aTA); tg.setAttribute("aC", aTC);
-        const trails = new TH.LineSegments(tg, new TH.ShaderMaterial({ transparent: true, depthWrite: false,
-          vertexShader: "attribute float aA; attribute vec3 aC; varying float vA; varying vec3 vC; void main(){ vA = aA; vC = aC; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        const trails = new TH.LineSegments(tg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+          vertexShader: "attribute float aA; attribute vec3 aC; uniform float uSA; varying float vA; varying vec3 vC; void main(){ vA = aA * uSA; vC = aC; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
           fragmentShader: "varying float vA; varying vec3 vC; void main(){ if (vA < 0.004) discard; gl_FragColor = vec4(vC, vA); }" }));
         heads.frustumCulled = trails.frustumCulled = guides.frustumCulled = false; guides.renderOrder = 10; heads.renderOrder = 12; trails.renderOrder = 11;
-        molar.add(guides); molar.add(trails); molar.add(heads); solo.push(guides, trails, heads);
+        molar.add(guides); molar.add(trails); molar.add(heads);
         // each particle: its kind (-1 idle), its route, and its distance along it (negative: waiting its turn)
         const P = Array.from({ length: MAXP }, () => ({ k: -1, r: 0, d: 0, retire: false }));
         const period = (kI, r) => { const ro = routes[kI][r], n = P.filter(pp => pp.k === kI && pp.r === r && !pp.retire).length; return Math.max(ro.len + TRAIL, n * GAP); };
@@ -577,12 +600,12 @@
         const mg = new TH.BufferGeometry(), aMP = new TH.BufferAttribute(mp, 3), aMA = new TH.BufferAttribute(ma, 1), aMS = new TH.BufferAttribute(ms, 1), aMC = new TH.BufferAttribute(mcol, 3);
         [aMP, aMA, aMS, aMC].forEach(a2 => a2.setUsage(TH.DynamicDrawUsage)); mg.setAttribute("position", aMP); mg.setAttribute("aA", aMA); mg.setAttribute("aS", aMS); mg.setAttribute("aC", aMC);
         const mpts = new TH.Points(mg, new TH.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
-          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA; vC = aC;" +
+          vertexShader: "attribute float aA, aS; attribute vec3 aC; uniform float uPx, uSA; varying float vA; varying vec3 vC; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = aA * uSA; vC = aC;" +
             " gl_PointSize = aA < 0.004 ? 0.0 : uPx * aS * 1480.0 / max(200.0, -mv.z); gl_Position = projectionMatrix * mv; }",
           fragmentShader: "varying float vA; varying vec3 vC; void main(){ vec2 q = gl_PointCoord - 0.5; float d = length(q) * 2.0; if (d > 1.0) discard;" +
             " float core = 1.0 - smoothstep(0.18, 0.34, d), glow = exp(-d * d * 4.0); vec3 c = mix(vC * 1.12, vC * 0.75, core); gl_FragColor = vec4(c, vA * clamp(core + glow * 0.42, 0.0, 1.0)); }" }));
         // in a frame of their own that turns with the camera (not the molar), so the sides stay the reader's left and right
-        const mgrp = new TH.Group(); mgrp.add(mpts); sc.add(mgrp); solo.push(mgrp); mpts.frustumCulled = false; mpts.renderOrder = 13;
+        const mgrp = new TH.Group(); mgrp.add(mpts); sc.add(mgrp); mpts.frustumCulled = false; mpts.renderOrder = 13;
         // each particle: its lane (-1 idle), its distance along it (negative: waiting its turn), a small sideways offset
         const M = Array.from({ length: MAXM }, () => ({ l: -1, d: 0, retire: false, off: [0, 0, 0] }));
         met = { lanes, M, groups: GK, mgrp };
@@ -893,6 +916,10 @@
         s.dim = s.dim || { caries: 0, wear: 0, metals: 0, pathogens: 0, interventions: 0 };
         for (const k in s.dim) s.dim[k] += ((cmp && cmp.key !== k ? 1 : 0) - s.dim[k]) * (REDUCED ? 1 : Math.min(1, dt * 3));
         U2.uCd.value = s.dim.caries; U2.uWd.value = s.dim.wear; U2.uRd.value = s.dim.interventions;
+        // the look ahead: the pathogens' and the metals' streams dimmed on both molars, as a comparison dims them, and gone
+        // as the molars scatter at the end
+        s.stDim = (s.stDim || 0) + ((story && story.on ? 1 : 0) - (s.stDim || 0)) * (REDUCED ? 1 : Math.min(1, dt * 2));
+        const stK = story ? 1 - RT.gone : 1;
         // repair against decay: the period's repair share of the decay the molar shows (its caries share, even with caries
         // hidden), eased so the points turn one by one; it reads the decay order earliest first, the deepest fissures
         { const er = REDUCED ? 1 : Math.min(1, dt * 1.2); s.repP = (s.repP || 0) + ((s.int.era >= 0 ? repShare(s.int.era) : 0) - (s.repP || 0)) * er;
@@ -903,10 +930,10 @@
         if (s.met.era !== s.met.cEra) { s.met.cEra = s.met.era; s.met.groups = s.met.era >= 0 ? metalGroups(s.met.era) : null; }
         // a record hidden with the filter fades from the molar at once (its particles go too, not just stop coming)
         s.mtOn = (s.mtOn == null ? 1 : s.mtOn) + ((hid("metals") ? 0 : 1) - (s.mtOn == null ? 1 : s.mtOn)) * (REDUCED ? 1 : Math.min(1, dt * 4));
-        GLT.metalsStep(s.met.groups, t, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * s.mtOn * (1 - 0.7 * s.dim.metals) * (REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1)));
+        GLT.metalsStep(s.met.groups, t, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * s.mtOn * stK * (1 - 0.7 * Math.max(s.dim.metals, s.stDim)) * (REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1)));
         { const pa = REDUCED || !s.anim ? 1 : cl((t - 2.6) / 1.2, 0, 1); s.nvOn = (s.nvOn == null ? 1 : s.nvOn) + ((hid("pathogens") ? 0 : 1) - (s.nvOn == null ? 1 : s.nvOn)) * (REDUCED ? 1 : Math.min(1, dt * 4)); U2.uNv && (U2.uNv.value = appear * pa * s.nvOn * (1 - 0.6 * s.dim.pathogens));
           if (s.pat.era !== s.pat.cEra) { s.pat.cEra = s.pat.era; s.pat.counts = s.pat.era >= 0 ? pathogenCounts(s.pat.era) : null; }
-          GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa * s.nvOn * (1 - 0.7 * s.dim.pathogens)); }
+          GLT.pathStep(s.pat.counts, REDUCED ? 0 : Math.min(0.05, dt), U2.uWearY.value, appear * pa * s.nvOn * stK * (1 - 0.7 * Math.max(s.dim.pathogens, s.stDim))); }
         U2.uOut.value += (s.car.out - U2.uOut.value) * (REDUCED ? 1 : ku); U2.uMid.value += (s.car.mid - U2.uMid.value) * (REDUCED ? 1 : ku); U2.uInn.value += (s.car.inn - U2.uInn.value) * (REDUCED ? 1 : ku);
         // the stress lines follow the same period as the caries, and show once the molar has mostly settled
         if (GLT.leh) GLT.leh.update(dt, s.wear.era == null ? -1 : s.wear.era, (REDUCED || !s.anim ? 1 : cl((t - 2.4) / 1, 0, 1)) * (hid("wear") ? 0 : 1) * (1 - 0.7 * s.dim.wear), U2.uPulse.value);
@@ -916,14 +943,15 @@
         // changes between the two
         const sp = split * split * (3 - 2 * split), two = sp > 0.002 && !!stL, clk = now / 1000 + 100;
         U2.uClk.value = clk; U2.uFly.value = REDUCED ? 0.001 : 1.4;
-        const snap = GLT.two !== two; GLT.two = two;
+        const snap = GLT.two !== two || !!RT.fresh; GLT.two = two; RT.fresh = false;
         GLT.repairStep(two ? RT.rep : U2.uRep.value, two ? RT.pr : null, clk, snap);
         GLT.rebuildStep(two ? RT.reb : 0, U2.uWearY.value, clk, snap);
         if (GLT.leh) GLT.leh.fill(two ? RT.reb : 0, clk, U2.uFly.value, snap);
         // the look ahead: two molars, drawn in two passes from the same camera, each centred on its own place (the camera's
         // view shifted). The first without the repair, gliding over; the second without what only the first draws
-        // (GLT.solo), with the repair, the nerve, the wear and the stress lines, no caries colours, its crown rebuilt and
-        // its bands filled and closing as the repair grows (RT.reb), formed out of the first. The uniforms are put back
+        // (GLT.solo, the worn-away cloud), with the repair, the nerve, the pathogens and the metals, the wear and the stress
+        // lines, no caries colours, its crown rebuilt and its bands filled and closing as the repair grows (RT.reb), formed
+        // out of the first. The uniforms are put back
         // after it, for the easing next frame.
         if (two) { const at2 = (x, y) => { tc.setViewOffset(s.W, s.H, s.W / 2 - x, s.H / 2 - y, s.W, s.H); tc.updateProjectionMatrix(); };
           const xl = C[0] + (stL.xL - C[0]) * sp, yl = C[1] + (stL.yT - C[1]) * sp;
@@ -932,10 +960,10 @@
           // second's place, in the molar's own turning frame) and fly over
           { const ppu = F / D, dx = (xl - stL.xR) / ppu, dy = (yl - stL.yT) / ppu, v = [rt[0] * dx - up[0] * dy, rt[1] * dx - up[1] * dy, rt[2] * dx - up[2] * dy], a = GLT.molar.rotation.y, ca2 = Math.cos(a), sa2 = Math.sin(a);
             U2.uFromV.value.set(v[0] * ca2 - v[2] * sa2, v[1], v[0] * sa2 + v[2] * ca2); U2.uForm.value = RT.formT; }
-          const fA = cl((RT.formT - 1.6) / 1.4, 0, 1);   // what is not a point of the cloud (the nerve, the stress lines' particles and outline) comes in once it has formed
-          const keep = ["uOut", "uMid", "uInn", "uCShow", "uPulse", "uCd", "uWd", "uRd", "uAll", "uNv"].filter(k2 => U2[k2]).map(k2 => [k2, U2[k2].value]), lw = U2.uLW.value.clone(), ld = U2.uLD.value.clone(), UL = GLT.leh && GLT.leh.UL, ulS = UL ? UL.uShow.value : 0;
+          const fA = cl((RT.formT - 1.6) / 1.4, 0, 1);   // what is not a point of the cloud (the nerve, the streams, the stress lines' particles and outline) comes in once it has formed
+          const keep = ["uOut", "uMid", "uInn", "uCShow", "uPulse", "uCd", "uWd", "uRd", "uAll", "uNv", "uSA"].filter(k2 => U2[k2]).map(k2 => [k2, U2[k2].value]), lw = U2.uLW.value.clone(), ld = U2.uLD.value.clone(), UL = GLT.leh && GLT.leh.UL, ulS = UL ? UL.uShow.value : 0;
           const open = Math.max(0.001, 1 - ease(RT.reb));   // the bands close as they fill
-          U2.uOut.value = U2.uMid.value = U2.uInn.value = U2.uCd.value = U2.uWd.value = U2.uRd.value = 0; U2.uPulse.value = RT.pulse; U2.uAll.value = 1; if (U2.uNv) U2.uNv.value *= fA;
+          U2.uOut.value = U2.uMid.value = U2.uInn.value = U2.uCd.value = U2.uWd.value = U2.uRd.value = 0; U2.uPulse.value = RT.pulse; U2.uAll.value = 1; if (U2.uNv) U2.uNv.value *= fA; U2.uSA.value = fA;
           U2.uRepOn.value = 1; U2.uRebOn.value = 1; U2.uLW.value.multiplyScalar(open); U2.uLD.value.multiplyScalar(open); U2.uCShow.value *= open * fA; if (UL) UL.uShow.value *= open * fA;
           GLT.solo.forEach(o2 => { o2.visible = false; }); GLT.duo.forEach(o2 => { o2.visible = true; });
           rd.autoClear = false; rd.clearDepth(); at2(stL.xR, stL.yT); rd.render(GLT.sc, tc); rd.autoClear = true; U2.uForm.value = 99; U2.uFromV.value.set(0, 0, 0);
@@ -985,7 +1013,7 @@
       // move it to a year and pause it there. With reduced motion it does not run, and stays hidden at today until the
       // reader moves the knob.
       { const hold = ring.hover || ringDrag, shown = !REDUCED || ring.touched;
-        if (story && story.on) { if (story.phase === "A" && !REDUCED && !story.paused) { waveU = Math.min(1, waveU + dt * 0.045 * (window.__storySpeed || 1)); if (waveU >= 1) { story.phase = "B"; story.tB = story.clk; } } }   // the look ahead: once through, then held (storyFrame())
+        if (story && story.on) { if (story.phase === "A" && !REDUCED && !story.paused) { waveU = Math.min(1, waveU + dt / ST_A * (window.__storySpeed || 1)); if (waveU >= 1) { story.phase = "B"; story.tB = story.clk; } } }   // the look ahead: once through, then held (storyFrame())
         else if (playing && !hold && !REDUCED && (!s.anim || t > 2.4)) waveU = (waveU + dt * 0.045) % 1;
         const u = waveU, w = RMAX - u * (RMAX - R0); poly(s.waveL[0], a => pj(w * Math.cos(a), 0, w * Math.sin(a)), 96);
         { const pts = s.waveL[0].getAttribute("points"); for (let i = 1; i < s.waveL.length; i++) s.waveL[i].setAttribute("points", pts); }
@@ -1283,14 +1311,15 @@
       playing() { return story && story.on ? !story.paused : playing; },
       // Replay in the look ahead: its clock from the start again (the oldest record, the text not yet begun), playing; the
       // molars stay apart
-      replayStory() { if (!(story && story.on)) return; Object.assign(story, { clk: 0, paused: false, ended: false, phase: REDUCED ? "B" : "A", tB: 0, p0: null }); waveU = REDUCED ? 1 : 0;
+      replayStory() { if (!(story && story.on)) return; Object.assign(story, { clk: 0, paused: false, ended: false, phase: REDUCED ? "B" : "A", tB: 0, p0: p0Of() }); waveU = REDUCED ? 1 : 0;
+        afresh(false);
         sched.forEach(o => { o.a = -1; }); if (opts.onPlay) opts.onPlay(true); },
       // the look ahead: on (Fast forward) or off (Rewind, back to the radial as it was: its timeline, play state and camera)
       story(on) {
         if (on && !(story && story.on)) { clearSel(); if (S && S.read) S.read.off();
-          story = { on: true, t0: performance.now(), clk: 0, paused: false, ended: false, phase: REDUCED ? "B" : "A", tB: 0, p0: null, back: { waveU, playing, tPitch: cam.tPitch, tDist: cam.tDist } }; if (opts.onPlay) opts.onPlay(true);
+          story = { on: true, t0: performance.now(), clk: 0, paused: false, ended: false, phase: REDUCED ? "B" : "A", tB: 0, p0: p0Of(), back: { waveU, playing, tPitch: cam.tPitch, tDist: cam.tDist } }; if (opts.onPlay) opts.onPlay(true);
           waveU = REDUCED ? 1 : 0;   // from the oldest record (with reduced motion, at 2009, straight to the projection) cam.tPitch = 0.12; cam.tDist = 1700; lastInput = performance.now();
-          Object.assign(RT, { ri: -1, pg: -1, back: 0, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], last: -1, at: -1e9, pulse: 0, formT: 0, gone: 0 }); sched.forEach(o => { o.a = -1; }); host.classList.add("story"); }
+          afresh(true); sched.forEach(o => { o.a = -1; }); host.classList.add("story"); }
         else if (!on && story && story.on) { story.on = false; story.out = performance.now(); const b = story.back;
           waveU = b.waveU; setPlaying(b.playing); cam.tPitch = b.tPitch; cam.tDist = b.tDist; lastInput = performance.now(); host.classList.remove("story"); } },
       state() { if (!S || !GLT) return null; let up = 0; for (let i = 0; i < GLT.lift.length; i++) up += GLT.lift[i] > 0.99 ? 1 : 0;
