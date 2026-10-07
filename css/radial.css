@@ -1,0 +1,229 @@
+/* Radial timeline styles, ported from The Tooth Untold prototype (index.html), in their original order: later rules
+   override earlier ones, so do not reorder. Selectors for classes radial.js no longer uses were dropped. */
+
+:root{
+  color-scheme: light;
+  --bg:#e9e8e4; --bg-2:#dfded9; --card:#f3f2ee;
+  --ink:#1a1a18; --ink-2:#55544f; --ink-3:#8a8983; --rule:#c6c4bd;
+  --bacteria:#b0362f; --virus:#2f55b0; --parasite:#16907a; --metal:#b98208;
+  /* the radial timeline's secondary colour (a line whose per-year view is on): a deep tone of the renderer's dentine */
+  --dentine-ink:#8a6d47;
+  --ring:#4a4945;   /* the timeline's ring, its handle and its year: dark grey */
+  --serif:"Lora", Georgia, "Times New Roman", serif;
+  /* labels, controls, numbers and tables. For now everything is Lora; to bring back a sans for these,
+     load it in the <link> above and set it here, e.g. "Archivo", "Helvetica Neue", Arial, sans-serif */
+  --label:var(--serif);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow:hidden}
+button{font:inherit;color:inherit}
+
+/* ---- the page: Replay, as on the prototype */
+.btn{font-family:var(--label);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);background:var(--bg);padding:6px 12px;cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* ---- the radial (radial.js) */
+#radial{position:fixed;inset:0;z-index:3;background:var(--bg)}
+#radial[hidden]{display:none}
+.rd{display:block;width:100%;height:100%;font-family:var(--label)}
+.rd-teeth,.rd-read{pointer-events:none}
+.rd-hit{fill:transparent;cursor:pointer;outline:none}
+.rd [data-cat]{transition:opacity .25s ease}
+.rd.rd-dim [data-cat]:not(.lit){opacity:.16}
+.rd-read{opacity:0;transition:opacity .15s ease}
+.rd-read.on{opacity:1}
+.rd-read line{stroke:var(--ink-3);stroke-width:.8}
+.rd-yr,.rd-ct{font-family:var(--label);paint-order:stroke;stroke:var(--bg);stroke-width:6px;stroke-linejoin:round}
+.rd-yr{fill:var(--ink);font-size:15px;font-weight:600}
+.rd-ct{fill:var(--ink-2);font-size:13px;font-style:italic}
+@keyframes rdDash{to{stroke-dashoffset:-40}}
+@keyframes rdSpin{to{transform:rotate(360deg)}}
+@keyframes rdSpinR{to{transform:rotate(-360deg)}}
+
+/* ---- the 3D scene as first designed: a dark, glowing 'space' look (overridden below by the paper theme; kept so a
+   dark variant can be restored by deleting the paper section) */
+#radial{overflow:hidden;cursor:grab;touch-action:none;background:radial-gradient(ellipse 60% 55% at 50% 50%,#0b1640 0%,#04081a 45%,#000 100%)}
+#radial::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);mix-blend-mode:screen}
+#radial.grab{cursor:grabbing}
+.rd-sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rd3{position:relative;user-select:none;-webkit-user-select:none;font-family:"Geist Mono",ui-monospace,monospace}
+.rd-wire{fill:none;stroke:#7FB6FF;stroke-width:.6;stroke-opacity:.16}
+.rd-equator{fill:none;stroke:#BFD8FF;stroke-width:1.6;stroke-opacity:.55}
+.rd-axis{stroke:#fff;stroke-width:.8;stroke-opacity:.5}
+.rd-pole{fill:#fff;opacity:.85}
+.rd-shell{fill:none;stroke:#5CCBFF;stroke-width:.8;stroke-opacity:.35;stroke-dasharray:1 5;animation:rdDash 6s linear infinite}
+.rd-slab{fill:#7F93C6;font-size:9.5px;letter-spacing:.14em}
+.rd-hubr{fill:none;transform-box:fill-box;transform-origin:center}
+.rd-hubr.r1{stroke:#FF2E63;stroke-width:2;stroke-dasharray:2 7;animation:rdSpin 14s linear infinite}
+.rd-hubr.r2{stroke:#5CCBFF;stroke-width:5;stroke-opacity:.6;stroke-dasharray:1.5 4 1.5 30;animation:rdSpinR 22s linear infinite}
+.rd-hubr.r3{stroke:#fff;stroke-width:.6;stroke-opacity:.3;stroke-dasharray:40 10 4 10;animation:rdSpin 40s linear infinite}
+.rd-teeth image{filter:invert(1) hue-rotate(185deg) saturate(1.4) brightness(1.05);mix-blend-mode:screen;opacity:.9}
+.rd-ray{stroke:#fff;stroke-width:.7;stroke-opacity:.55}
+.rd-beam{stroke:var(--c);stroke-linecap:round;stroke-opacity:.85;filter:url(#rd-glow)}
+.rd-mark{opacity:var(--fog,1);transition:opacity .25s ease}
+.rd-bokeh{fill:var(--c);opacity:.18}
+.rd-core{fill:var(--c);fill-opacity:.85;stroke:#fff;stroke-width:.8;stroke-opacity:.6}
+.rd-core.nocount{fill-opacity:.1;stroke:var(--c);stroke-dasharray:2 2}
+.rd-mark.on .rd-core{fill:#fff;fill-opacity:1}
+.rd-mark.on .rd-bokeh{opacity:.5}
+.rd3 .rd-hit{fill:transparent;cursor:pointer;outline:none}
+.rd-card{cursor:pointer;outline:none;transition:opacity .3s}
+.rd-cbox{fill:rgba(0,0,0,.6);stroke:#fff;stroke-opacity:.55;stroke-width:.8}
+.rd-cname{fill:#fff;font-size:12px;font-weight:500;letter-spacing:.14em}
+.rd-csub{fill:var(--c);font-size:10px;letter-spacing:.06em}
+.rd-lead{stroke:#fff;stroke-width:.6;stroke-opacity:.6;stroke-dasharray:2 3}
+.rd-card.lit .rd-cbox,.rd-card:focus-visible .rd-cbox{stroke:var(--c);stroke-opacity:1;filter:url(#rd-glow)}
+.rd3.rd-dim .rd-mark:not(.lit),.rd3.rd-dim [data-cat]:not(.lit),.rd3.rd-dim .rd-card:not(.lit){opacity:.15}
+.rd3 .rd-read line{stroke:#fff;stroke-width:.7}
+.rd3 .rd-yr{fill:#fff;font-size:13px;font-weight:500;letter-spacing:.04em;stroke:#000;stroke-width:4px;paint-order:stroke}
+.rd3 .rd-ct{fill:#9AA6CC;font-size:10.5px;font-style:normal;letter-spacing:.08em;text-transform:uppercase;stroke:#000;stroke-width:4px;paint-order:stroke}
+.rd-amb{fill:#E6E8EE}
+.rd-albl{fill:#8A93A8;font-size:9px;letter-spacing:.16em}
+.rd-arw{stroke:#E6E8EE;stroke-width:.7}
+.rd-arw.lit{stroke:var(--c);stroke-width:1.1}
+
+/* ---- the paper theme: the journal's light paper, ink and Lora. Later rules win, so keep this section last */
+#radial{background:radial-gradient(ellipse 75% 65% at 50% 52%,#f3f2ee 0%,var(--bg) 58%,#dcdad3 100%)}
+#radial::after{display:none}
+.rd3{font-family:var(--label)}
+.rd-wire{stroke:var(--ink);stroke-opacity:.09}
+.rd-equator{stroke:var(--ink);stroke-width:1;stroke-opacity:.35}
+.rd-axis{stroke:var(--ink);stroke-opacity:.35}
+.rd-pole{fill:var(--ink-3);opacity:.6}
+.rd-shell{stroke:var(--ink);stroke-opacity:.28;animation:none}
+.rd-slab{fill:var(--ink-3);font-family:var(--label);font-style:italic;font-size:11px;letter-spacing:.02em}
+.rd-hubr.r1{stroke:var(--ink);stroke-width:1;stroke-opacity:.5;animation-duration:60s}
+.rd-hubr.r2{stroke:var(--dentine-ink);stroke-width:3;stroke-opacity:.35;animation-duration:90s}
+.rd-hubr.r3{stroke:var(--ink);stroke-opacity:.2;animation:none}
+.rd-teeth image{filter:none;mix-blend-mode:multiply;opacity:1}
+.rd-ray{stroke:var(--ink);stroke-width:1.2;stroke-opacity:.7}
+.rd-beam{filter:none;stroke-opacity:.9}
+.rd-bokeh{opacity:.16}
+.rd-core{fill:var(--c);fill-opacity:.55;stroke:var(--c);stroke-width:1;stroke-opacity:.9}
+.rd-core.nocount{fill:var(--bg);fill-opacity:1;stroke:var(--c);stroke-dasharray:2 2}
+.rd-mark.on .rd-core{fill-opacity:1}
+.rd-mark.on .rd-bokeh{opacity:.32}
+.rd-cbox{fill:rgba(243,242,238,.92);stroke:var(--ink);stroke-opacity:.6}
+.rd-cname{fill:var(--ink);font-family:var(--label);font-size:13px;font-weight:600;letter-spacing:.06em}
+.rd-csub{font-family:var(--label);font-size:11px;font-style:italic;letter-spacing:0}
+.rd-lead{stroke:var(--ink);stroke-opacity:.5}
+.rd-card.lit .rd-cbox,.rd-card:focus-visible .rd-cbox{filter:none;stroke-width:1.4}
+.rd-cbox{fill:transparent!important;stroke:none!important;filter:none!important}
+.rd-cname{fill:var(--c);font-size:16px;font-weight:600;letter-spacing:.08em;paint-order:stroke;stroke:var(--bg);stroke-width:5px;stroke-linejoin:round}
+.rd-csub{fill:var(--ink-2);font-size:12px;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.rd-card.lit .rd-cname,.rd-card:focus-visible .rd-cname{text-decoration:underline;text-underline-offset:4px}
+.rd-lead{stroke-opacity:.35}
+.rd-arw{stroke:var(--c);stroke-opacity:.6}
+.rd3 .rd-read line{stroke:var(--ink)}
+.rd3 .rd-yr{fill:var(--ink);font-family:var(--label);font-size:15px;font-weight:600;letter-spacing:0;stroke:var(--bg)}
+.rd3 .rd-ct{fill:var(--ink-2);font-family:var(--label);font-size:13px;font-style:italic;text-transform:none;letter-spacing:0;stroke:var(--bg)}
+.rd-tgl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rd-rbg{fill:#f3f2ee;fill-opacity:.96;stroke:var(--rule);stroke-width:1}
+.rd-teeth{display:none}
+.rd-wave polyline{fill:none;stroke:var(--ring);stroke-linejoin:round}
+.rd-wlab{fill:var(--ring);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.rd-shell{animation:rdDash 14s linear infinite}
+/* the caries line while the timeline is between records: paler, until the wave reaches the next one */
+.rd3 [data-cat].rd-nodata{opacity:.32;filter:saturate(.35);transition:opacity .4s ease,filter .4s ease}
+/* the timeline's handle: a diamond lying along the ring (not a circle, which would read as a record's point), dragged around it or in and out */
+.rd-grip{cursor:grab;outline:none}
+.rd-kbody{fill:var(--ring);stroke:var(--bg);stroke-width:1.5;stroke-linejoin:round}
+.rd-kfacet{fill:none;stroke:var(--bg);stroke-width:1;stroke-opacity:.8;stroke-linejoin:round}
+.rd-khalo{fill:var(--ring);fill-opacity:0;transition:fill-opacity .15s ease}
+.rd-grip.on .rd-khalo{fill-opacity:.16}
+.rd-grip:focus-visible .rd-kbody{stroke:var(--ink);stroke-width:1.6}
+.rd-khit{fill:transparent}
+#radial.ringgrab,#radial.ringgrab .rd-grip{cursor:grabbing}
+/* only a circle's hit area takes the pointer: the soft halos are wider and, re-stacked by depth, can sit over a neighbour's hit area */
+.rd-bokeh,.rd-core{pointer-events:none}
+/* a Wear and LEH point's readout: its two stress lines, in the colours they have on the molar */
+.rd3 .rd-lh .a{fill:#1A1A18}
+.rd3 .rd-lh .b{fill:#000}
+/* the legend beside a hovered record name (Pathogens, Metals): the circles' pop-up, with a swatch per colour */
+.rd3 .rd-lrow{font-style:normal}
+.rd-lsw{stroke:var(--bg);stroke-width:1}
+.rd3 .rd-lsub{font-size:11.5px}
+/* circles covering the time period the reader is hovering: lit, and kept bright when the other records dim */
+.rd-mark.hot .rd-core{fill-opacity:1;stroke-width:1.6}
+.rd-mark.hot .rd-bokeh{opacity:.36}
+.rd3.rd-dim .rd-mark.hot{opacity:1}
+/* the clicked time period (js/popup.js): its circle ringed in ink, its years in a box beside it */
+.rd-mark.sel .rd-core{fill:var(--card);fill-opacity:1;stroke:var(--ink);stroke-width:1.6;stroke-opacity:1}
+.rd3.rd-dim .rd-mark.sel{opacity:1}
+.rd-pin{opacity:0;transition:opacity .3s ease;pointer-events:none}
+.rd-pin.on{opacity:1}
+.rd-pin rect{fill:var(--card);fill-opacity:.96;stroke:var(--ink);stroke-opacity:.4;stroke-width:1}
+.rd-pin text{fill:var(--ink);font-family:var(--label);font-size:13px}
+.rd-pin line{stroke:var(--ink);stroke-opacity:.5;stroke-width:.8}
+/* the filter: a hidden record's line, circles and name are not drawn */
+.rd3 .rd-off{display:none}
+/* picked periods (one, or two compared): each highlighted alike, white with an ink ring and a brighter glow; of two, the
+   one the molar shows now has the stronger years label */
+.rd3 .rd-mark.sel .rd-core{fill:#fff;stroke:var(--ink);stroke-width:2}
+.rd3 .rd-mark.sel .rd-bokeh{opacity:.6}
+.rd-pin.cur rect{stroke-opacity:1;stroke-width:1.6}
+.rd-pin.cur text{font-weight:600}
+/* comparing: the other records' lines, circles and names fade and grey */
+.rd3 .rd-fade{filter:opacity(.3) saturate(.2)}
+/* the filter menu, top left (js/main.js): a button that opens a list of the records, each with a checkbox in its colour */
+.flt{position:fixed;top:20px;left:28px;z-index:7;font-family:var(--label);width:236px}
+.flt-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:8px;cursor:pointer;box-shadow:0 2px 10px rgba(26,26,24,.06)}
+.flt-btn:hover{border-color:var(--ink-3)}
+.flt-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.flt-chev{width:12px;height:8px;fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s ease}
+.flt.open .flt-chev{transform:rotate(180deg)}
+.flt-list{list-style:none;margin:6px 0 0;padding:6px;background:var(--card);border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 28px rgba(26,26,24,.12)}
+.flt-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--ink);cursor:pointer;user-select:none}
+.flt-row:hover{background:rgba(26,26,24,.05)}
+.flt-row input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.flt-box{flex:none;width:18px;height:18px;border:1.5px solid var(--rule);border-radius:4px;background:#fff;position:relative;transition:background .15s,border-color .15s}
+.flt-row input:checked + .flt-box{background:var(--c);border-color:var(--c)}
+.flt-row input:checked + .flt-box::after{content:"";position:absolute;left:5.5px;top:1.5px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.flt-row input:focus-visible + .flt-box{outline:2px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.flt-chev,.flt-box{transition:none}}
+@media (max-width:760px){.flt{top:12px;left:16px;width:200px}}
+/* Play / Pause and Replay: icons, side by side, centred at the foot of the page */
+.ctrls{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:6;display:flex;gap:16px}
+.btn.ico{width:66px;height:30px;padding:0;display:grid;place-items:center;color:var(--ink)}
+.btn.ico:hover{color:#fff}   /* white on the black of a hovered button */
+.btn.ico svg{width:18px;height:18px;fill:currentColor}
+.btn.ico svg .ln{fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
+.btn.ico svg .jn{stroke:currentColor;stroke-width:1.4;stroke-linejoin:round}   /* softened corners */
+/* Fast forward (its function to come): the same button, alone at the bottom right, as far in as the filter menu is at
+   the top left; under the pop-up (z-index 5), which covers it where they meet */
+.ffwd{position:fixed;right:28px;bottom:22px;z-index:4}
+@media (max-width:760px){.ffwd{right:16px}}
+/* the look ahead (Fast forward, radial.js story()): the radial fades away, the filter menu and Fast forward give way to
+   Rewind at the bottom left (the same button, mirrored; Play/Pause and Replay stay), and the text comes in over the two
+   molars */
+.rwd{position:fixed;left:28px;bottom:22px;z-index:4;opacity:0;visibility:hidden;transition:opacity .5s ease,visibility 0s linear .5s}
+@media (max-width:760px){.rwd{left:16px}}
+body.story .rwd{opacity:1;visibility:visible;transition:opacity .6s ease .3s,visibility 0s}
+.flt,.ctrls,.ffwd{transition:opacity .6s ease .3s,visibility 0s}
+body.story .flt,body.story .ffwd{opacity:0;visibility:hidden;transition:opacity .5s ease,visibility 0s linear .5s}
+.rd3{transition:opacity .8s ease}
+#radial.story .rd3{opacity:0;pointer-events:none}
+.rd-story{position:absolute;inset:0;z-index:1;pointer-events:none;font-family:var(--serif);color:var(--ink)}
+.rd-story:not(.on){display:none}
+.st-f{position:absolute;font-size:16px;line-height:1.5}
+/* a section between the molars: left-aligned, its box drawn in to its widest line and set in the page's middle */
+.st-s{font-size:clamp(16px,calc(.55vw + 11px),20px);line-height:1.55}
+.st-s p{text-wrap:balance}
+.st-i{opacity:0;visibility:hidden;margin:0 0 16px}
+.st-f > .st-i:last-child{margin-bottom:0}
+.rd-story b{font-weight:600}
+/* the reasons for more repair, in the interventions' colour, each with an arrow up */
+.st-up{display:flex;gap:10px;align-items:flex-start;color:var(--int);font-size:17px;font-weight:600;line-height:1.25;margin-bottom:22px}
+.st-up svg{flex:none;width:14px;height:18px;margin-top:1px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-bul{display:flex;flex-wrap:wrap;gap:4px 26px;list-style:none;margin:10px 0 20px;padding:0}
+.st-bul li{position:relative;padding-left:13px;margin:0}
+.st-bul li::before{content:"";position:absolute;left:0;top:.68em;width:4px;height:4px;border-radius:50%;background:currentColor}
+.st-yr{position:absolute;translate:-50% 0;width:max-content;text-align:center;font-size:13px;font-style:italic;font-weight:500;color:var(--ring);opacity:0;visibility:hidden}
+@media (prefers-reduced-motion: reduce){.rwd,.flt,.ctrls,.ffwd,.rd3,body.story .rwd,body.story .flt,body.story .ctrls,body.story .ffwd{transition:none}}
+/* text in the hover pop-ups (a circle's readout, a record name's legend) sits on its own box: no halo behind the letters,
+   which read there as a faint dark shadow */
+.rd3 .rd-read .rd-yr,.rd3 .rd-read .rd-ct{stroke:none;stroke-width:0}
+/* two periods compared: the band between them on the ground plane, faint, in the compared record's colour */
+.rd-cband{fill:var(--c);fill-opacity:.16;stroke:var(--c);stroke-opacity:.38;stroke-width:1;pointer-events:none}
