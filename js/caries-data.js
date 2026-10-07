@@ -26,3 +26,24 @@
     { p: "Industrial",     std: 76.1, sev: [24.1, 29.0, 18.5, 19.8, 8.7], n: 531 },
   ];
 })();
+
+// Caries by age at death, per period, for the caries pop-up's supporting chart (js/popup-content.js). Hand-copied.
+// Source: the team's Caries Viz/c1b_caries_by_age_data.csv (Global History of Health Project, European module, decoded
+// for this project; periods after Wittwer-Backofen & Engel 2019, The Backbone of Europe). The six periods are
+// CARIES_RATES', in the same order.
+//   ages   the age bands at death
+//   cells  per age band: [share of adults with at least one carious tooth (%), adults in the band]
+(function () {
+  "use strict";
+  window.CARIES_AGE = {
+    ages: ["18–24", "25–29", "30–34", "35–39", "40–44", "45–49", "50–59", "60+"],
+    periods: [
+      { p: "Pre-medieval",    cells: [[56.1, 66], [60.8, 79], [65.9, 85], [61.5, 97], [66.7, 83], [73.3, 87], [63.4, 94], [60.0, 36]] },
+      { p: "Early medieval",  cells: [[30.1, 206], [51.5, 171], [56.0, 221], [52.2, 276], [60.2, 333], [60.8, 336], [59.5, 540], [60.7, 253]] },
+      { p: "High medieval",   cells: [[27.8, 79], [47.6, 126], [50.0, 136], [51.4, 145], [60.0, 136], [53.9, 104], [66.1, 170], [51.5, 35]] },
+      { p: "Late medieval",   cells: [[54.8, 104], [67.4, 92], [63.0, 148], [63.4, 124], [73.4, 144], [60.1, 141], [67.5, 198], [62.5, 98]] },
+      { p: "Early modern",    cells: [[58.2, 282], [63.3, 287], [67.3, 276], [62.2, 207], [62.4, 223], [60.9, 183], [70.8, 306], [61.6, 146]] },
+      { p: "Industrial",      cells: [[80.5, 82], [77.5, 41], [74.4, 41], [74.6, 73], [82.4, 76], [86.2, 62], [68.8, 136], [64.3, 49]] },
+    ],
+  };
+})();

@@ -122,7 +122,7 @@ button{font:inherit;color:inherit}
 .rd-tgl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .rd-rbg{fill:#f3f2ee;fill-opacity:.96;stroke:var(--rule);stroke-width:1}
 .rd-teeth{display:none}
-.rd-wave polyline{fill:none;stroke:var(--ring);stroke-linejoin:round;display:none}
+.rd-wave polyline{fill:none;stroke:var(--ring);stroke-linejoin:round}
 .rd-wlab{fill:var(--ring);font-family:var(--label);font-size:13px;font-style:italic;font-weight:500;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .rd-shell{animation:rdDash 14s linear infinite}
 /* the caries line while the timeline is between records: paler, until the wave reaches the next one */

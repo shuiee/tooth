@@ -12,7 +12,7 @@ A 3D radial timeline of dental evidence (Harvard MDE). A first molar sits at the
 python3 -m http.server 8770
 ```
 
-Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, and click a circle to open its time period: pictures, charts and figures for that period. A second circle on the same line compares the two on the molar; the menu at the top left hides or shows records.
+Open <http://localhost:8770>. There is no build step and nothing to install. Drag to orbit, scroll to zoom, and click a circle to open its time period. A second circle on the same line compares the two on the molar; the menu at the top left hides or shows records.
 
 The live page (`main`) is one self-contained file, `index.html`, with its code, images and fonts packed inside it. This branch keeps the prototype as separate files:
 
@@ -21,9 +21,7 @@ index.html               the page
 css/radial.css           theme tokens and the diagram's styles
 css/popup.css            the pop-up's styles and motion
 js/main.js               mounts the diagram; Pause, Replay, resize, the pop-up, the onOpen hook
-js/popup.js              the pop-up for a clicked time period
-js/popup-content.js      each record's pop-up: key datapoint, pictures, charts and figures
-img/                     the pop-ups' pictures
+js/popup.js              the pop-up for a clicked time period (its header, for now)
 js/radial.js             the diagram (window.ToothRadial)
 js/radial-data.js        the data (window.RADIAL_DATA), with its sources
 js/*-data.js             caries, wear, stress lines, metals, pathogens and repairs per period, for the molar

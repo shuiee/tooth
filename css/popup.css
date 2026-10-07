@@ -193,3 +193,45 @@
 .pp-sweep{animation:ppSweep 1.3s .3s cubic-bezier(.4,0,.2,1) both}
 @keyframes ppSweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @media (prefers-reduced-motion:reduce){.pp-circ,.pp-sweep{animation:none}}
+/* the template (popup.js SLIDES): three slides, one at a time in the same place, stepped with the arrows or the dots;
+   grey placeholder boxes for the charts, the picture and its caption */
+/* the card's margins are the same both sides (its own 20px); a slide leaves a lane, 36px, only on the side that has an
+   arrow, so the arrows stay clear of the charts and a slide with no arrow on its left lines up with the text above */
+.pp-stage.pv .pp-views{margin-left:36px}
+.pp-stage.nx .pp-views{margin-right:36px}
+/* no scroll bars: the card is as tall as the slide on show (asked before any card is let scroll) */
+@media (min-width:900px){.pp-box,.pp-box .pp-body{overflow:visible}}
+/* the slide on show takes its place in the card (which fits it); the others lie over it, unseen */
+.pp-leads,.pp-views{position:relative;overflow:hidden}   /* the unseen slides add nothing to the card's height or scroll */
+.pp-leads>*,.pp-views>*{position:absolute;left:0;right:0;top:0;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s linear .35s}
+.pp-leads>.on,.pp-views>.on{position:relative;opacity:1;visibility:visible;transition:opacity .35s ease .05s,visibility 0s}
+.pp-lead b{font-weight:600}
+.pp-stage{position:relative}
+.pp-view{display:flex;gap:6px;aspect-ratio:2.25}
+.pp-ph{position:relative;flex:1;min-width:0;background:#adaca7}
+.pp-ph.pp-cap{flex:0 0 30%;background:#d8d7d2}
+.pp-ph span{position:absolute;left:10px;top:9px;font-size:10px;font-style:italic;color:var(--ink-2)}
+.pp-arw{position:absolute;top:50%;translate:0 -50%;border:0;background:none;margin:0;padding:6px 4px;cursor:pointer;color:var(--ink-2);display:grid;place-items:center;transition:color .2s}
+.pp-arw.prev{left:-4px}
+.pp-arw.next{right:-4px}
+.pp-arw:hover{color:var(--ink)}
+.pp-arw:focus-visible,.pp-dot:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
+.pp-arw[disabled]{visibility:hidden}
+.pp-arw svg{width:12px;height:22px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.pp-dots{display:flex;justify-content:center;gap:9px;margin-top:12px}
+.pp-dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--ink-2);background:none;margin:0;padding:0;cursor:pointer}
+.pp-dot.on{background:var(--ink);border-color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.pp-leads>*,.pp-views>*{transition:none}}
+/* narrow pages (the pop-up along the bottom): lower boxes, so the dots and the source stay in view */
+@media (max-width:899px){.pp-view{aspect-ratio:auto;height:clamp(84px,15vh,140px)}.pp-box.two .pp-view{height:clamp(60px,8vh,90px)}.pp-lead{margin-bottom:10px}}
+/* a chart in a slide (js/popup-content.js): as tall as its drawing, in the page's type */
+.pp-view:has(.pp-chart){aspect-ratio:auto;height:auto;align-items:flex-start}
+.pp-chart{flex:1;min-width:0;display:flex;align-items:center}
+.pp-src{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-svg{display:block;width:100%;height:auto;overflow:visible}
+.pp-svg text{font-family:var(--serif);font-variant-numeric:tabular-nums}
+/* two periods compared, in the header: both in the heavier weight, held still */
+.pp-tm,.pp-tm.now{font-weight:600}
+/* two compared: "Selected Times:" on its own line, then both periods and the record's name on the next */
+.pp-when.pair{margin-right:0}   /* the second line runs below the close button, so it may take the card's full width */
+.pp-when.pair>span:first-child{flex-basis:100%;padding-right:36px;box-sizing:border-box}
