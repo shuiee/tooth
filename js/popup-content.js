@@ -971,9 +971,11 @@
       evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + evWhen(e) + "</span><p>" + esc(e.line) + "</p>" + (effect ? "<p>" + effect(e) + "</p>" : "") + "</figcaption></figure>").join("") +
       "<p class='pp-evn'>" + note + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
   }
-  const evLeadFor = (evs, sel, nm) => { const cs = e => andList(sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i => "the " + low(nm(i)) + " period"));
-    const groups = []; evs.forEach(e => { const g = groups.find(x => x.cs === cs(e)); if (g) g.evs.push(e); else groups.push({ cs: cs(e), evs: [e] }); });
-    return groups.map(g => cap(g.cs) + " overlap" + (g.cs.indexOf(" and ") < 0 ? "s " : " ") + andList(g.evs.map(e => (e.note || e.name) + " (" + evWhen(e) + ")")) + ".").join("<br>"); };
+  // one sentence per group of periods, its verb from the dates (evVerb: includes, falls within, overlaps)
+  const evLeadFor = (evs, sel, nm) => { const on = e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); });
+    const groups = []; evs.forEach(e => { const k = on(e).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, is: on(e), evs: [e] }); });
+    return groups.map(g => { const qs = g.is.map(i => { const [a, b] = ghhpSpan(i); return { from: a, to: b }; }), pl = g.is.length > 1;
+      return "The " + andList(g.is.map(i => low(nm(i)))) + (pl ? " periods " : " period ") + andList(g.evs.map(e => evVerb(e, qs, pl) + " " + (e.note || e.name) + " (" + evWhen(e) + ")")) + "."; }).join("<br>"); };
 
   P.CONTENT.wear = pick => {
     if (!WD || !WD.periods) return {};

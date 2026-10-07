@@ -52,9 +52,11 @@
 })();
 
 // Human events that bear on molar wear, for the wear pop-up's last slide (js/popup-content.js): context, not data. Each
-// is from the team's timeline (shuiee/tooth-untold, research/Human Correlations/timeline_events_display.csv, its wear
-// events: EV002 to EV005 and EV022), its line put plainly from the timeline's label and its expected and measured
-// columns (the mechanism, millstones shedding grit into flour, is the timeline's own, on EV005).
+// is from the team's list of events to include (#11 roller mills, #12 industrial urbanisation; 2026-10-07) and its
+// timeline (shuiee/tooth-untold, research/Human Correlations/timeline_events_display.csv: EV005, EV022), its line put
+// plainly (the mechanism, millstones shedding grit into flour, is the timeline's own, on EV005; the textile fibres in
+// calculus at Cross Street Chapel, Manchester, 1737–1847, are the list's, on #12). The timeline's water mills,
+// Domesday watermills and windmills (EV002 to EV004) are not on the list.
 //   id, name, from, to  the event and its years; a wear period whose years overlap them shows it
 //   note                its name mid-sentence
 //   line                what it was
@@ -65,17 +67,12 @@
     head: "Milling and molar wear",
     line: "Grain ground between millstones carries grit, and grit wears teeth down. As milling moved from stone to steel and food became more processed, molars wore less.",
     events: [
-      { id: "EV002", name: "Water mills across the Roman empire", note: "water mills across the Roman empire", from: 1, to: 400, img: null,
-        line: "Water-powered milling spread across the empire, grinding grain between millstones that shed grit into the flour." },
-      { id: "EV003", name: "Domesday watermills", note: "the Domesday watermills", from: 1086, to: 1086, img: null,
-        line: "In 1086 the Domesday Book recorded thousands of watermills in England. Stone-ground flour kept wearing teeth through the medieval centuries." },
-      { id: "EV004", name: "Windmills in northwest Europe", note: "windmills in northwest Europe", from: 1180, to: 1250, img: null,
-        line: "Windmills joined watermills in northwest Europe, still grinding grain between stones." },
       { id: "EV022", name: "Industrial urbanisation", note: "industrial urbanisation", from: 1750, to: 1900,
-        img: { src: "img/mill-girl.jpg", alt: "A black-and-white photograph of a young girl standing beside a row of spinning machines in a cotton mill", ref: "Lewis Hine, a child spinner in a cotton mill, about 1908. Library of Congress." },
-        line: "People crowded into industrial towns and ate more processed food, and molar wear fell towards its lowest." },
-      { id: "EV005", name: "Roller mills", note: "roller mills", from: 1870, to: 1890, img: null,
-        line: "Steel roller mills replaced millstones and industrial food processing began. Millstones shed grit into flour; steel rollers do not." },
+        img: { src: "img/mulberry-street.jpg", alt: "A hand-coloured photograph of a crowded market street in New York around 1900: stalls, carts and families in front of tenements", ref: "Detroit Publishing Co., Mulberry Street, New York City, about 1900. Library of Congress." },
+        line: "People moved into industrial towns and ate softer, more processed food. Molar wear fell while stress lines in childhood enamel became more common. Cotton and wool fibres in dental calculus from Cross Street Chapel, Manchester (1737–1847), record work in the textile trade." },
+      { id: "EV005", name: "Roller mills", note: "roller mills", from: 1870, to: 1890,
+        img: { src: "img/cotton-spinner.jpg", alt: "A black-and-white photograph of a young girl at a spinning machine in a cotton mill", ref: "Lewis Hine, a child spinner in a cotton mill, about 1908. Library of Congress." },
+        line: "Steel roller mills replaced millstones from the 1870s and industrial food processing began. Millstones shed grit into flour and steel rollers do not, and molar wear reached its lowest level in the record." },
     ],
   };
 })();
