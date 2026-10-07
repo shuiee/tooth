@@ -158,7 +158,7 @@
 
 // Human events that bear on stress lines, for the stress-line pop-up's last slide: context, not data. From the team's
 // timeline (research/Human Correlations/timeline_events_display.csv): the events whose expected or measured effect
-// names hypoplasia (EV014, EV022), their lines put plainly; the timeline's caution on EV014 (a line marks stress a child
+// names hypoplasia (EV014, EV022; the team's list of events to include, #7 and #12), their lines put plainly; the timeline's caution on EV014 (a line marks stress a child
 // survived) is kept in its line.
 (function () {
   "use strict";
@@ -166,10 +166,10 @@
     events: [
       { id: "EV014", name: "Black Death", note: "the Black Death", from: 1347, to: 1351,
         img: { src: "img/black-death.jpg", alt: "An etching of the plague in Florence, 1348: a procession with a banner passes the dead and dying in the street", ref: "Luigi Sabatelli the elder, The plague of Florence, 1348, etching. Wellcome Collection, M0000786, public domain." },
-        line: "Plague swept Europe in 1347–51. A stress line marks a childhood that was survived, so a rise in lines can mean hardship endured as well as suffered." },
+        line: "Plague swept Europe in 1347–51. Stress lines in the people who lived through it are a second trace of the epidemic, alongside the plague genomes in the pathogen record. A line forms only in a child who survived the stress that caused it." },
       { id: "EV022", name: "Industrial urbanisation", note: "industrial urbanisation", from: 1750, to: 1900,
-        img: { src: "img/mill-girl.jpg", alt: "A black-and-white photograph of a young girl standing beside a row of spinning machines in a cotton mill", ref: "Lewis Hine, a child spinner in a cotton mill, about 1908. Library of Congress." },
-        line: "Children grew up in crowded industrial towns, many of them working in mills and factories." },
+        img: { src: "img/mulberry-street.jpg", alt: "A hand-coloured photograph of a crowded market street in New York around 1900: stalls, carts and families in front of tenements", ref: "Detroit Publishing Co., Mulberry Street, New York City, about 1900. Library of Congress." },
+        line: "Children grew up in crowded industrial towns, many of them working in mills and factories. Stress lines became more common while molar wear fell." },
     ],
   };
 })();
