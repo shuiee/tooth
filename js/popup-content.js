@@ -7,7 +7,9 @@
    Caries (js/caries-data.js): the main chart, every adult in the period sorted by how many of their own teeth were
    carious (CARIES_RATES sev: none, 1-2, 3-4, 5-9, 10+), from the team's c2b severity figure; the supporting chart,
    the share of adults with at least one carious tooth by age at death (CARIES_AGE), from its c1b figure. The figures'
-   footnotes are left out for now.
+   footnotes are left out for now. The third slide, the human events of the team's list whose years overlap the period
+   (CARIES_EVENTS; context, not data), with the team's measured effect in caries per tooth. A period in no event has two
+   slides.
 
    Pathogens (js/pathogens-data.js): the main chart, the prototype's pathogen strand (its Fig. 2.2, from the team's c4b
    matrix), cut down to the centuries around the one clicked, with its hover and its pull-out (strandChart); the
@@ -17,7 +19,7 @@
 
    Metals (js/metals-data.js): the main chart, the prototype's radial chart (its Plate 4.A), one petal for the period
    clicked (bloomChart; two compared, one petal morphing between them in step with the molar); the supporting chart, its
-   line graph (Plate 4.B), drawn for the period clicked alone (lineChart); the third slide, the template's placeholder. */
+   line graph (Plate 4.B), drawn for the period clicked alone (lineChart). No events yet, so two slides. */
 (function () {
   "use strict";
   const P = window.ToothPopup; if (!P) return;
@@ -25,7 +27,6 @@
   const r0 = v => Math.round(v);
   const fx = v => (Math.round(v * 10) / 10).toString();
   const ph = (label, cls) => "<div class='pp-ph" + (cls ? " " + cls : "") + "'><span>" + label + "</span></div>";
-  const EVENT = { lead: "Correlating human event", body: ph("Image") + ph("Image caption", "pp-cap") };
   // an SVG drawing at its box's own width, in pixels, so its type is the page's size at any width; drawn (and drawn
   // again whenever the box changes width) once the card is on the page: chart(draw) puts the box in a slide, and the
   // card's mount draws it. A drawing is its HTML, or { html, wire(box) } for one that answers the pointer
@@ -106,6 +107,32 @@
     if (ps.length > 1) { const a = Y(ps[0].cells[0][0]), z = Y(ps[1].cells[0][0]), x = X(0); if (Math.abs(a - z) > 30) s += L(x, Math.min(a, z) + 20, x, Math.max(a, z) - 20, "#8a8983", 1, "2 3"); }
     return svg(W, H, s, "Share of adults with at least one carious tooth by age at death, " + ps.map(p => p.p).join(" and "));
   }
+  // the human events of the team's list (js/caries-data.js, CARIES_EVENTS; context, not data) whose years overlap the
+  // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right
+  // its name, years, what it shows and the team's measured effect, in caries per tooth
+  const CE = window.CARIES_EVENTS || [];
+  // an event's pictures (one, or several stacked), or a placeholder
+  const evPics = e => { const a = e.img ? [].concat(e.img) : []; return a.length ? "<div class='pp-evp'>" + a.map(m => "<img src='" + esc(m.src) + "' alt='" + esc(m.alt) + "'>").join("") + "</div>" : ph("Image"); };
+  const cOver = (e, q) => e.from < q.to && e.to > q.from, pt = v => v.toFixed(3);
+  const cariesEventsOf = picks => CE.filter(e => picks.some(q => cOver(e, q))).sort((a, b) => (a.to - a.from) - (b.to - b.from));
+  function cariesEffect(e, picks) {
+    if (e.per) { const s = e.per, lo = s.reduce((m, x) => x[1] < m[1] ? x : m, s[0]), hi = s.reduce((m, x) => x[1] > m[1] ? x : m, s[0]);
+      return "Caries per tooth rose from " + B(pt(s[0][1])) + " in " + s[0][0] + " to " + andList(s.slice(1).map(x => B(pt(x[1])) + " in " + x[0])) + ", " + B(fx(hi[1] / lo[1])) + " times the " + lo[0] + " low."; }
+    return "";
+  }
+  function cariesEventsHTML(evs, picks) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" +
+      evPics(e) +
+      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span><p>" + esc(e.line) + "</p><p>" + cariesEffect(e, picks) + "</p></figcaption></figure>").join("") +
+      "<p class='pp-evn'>Events, their years and their lines are context from the team's list. Caries per tooth (carious teeth among the teeth observed) is the team's measured effect, a different measure from the share of adults on the slides before." +
+      (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  }
+  function cariesLead3(evs, picks) {
+    const ps = e => picks.filter(q => cOver(e, q)).map(q => low(CR[q.i].p)), nameOf = e => low(e.name) + " (" + e.from + "–" + e.to + ")";
+    const groups = []; evs.forEach(e => { const k = ps(e).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, ps: ps(e), evs: [e] }); });
+    return groups.map(g => "The " + andList(g.ps) + " period" + (g.ps.length > 1 ? "s overlap" : " overlaps") +
+      (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " + andList(g.evs.map(nameOf)) + "." : " " + nameOf(g.evs[0]) + ".")).join("<br>");
+  }
   P.CONTENT.caries = pick => {
     const picks = pick.pair || [pick], rs = picks.map(q => CR[q.i]).filter(Boolean), ag = picks.map(q => CA.periods[q.i]).filter(Boolean);
     if (rs.length !== picks.length) return {};
@@ -121,8 +148,10 @@
       if (ag.length === 2) { const ya = r0(100 - ag[0].cells[0][0]), yb = r0(100 - ag[1].cells[0][0]);
         lead2 = "At 18–24, " + B(ya + "%") + " of " + low(a.p) + " young adults " + (ya > yb ? "still " : "") + "had no caries at all.<br>" + (yb < ya ? "By the " + low(b.p) + " period, " + B((100 - yb) + "%") + " already had a carious tooth, and only " + B(yb + "%") + " had escaped."
           : "In the " + low(b.p) + " period, " + B(yb + "%") + " had escaped, and " + B((100 - yb) + "%") + " already had a carious tooth."); } }
+    const evs = cariesEventsOf(picks), slides = [{ html: lead1, body: ch.body(0) }, { html: lead2, body: ag.length ? ch.body(1) : ph("Supplemental chart") }];
+    if (evs.length) slides.push({ html: cariesLead3(evs, picks), body: cariesEventsHTML(evs, picks) });
     return {
-      slides: [{ html: lead1, body: ch.body(0) }, { html: lead2, body: ag.length ? ch.body(1) : ph("Supplemental chart") }, EVENT], mount: ch.mount,
+      slides, mount: ch.mount,
       source: "Global History of Health Project (Europe) · adults 18–69 · n = " + rs.map(r => r.n.toLocaleString("en-GB")).join(" and "),
     };
   };
@@ -367,13 +396,13 @@
     return (PD.events || []).filter(e => rs.some(r => over(e, r))).sort((p, q) => lead(p) - lead(q) || p.from - q.from); }
   function eventsHTML(evs, rs) {
     const D = strandData();
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (PD.eventsLine ? "<p class='pp-evi'>" + (PD.eventsHead ? "<b>" + esc(PD.eventsHead) + "</b>" : "") + esc(PD.eventsLine) + "</p>" : "") + evs.map(e => {
       const ls = e.taxa.map(t => D.lanes.find(l => l.taxon === t)).filter(Boolean), on = rs.filter(r => over(e, r));
-      return "<figure class='pp-ev'>" + ph("Image") + "<figcaption>" + ls.map(l => "<span class='pp-evk'><i style='background:" + colOf(l) + "'></i>" + esc(KINDS[l.kind] ? cap(KINDS[l.kind]) : "") + "</span>").join("") +
+      return "<figure class='pp-ev'>" + evPics(e) + "<figcaption>" + ls.map(l => "<span class='pp-evk'><i style='background:" + colOf(l) + "'></i>" + esc(KINDS[l.kind] ? cap(KINDS[l.kind]) : "") + "</span>").join("") +
         "<b>" + esc(title(e.label)) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span>" +
         ls.map(l => "<p><i>" + esc(l.taxon) + "</i>, the cause of " + esc(diseaseOf(l)) + ", made up " + andList(on.map(r => { const d = r.cells.find(x => x.l === l);
           return d ? B(pc(d.v)) + " of the " + r.c + "s' " + r.n + " genomes (" + d.k + ")" : "none of the " + r.c + "s' " + r.n + " genomes"; })) + ".</p>").join("") + "</figcaption></figure>"; }).join("") +
-      "<p class='pp-evn'>Events and their dates are context from the team's list; the shares are read from the genome record. Pictures to come.</p></div>";
+      "<p class='pp-evn'>Events and their dates are context from the team's list; the shares are read from the genome record." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
   }
 
   // the slides' lines of text, from the counts
@@ -410,7 +439,7 @@
   function pathLead3(evs, rs) {
     const cs = e => andList(rs.filter(r => over(e, r)).map(r => "the " + r.c + "s")), nameOf = e => e.note + " (" + e.from + "–" + e.to + ")";
     const groups = []; evs.forEach(e => { const g = groups.find(x => x.cs === cs(e)); if (g) g.evs.push(e); else groups.push({ cs: cs(e), evs: [e] }); });
-    return groups.map(g => cap(g.cs) + " overlap" + (g.evs.length > 1 ? " " + word(g.evs.length) + " events from the team's list: " : " ") + andList(g.evs.map(nameOf)) + ".").join("<br>");
+    return groups.map(g => cap(g.cs) + " overlap" + (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " : " ") + andList(g.evs.map(nameOf)) + ".").join("<br>");
   }
 
   P.CONTENT.pathogens = pick => {
@@ -654,6 +683,7 @@
     const ps = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b);
     if (ps.some(p => !MD.periods[p])) return {};
     const st = { show: null }, ch = charts([bloomChart(ps, st), lineChart(ps, st)]);
-    return { slides: [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }, EVENT], mount: ch.mount, source: metSource(ps) };
+    // no events yet for metals: two slides, as a period in no event has (the correlating human event to come)
+    return { slides: [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }], mount: ch.mount, source: metSource(ps) };
   };
 })();
