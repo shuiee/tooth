@@ -107,27 +107,31 @@
   // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right
   // its name, years, what it shows and the team's measured effect, in caries per tooth
   const CE = window.CARIES_EVENTS || [];
-  // an event's pictures (one, or several stacked), or a placeholder
-  const evPics = e => { const a = e.img ? [].concat(e.img) : []; return a.length ? "<div class='pp-evp'>" + a.map(m => "<img src='" + esc(m.src) + "' alt='" + esc(m.alt) + "'>").join("") + "</div>" : ph("Image"); };
+  // how a stretch of years (one period or several, each { from, to }) stands to an event: it includes an event inside
+  // it, falls within one that spans it, and otherwise overlaps it (pl: the plural verb)
+  const evVerb = (e, qs, pl) => { const lo = Math.min(...qs.map(q => q.from)), hi = Math.max(...qs.map(q => q.to));
+    return e.from >= lo && e.to <= hi ? (pl ? "include" : "includes") : e.from <= lo && e.to >= hi ? (pl ? "fall within" : "falls within") : (pl ? "overlap" : "overlaps"); };
+  // an event's pictures (one, or several stacked), each with its line of reference under it, or a placeholder
+  const evPics = e => { const a = e.img ? [].concat(e.img) : []; return a.length ? "<div class='pp-evp'>" + a.map(m => "<img src='" + esc(m.src) + "' alt='" + esc(m.alt) + "'>" + (m.ref ? "<span class='pp-ref'>" + esc(m.ref) + "</span>" : "")).join("") + "</div>" : ph("Image"); };
   const cOver = (e, q) => e.from < q.to && e.to > q.from, pt = v => v.toFixed(3);
   const cariesEventsOf = picks => CE.filter(e => picks.some(q => cOver(e, q))).sort((a, b) => (a.to - a.from) - (b.to - b.from));
   function cariesEffect(e, picks) {
     if (e.per) { const s = e.per, lo = s.reduce((m, x) => x[1] < m[1] ? x : m, s[0]), hi = s.reduce((m, x) => x[1] > m[1] ? x : m, s[0]);
-      return "Caries per tooth rose from " + B(pt(s[0][1])) + " in " + s[0][0] + " to " + andList(s.slice(1).map(x => B(pt(x[1])) + " in " + x[0])) + ", " + B(fx(hi[1] / lo[1])) + " times the " + lo[0] + " low."; }
+      return "Caries per tooth rose from " + B(pt(lo[1])) + " in " + lo[0] + " to " + B(pt(hi[1])) + " in " + hi[0] + ", a " + B(fx(hi[1] / lo[1]) + "-fold") + " increase."; }
     return "";
   }
   function cariesEventsHTML(evs, picks) {
     return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" +
       evPics(e) +
       "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span><p>" + esc(e.line) + "</p><p>" + cariesEffect(e, picks) + "</p></figcaption></figure>").join("") +
-      "<p class='pp-evn'>Events, their years and their lines are context from the team's list. Caries per tooth (carious teeth among the teeth observed) is the team's measured effect, a different measure from the share of adults on the slides before." +
+      "<p class='pp-evn'>Event dates are historical context. Caries per tooth is the number of decayed teeth divided by the number of teeth examined, which is a different measure from the share of adults on the earlier slides." +
       (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
   }
   function cariesLead3(evs, picks) {
-    const ps = e => picks.filter(q => cOver(e, q)).map(q => low(CR[q.i].p)), nameOf = e => low(e.name) + " (" + e.from + "–" + e.to + ")";
-    const groups = []; evs.forEach(e => { const k = ps(e).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, ps: ps(e), evs: [e] }); });
-    return groups.map(g => "The " + andList(g.ps) + " period" + (g.ps.length > 1 ? "s overlap" : " overlaps") +
-      (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " + andList(g.evs.map(nameOf)) + "." : " " + nameOf(g.evs[0]) + ".")).join("<br>");
+    const on = e => picks.filter(q => cOver(e, q)), groups = [];
+    evs.forEach(e => { const k = on(e).map(q => q.i).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, qs: on(e), evs: [e] }); });
+    return groups.map(g => "The " + andList(g.qs.map(q => low(CR[q.i].p))) + " period" + (g.qs.length > 1 ? "s " : " ") +
+      andList(g.evs.map(e => evVerb(e, g.qs, g.qs.length > 1) + " " + (e.note || low(e.name)) + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>");
   }
   P.CONTENT.caries = pick => {
     const picks = pick.pair || [pick], rs = picks.map(q => CR[q.i]).filter(Boolean), ag = picks.map(q => CA.periods[q.i]).filter(Boolean);
@@ -398,7 +402,7 @@
         "<b>" + esc(title(e.label)) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span>" +
         ls.map(l => "<p><i>" + esc(l.taxon) + "</i>, the cause of " + esc(diseaseOf(l)) + ", made up " + andList(on.map(r => { const d = r.cells.find(x => x.l === l);
           return d ? B(pc(d.v)) + " of the " + r.c + "s' " + r.n + " genomes (" + d.k + ")" : "none of the " + r.c + "s' " + r.n + " genomes"; })) + ".</p>").join("") + "</figcaption></figure>"; }).join("") +
-      "<p class='pp-evn'>Events and their dates are context from the team's list; the shares are read from the genome record." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+      "<p class='pp-evn'>Event dates are historical context. Percentages are shares of the genomes recovered from each century." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
   }
 
   // the slides' lines of text, from the counts
@@ -433,9 +437,10 @@
       (k.length === 1 ? "All were " + KINDS[k[0][0]] + "." : cap(KINDS[k[0][0]]) + " made up " + B(pc(k[0][1])) + ", " + andList(k.slice(1).map(([kk, v]) => KINDS[kk] + " " + B(pc(v)))) + ".");
   }
   function pathLead3(evs, rs) {
-    const cs = e => andList(rs.filter(r => over(e, r)).map(r => "the " + r.c + "s")), nameOf = e => e.note + " (" + e.from + "–" + e.to + ")";
-    const groups = []; evs.forEach(e => { const g = groups.find(x => x.cs === cs(e)); if (g) g.evs.push(e); else groups.push({ cs: cs(e), evs: [e] }); });
-    return groups.map(g => cap(g.cs) + " overlap" + (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " : " ") + andList(g.evs.map(nameOf)) + ".").join("<br>");
+    const on = e => rs.filter(r => over(e, r)), groups = [];
+    evs.forEach(e => { const k = on(e).map(r => r.c).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, rs: on(e), evs: [e] }); });
+    return groups.map(g => cap(andList(g.rs.map(r => "the " + r.c + "s"))) + " " +
+      andList(g.evs.map(e => evVerb(e, g.rs.map(r => ({ from: r.c, to: r.c + 100 })), true) + " " + e.note + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>");
   }
 
   P.CONTENT.pathogens = pick => {

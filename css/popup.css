@@ -264,6 +264,7 @@
 .pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:14px;align-items:start}
 .pp-ev .pp-ph{flex:none;aspect-ratio:4/3}
 .pp-evp{display:flex;flex-direction:column;gap:6px}
+.pp-ref{display:block;margin-top:4px;font-size:10px;font-style:italic;line-height:1.35;color:var(--ink-3)}   /* a picture's line of reference */
 .pp-ev img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#d8d7d2}   /* an event's picture, cropped to the placeholder's shape */
 .pp-ev figcaption{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
 .pp-ev figcaption>b{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink)}

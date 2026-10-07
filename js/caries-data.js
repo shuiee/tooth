@@ -54,15 +54,16 @@
 // adults the radial shows), from its events list: shuiee/tooth-untold, research/Human Correlations/
 // timeline_events_display.csv (EV029, which dates it 1100–1700).
 //   name, from, to  the event and its years; a caries period whose years overlap them shows it
+//   note            its name mid-sentence, for the slide's lead
 //   line            what it shows
-//   img             its picture: src and alt text (null: a placeholder)
+//   img             its picture: src, alt text and ref, the line of reference under it (null: a placeholder)
 //   per             caries per tooth by year: [year, value]
 (function () {
   "use strict";
   window.CARIES_EVENTS = [
-    { id: "EV029", name: "Sugar and refined starch", from: 1500, to: 1700,
-      img: { src: "img/rock-sugar.jpg", alt: "Crystals of rock sugar in a marbled bowl" },   // the team's picture, from Ali Qureshi's pop-up galleries (at d2672c3), cropped to the slot's 4:3
-      line: "Decay follows a food system nobody individually chose.",
+    { id: "EV029", name: "Sugar and refined starch", note: "the spread of sugar and refined starch", from: 1500, to: 1700,
+      img: { src: "img/rock-sugar.jpg", alt: "Crystals of rock sugar in a marbled bowl", ref: "Photograph. Source to be confirmed." },   // the team's picture, from Ali Qureshi's pop-up galleries (at d2672c3), cropped to the slot's 4:3
+      line: "Imported cane sugar and finely milled flour became more common in European diets, and caries rose over the same centuries.",
       per: [[1100, 0.042], [1200, 0.096], [1500, 0.140], [1600, 0.168], [1700, 0.273]] },
   ];
 })();
