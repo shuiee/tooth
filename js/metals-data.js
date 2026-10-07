@@ -20,6 +20,13 @@
      groups   not industrial (zinc, barium, strontium, magnesium: part of enamel itself) and industrial (lead, copper,
               chromium, nickel), as the prototype's Metals plate groups them (metals.js, NONIND)
      groupColours  the two groups' colours on the streams: the Metals line's gold, and a violet no other record uses
+     events   human events for the metals pop-up's third slide (context, not data): the team's list of events to include
+              (#1, #4, #10, 2026-10-07; its events list, timeline_events_display.csv, has them as EV017, EV018, EV020).
+              name, note (mid-sentence), when (the years shown); periods: the exposure windows it is shown on (these
+              overlap, so they are named, not matched by date); img: its picture (src, alt, ref; null: a placeholder);
+              change: what its figure compares, read from the values above (lead: one period's median against
+              another's; modern: the 20th-century values against the archaeological ones). eventsHead and eventsLine:
+              the heading and line over the events
 
    How the molar draws it (radial.js, metalGroups()): each element's change from the archaeological level in the
    same study (lead: ppm / 0.63; the others: 1 until the 20th century, then modern / pooled), placed on the prototype
@@ -52,5 +59,21 @@
     colours: { Pb: "#c62828", Cu: "#e5780e", Cr: "#b89a00", Ni: "#2f9a3a", Zn: "#0aa1b0", Ba: "#2f5fd8", Sr: "#8a4fd6", Mg: "#d4439a" },
     groups: { nonindustrial: ["Zn", "Ba", "Sr", "Mg"], industrial: ["Pb", "Cu", "Cr", "Ni"] },
     groupColours: { nonindustrial: "#A67C00", industrial: "#6A3FA0" },
+    events: [
+      { name: "Roman imperial plumbing", note: "Roman imperial plumbing", when: "1st–4th centuries CE", periods: ["Roman"],
+        img: { src: "img/roman-bath-ruins.jpg", alt: "A painting of a ruined Roman bath, with women washing linen in the water channel",
+               ref: "Hubert Robert, Ruins of a Roman Bath with Washerwomen, after 1766. Philadelphia Museum of Art." },
+        change: { lead: ["Iron Age", "Roman"] } },
+      { name: "Collapse of the Roman economy", note: "the collapse of the Roman economy", when: "360–675 CE", periods: ["Post-Roman"],
+        img: { src: "img/plague-of-ashdod.jpg", alt: "A painting of plague in an ancient city: the dead and dying in a street of classical buildings",
+               ref: "Nicolas Poussin, The Plague of Ashdod, 1630–31. Musée du Louvre, Paris." },
+        change: { lead: ["Roman", "Post-Roman"] } },
+      { name: "Industrial Revolution", note: "the industrial era that began with the Industrial Revolution", when: "from about 1760", periods: ["20th century"],
+        img: { src: "img/bottle-kilns.jpg", alt: "A black-and-white photograph of a smoky industrial town: bottle kilns and chimneys above rows of terraced houses",
+               ref: "Bottle kilns, Stoke-on-Trent. Photograph, Unsplash+." },
+        change: { modern: true } },
+    ],
+    eventsHead: "Lead and the economy",
+    eventsLine: "Lead in childhood enamel rises and falls with the economy around it: high under Rome, low after the Roman economy collapsed, and high again with industrial production. Enamel forms in childhood, so it records the exposure of the time and place a child grew up in.",
   };
 })();
