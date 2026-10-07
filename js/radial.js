@@ -164,20 +164,20 @@
     const IND = CR.find(r => r.p === "Industrial");   // its share of adults with no carious tooth (sev[0])
     const STORY = [
       { up: ["Dental care as healthcare", "Innovation in oral hygiene", "Fluoride remineralization", "Cosmetic procedures"] },
-      { items: [["p", "<b>" + (IND ? IND.sev[0].toFixed(1) : "24.1") + "%</b> of industrial adults reached death with <b>no caries at all.</b>"]] },
+      { items: [["p", "In the industrial period, <b>" + (IND ? IND.sev[0].toFixed(1) : "24.1") + "%</b> of adults died with <b>no carious teeth</b>."]] },
       // ADHS 2009, Theme 4, Table 4.3.1: dentate adults aged 25 to 34 in England, a mean of 3.6 restored, otherwise sound
       // teeth (3.8 age-adjusted)
-      { items: [["p", "A modern adult with <b>no visible decay</b> might still have <b>three or four filled teeth</b> by thirty."]] },
-      { items: [["p", "If we met these two people as skeletons, <b>could we tell which one was actually healthier, or lived a better life?</b>"]] },
-      { items: [["p", "Imagine"], ["li", "28 teeth"], ["li", "no caries"], ["li", "almost no wear"], ["li", "little calculus"], ["li", "enamel intact"]] },
+      { items: [["p", "In England in 2009, adults aged 25 to 34 had a mean of <b>three or four filled teeth</b> that showed <b>no decay</b>."]] },
+      { items: [["p", "Their skeletons alone would not show <b>which of the two was healthier</b>, because one set of teeth was repaired."]] },
+      { items: [["p", "A skeleton from today might show"], ["li", "28 teeth"], ["li", "no caries"], ["li", "almost no wear"], ["li", "little calculus"], ["li", "enamel intact"]] },
       // in parts: the sentence's start, then its three inferences one by one, then its end (seconds after each)
       { items: [["p", [["A bioarchaeologist trained on this data might infer a", 1.6], ["<b>short-lived,</b>", 0.9], ["<b>well-fed,</b>", 0.9], ["<b>low-stress</b>", 1.0], ["person of high status.", 0]]]] },
-      { items: [["p", "Every one of those inferences <b>could be wrong</b> after intervention."]] },
-      { items: [["p", "What will our teeth continue to say about us?"]] },
+      { items: [["p", "Each of those inferences <b>could be wrong</b>, because dental treatment changes what the teeth show."]] },
+      { items: [["p", "Teeth still record diet, childhood stress, metals and disease. <b>Fillings, crowns and veneers can now cover that record.</b>"]] },
       // the end: once that has gone, both molars scatter and fade, then in large type the statement, then the last
       // question, which stays (until Rewind, Play or Replay)
-      { big: true, items: [["p", "The human tooth is a permanent data artifact. Artificial interventions allow us to <b>edit that record</b>."]] },
-      { big: true, items: [["p", "What truths does a tooth tell now?"]], last: true } ];
+      { big: true, items: [["p", "A tooth keeps its record long after death. <b>Dental treatment edits that record</b> during life."]] },
+      { big: true, items: [["p", "What a tooth shows now <b>depends on its treatment</b>."]], last: true } ];
     let story = null, split = 0, stL = null;   // story: { on, t0, out, back: what the radial showed }; split: 0 one molar, 1 two
     const RT = { ri: -1, pg: -1, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], last: -1, at: -1e9, pulse: 0, formT: 0, gone: 0 };   // the second molar: its repair period, projection (0 to 1), repaired share, patch radii, its last period and when it changed, the swell; formT: how far it has formed (seconds); gone: the end's scattering (0 to 1)
     // the second molar from scratch (the look ahead's start, and Replay): it forms out of the first again, with no repair,
@@ -189,7 +189,7 @@
     const stl = document.createElement("div"); stl.className = "rd-story"; stl.setAttribute("role", "region"); stl.setAttribute("aria-label", "Looking ahead"); stl.setAttribute("aria-live", "polite");
     stl.style.setProperty("--int", COLS.interventions); host.appendChild(stl);
     // the text, each line with the times it fades in and out (seconds from the projection): the reasons one after another
-    // and out in the same order; then each section once the last has gone, its lines (the points of "Imagine this")
+    // and out in the same order; then each section once the last has gone, its lines (the points of the modern skeleton's list)
     // coming in one after another, and going together, after time to read them
     const sched = [], frames = [];
     let tGone = Infinity, tFinal = Infinity;   // when the molars scatter (the last question gone), and when the last line is in
@@ -1156,26 +1156,32 @@
       else { const [x, y, ax, ay] = pinAt; pinB.push({ x, y, w: P.w, h: 26 });
         P.bx.setAttribute("x", fx(x)); P.bx.setAttribute("y", fx(y)); P.bx.setAttribute("width", fx(P.w)); P.t.setAttribute("x", fx(x + 10)); P.t.setAttribute("y", fx(y + 17.5));
         seg(P.ln, [ax, ay, 1, 999], [cl(ax, x, x + P.w), cl(ay, y, y + 26), 1, 999]); P.g.classList.add("on"); } });
+      // the molar on screen (its full height, a little over, and its widest reach from the axis): the shell labels and the
+      // timeline's year keep off it
+      const mT = pj(0, 165, 0), mB = pj(0, -165, 0), mR = (GLT ? GLT.rMax : 120) * hb[2], mBox = [Math.min(mT[0], mB[0]) - mR, Math.min(mT[1], mB[1]), Math.abs(mT[0] - mB[0]) + 2 * mR, Math.abs(mB[1] - mT[1])];
+      const inMol = (x, y, w, h) => mT[3] > 60 && x < mBox[0] + mBox[2] && mBox[0] < x + w && y < mBox[1] + mBox[3] && mBox[1] < y + h;
       { // shell labels: pick the ray, in screen space, that keeps them clear of every record line and mark; hide any that still collide
         const segs = s.lines.map(L => L._s).filter(Boolean), dts = all.map(o => o.top), cards2 = cards;
         const dseg = (q, a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], l2 = vx * vx + vy * vy || 1, u = cl(((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / l2, 0, 1); return Math.hypot(q[0] - a[0] - u * vx, q[1] - a[1] - u * vy); };
         const bad = q => { const c = [q[0] + 46, q[1] - 9]; return segs.some(sg => dseg(c, sg[0], sg[1]) < 24 || dseg([q[0] + 6, c[1]], sg[0], sg[1]) < 12 || dseg([q[0] + 86, c[1]], sg[0], sg[1]) < 12) || dts.some(d => Math.abs(d[0] - c[0]) < 56 && Math.abs(d[1] - c[1]) < 20) || cards2.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + 46)
-          || c[0] - 44 < 4 || c[0] + 46 > s.W - 4 || inCv(c[0] - 52, c[1] - 12, 104, 24) || pinB.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + b.h); };
+          || inMol(q[0] + 4, q[1] - 18, 92, 16) || c[0] - 44 < 4 || c[0] + 46 > s.W - 4 || inCv(c[0] - 52, c[1] - 12, 104, 24) || pinB.some(b => c[0] + 52 > b.x && c[0] - 52 < b.x + b.w && c[1] + 12 > b.y && c[1] - 12 < b.y + b.h); };
         let bestA = A0, bestN = 1e9;
         for (let n = 0; n < 36; n++) { const A = Ab + 0.5 + n / 36 * Math.PI * 2; let c = 0; s.shells.forEach(r => { const q = pj(r.w * Math.cos(A), 0, r.w * Math.sin(A)); if (q[3] > 60 && bad(q)) c++; }); if (c < bestN) { bestN = c; bestA = A; if (!c) break; } }
         let lp = null;
         s.shells.forEach(r => { const q = pj(r.w * Math.cos(bestA), 0, r.w * Math.sin(bestA)); r.lab.setAttribute("x", fx(q[0] + 6)); r.lab.setAttribute("y", fx(q[1] - 6));
           const ok = q[3] > 60 && !bad(q) && (lp == null || Math.abs(q[0] - lp[0]) > 90 || Math.abs(q[1] - lp[1]) > 15); if (ok) lp = q; r.lab.style.opacity = ok ? (appear * 0.85).toFixed(2) : 0; });
       }
-      { // the timeline's year: just outside its knob, else the first other side of it (inside, below, above) that is clear of
-        // the record names, the time-shell labels and the page's edges, since the reader can leave the knob anywhere; hidden if none is
+      { // the timeline's year: just outside its knob, else the first other side of it (along the ring either way, inside, below,
+        // above) that is clear of the record names, the time-shell labels and the page's edges, and off the molar; where every side
+        // is on the molar, the first that is clear of the rest; hidden if none is, since the reader can leave the knob anywhere
         const L = s.wl, lab = s.waveLab;
         if (L) { if (lab._t !== lab.textContent) { lab._t = lab.textContent; lab._w = lab.getComputedTextLength() || 60; }
           // each name's real extent (its letter-spaced capitals can run past the estimated width), measured once per build
           const tw = lab._w, boxes = cards.map(b => { const bb = b.L._bb || (b.L._bb = b.L.card.getBBox()); return [b.x + bb.x, b.y + bb.y, bb.width, bb.height]; }).concat(s.shells.filter(r => +r.lab.style.opacity > 0.05).map(r => [+r.lab.getAttribute("x"), +r.lab.getAttribute("y") - 11, 92, 14])).concat(pinB.map(b => [b.x, b.y, b.w, b.h])).concat(cv ? [[cv.x, cv.y, cv.w, cv.h]] : []).concat(mb ? [[mb.x, mb.y, mb.w, mb.h]] : []);
-          const pick = [[L.nx, L.ny], [-L.nx, -L.ny], [0, 1], [0, -1]].map(([dx, dy]) => {
+          const cands = [[L.nx, L.ny], [L.ny, -L.nx], [-L.ny, L.nx], [-L.nx, -L.ny], [0, 1], [0, -1]].map(([dx, dy]) => {
             const x = L.q[0] + dx * 20, y = L.q[1] + dy * 20 + 4 + (dy > 0.35 ? 6 : 0), anchor = dx > 0.35 ? "start" : dx < -0.35 ? "end" : "middle", x0 = anchor === "start" ? x : anchor === "end" ? x - tw : x - tw / 2;
-            return { x, y, anchor, clear: x0 > 4 && x0 + tw < s.W - 4 && y > 16 && y < s.H - 6 && !boxes.some(b => x0 - 4 < b[0] + b[2] && b[0] < x0 + tw + 4 && y - 15 < b[1] + b[3] && b[1] < y + 5) }; }).find(c => c.clear);
+            return { x, y, anchor, mol: inMol(x0 - 4, y - 15, tw + 8, 20), clear: x0 > 4 && x0 + tw < s.W - 4 && y > 16 && y < s.H - 6 && !boxes.some(b => x0 - 4 < b[0] + b[2] && b[0] < x0 + tw + 4 && y - 15 < b[1] + b[3] && b[1] < y + 5) }; });
+          const pick = cands.find(c => c.clear && !c.mol) || cands.find(c => c.clear);
           if (pick) { lab.setAttribute("x", fx(pick.x)); lab.setAttribute("y", fx(pick.y)); lab.setAttribute("text-anchor", pick.anchor); }
           lab.style.opacity = pick ? L.op.toFixed(2) : 0; }
       }
