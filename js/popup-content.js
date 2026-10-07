@@ -683,12 +683,40 @@
   const metSource = ps => ps.every(p => p === LASTP) ? "Kamenov et al. 2018 · 20th-century births · n = " + MD.periods[LASTP].n
     : "Montgomery et al. 2010 (British lead) · Kamenov et al. 2018 · n = " + ps.map(p => MD.periods[p].n).join(" and ");
 
+  // ---- metals events: what each figure compares, read from METALS_DATA (js/metals-data.js)
+  const ppm = v => (v < 1 ? v.toFixed(2) : String(Math.round(v * 100) / 100)) + " ppm";
+  function metChange(e) {
+    const c = e.change || {};
+    if (c.lead) { const [a, b] = c.lead.map(n => MD.periods.findIndex(p => p.p === n)); if (a < 0 || b < 0) return "";
+      const pn = n => /^(Post-|Early |Late )/.test(n) ? low(n) : n, va = MD.lead[a], vb = MD.lead[b], la = pn(MD.periods[a].p), lb = pn(MD.periods[b].p);
+      return vb > va ? "Median lead in childhood enamel rose from " + B(ppm(va)) + " in the " + la + " window to " + B(ppm(vb)) + " in the " + lb + " window, about " + B(Math.round(vb / va) + " times") + " higher."
+        : "Median lead in childhood enamel fell from " + B(ppm(va)) + " in the " + la + " window to " + B(ppm(vb)) + " in the " + lb + " window, " + B(Math.round(100 * (1 - vb / va)) + "%") + " lower."; }
+    if (c.modern) { const last = MD.lead.length - 1, x = k => k === "Pb" ? MD.lead[last] / MD.leadArch : MD.modern[k] / MD.pooled[k];
+      const ind = MD.groups.industrial.map(x), name = k => (MD.elements.find(el => el[0] === k) || [k, k])[1], ctl = ["Zn", "Ba"].map(k => name(k));
+      return "In 20th-century enamel, " + andList(MD.groups.industrial.map(name)) + " were " + B(Math.floor(Math.min(...ind)) + " to " + Math.round(Math.max(...ind)) + " times") + " their levels in archaeological enamel. " +
+        cap(andList(ctl)) + ", which are part of enamel itself, rose by less than half, and strontium fell from " + B(ppm(MD.pooled.Sr)) + " to " + B(ppm(MD.modern.Sr)) + "."; }
+    return "";
+  }
+  function metLead3(evs, ps) {
+    const yr = v => v < 0 ? -v + " BCE" : v + " CE", w = p => { const [a, b] = MD.periods[p].y; return a < 0 && b < 0 ? -a + "–" + -b + " BCE" : a >= 0 ? a + "–" + b + " CE" : yr(a) + "–" + yr(b); };
+    return evs.map(e => { const on = ps.filter(p => e.periods.includes(MD.periods[p].p));
+      return "The exposure window" + (on.length > 1 ? "s " : " ") + andList(on.map(w)) + (on.length > 1 ? " coincide" : " coincides") + " with " + e.note + " (" + e.when + ")."; }).join("<br>");
+  }
+  function metEventsHTML(evs) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (MD.eventsLine ? "<p class='pp-evi'>" + (MD.eventsHead ? "<b>" + esc(MD.eventsHead) + "</b>" : "") + esc(MD.eventsLine) + "</p>" : "") +
+      evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + esc(e.when) + "</span><p>" + metChange(e) + "</p></figcaption></figure>").join("") +
+      "<p class='pp-evn'>Event dates are historical context. Lead is the median in childhood enamel, in parts per million; 20th-century values are compared with archaeological enamel from the same study." +
+      (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  }
   P.CONTENT.metals = pick => {
     if (!MD || !MD.leadRange) return {};
     const ps = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b);
     if (ps.some(p => !MD.periods[p])) return {};
     const st = { show: null }, ch = charts([bloomChart(ps, st), lineChart(ps, st)]);
-    // no events yet for metals: two slides, as a period in no event has (the correlating human event to come)
-    return { slides: [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }], mount: ch.mount, source: metSource(ps) };
+    // the third slide: the events named for the period clicked (MD.events); a period in none has two slides
+    const evs = (MD.events || []).filter(e => ps.some(p => e.periods.includes(MD.periods[p].p)));
+    const slides = [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }];
+    if (evs.length) slides.push({ html: metLead3(evs, ps), body: metEventsHTML(evs) });
+    return { slides, mount: ch.mount, source: metSource(ps) };
   };
 })();
