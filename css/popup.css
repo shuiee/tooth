@@ -263,6 +263,7 @@
 .pp-evs.sc{max-height:236px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain;padding-right:10px}
 .pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:14px;align-items:start}
 .pp-ev .pp-ph{flex:none;aspect-ratio:4/3}
+.pp-evp{display:flex;flex-direction:column;gap:6px}
 .pp-ev img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#d8d7d2}   /* an event's picture, cropped to the placeholder's shape */
 .pp-ev figcaption{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
 .pp-ev figcaption>b{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink)}
@@ -271,5 +272,7 @@
 .pp-evk{display:block;margin-bottom:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .pp-evk i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .pp-evd{display:block;margin:1px 0 6px;font-size:12px;color:var(--ink-3)}
+.pp-evi{margin:0;font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.pp-evi b{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
 .pp-evn{margin:0;font-size:11px;font-style:italic;line-height:1.4;color:var(--ink-3)}
 @media (prefers-reduced-motion: reduce){.pd-leads{transition:none}.pd-pull .pd-in{animation:none}}

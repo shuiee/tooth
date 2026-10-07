@@ -107,6 +107,8 @@
   // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right
   // its name, years, what it shows and the team's measured effect, in caries per tooth
   const CE = window.CARIES_EVENTS || [];
+  // an event's pictures (one, or several stacked), or a placeholder
+  const evPics = e => { const a = e.img ? [].concat(e.img) : []; return a.length ? "<div class='pp-evp'>" + a.map(m => "<img src='" + esc(m.src) + "' alt='" + esc(m.alt) + "'>").join("") + "</div>" : ph("Image"); };
   const cOver = (e, q) => e.from < q.to && e.to > q.from, pt = v => v.toFixed(3);
   const cariesEventsOf = picks => CE.filter(e => picks.some(q => cOver(e, q))).sort((a, b) => (a.to - a.from) - (b.to - b.from));
   function cariesEffect(e, picks) {
@@ -116,7 +118,7 @@
   }
   function cariesEventsHTML(evs, picks) {
     return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" +
-      (e.img ? "<img src='" + esc(e.img.src) + "' alt='" + esc(e.img.alt) + "'>" : ph("Image")) +
+      evPics(e) +
       "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span><p>" + esc(e.line) + "</p><p>" + cariesEffect(e, picks) + "</p></figcaption></figure>").join("") +
       "<p class='pp-evn'>Events, their years and their lines are context from the team's list. Caries per tooth (carious teeth among the teeth observed) is the team's measured effect, a different measure from the share of adults on the slides before." +
       (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
@@ -390,13 +392,13 @@
     return (PD.events || []).filter(e => rs.some(r => over(e, r))).sort((p, q) => lead(p) - lead(q) || p.from - q.from); }
   function eventsHTML(evs, rs) {
     const D = strandData();
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (PD.eventsLine ? "<p class='pp-evi'>" + (PD.eventsHead ? "<b>" + esc(PD.eventsHead) + "</b>" : "") + esc(PD.eventsLine) + "</p>" : "") + evs.map(e => {
       const ls = e.taxa.map(t => D.lanes.find(l => l.taxon === t)).filter(Boolean), on = rs.filter(r => over(e, r));
-      return "<figure class='pp-ev'>" + ph("Image") + "<figcaption>" + ls.map(l => "<span class='pp-evk'><i style='background:" + colOf(l) + "'></i>" + esc(KINDS[l.kind] ? cap(KINDS[l.kind]) : "") + "</span>").join("") +
+      return "<figure class='pp-ev'>" + evPics(e) + "<figcaption>" + ls.map(l => "<span class='pp-evk'><i style='background:" + colOf(l) + "'></i>" + esc(KINDS[l.kind] ? cap(KINDS[l.kind]) : "") + "</span>").join("") +
         "<b>" + esc(title(e.label)) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span>" +
         ls.map(l => "<p><i>" + esc(l.taxon) + "</i>, the cause of " + esc(diseaseOf(l)) + ", made up " + andList(on.map(r => { const d = r.cells.find(x => x.l === l);
           return d ? B(pc(d.v)) + " of the " + r.c + "s' " + r.n + " genomes (" + d.k + ")" : "none of the " + r.c + "s' " + r.n + " genomes"; })) + ".</p>").join("") + "</figcaption></figure>"; }).join("") +
-      "<p class='pp-evn'>Events and their dates are context from the team's list; the shares are read from the genome record. Pictures to come.</p></div>";
+      "<p class='pp-evn'>Events and their dates are context from the team's list; the shares are read from the genome record." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
   }
 
   // the slides' lines of text, from the counts
@@ -433,7 +435,7 @@
   function pathLead3(evs, rs) {
     const cs = e => andList(rs.filter(r => over(e, r)).map(r => "the " + r.c + "s")), nameOf = e => e.note + " (" + e.from + "–" + e.to + ")";
     const groups = []; evs.forEach(e => { const g = groups.find(x => x.cs === cs(e)); if (g) g.evs.push(e); else groups.push({ cs: cs(e), evs: [e] }); });
-    return groups.map(g => cap(g.cs) + " overlap" + (g.evs.length > 1 ? " " + word(g.evs.length) + " events from the team's list: " : " ") + andList(g.evs.map(nameOf)) + ".").join("<br>");
+    return groups.map(g => cap(g.cs) + " overlap" + (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " : " ") + andList(g.evs.map(nameOf)) + ".").join("<br>");
   }
 
   P.CONTENT.pathogens = pick => {

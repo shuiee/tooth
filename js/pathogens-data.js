@@ -12,7 +12,9 @@
                 strand gave them (app.js, STRAND_CONTEXT): context, not data. from and to are years (the list dates the
                 first pandemic 5th to 7th c.; the prototype gives it as the documented 541 to 750); taxa, the organisms
                 whose record the event concerns; band, also shaded across the strand. No numbers are kept with them: the
-                pop-up reads each organism's share from the counts above.
+                pop-up reads each organism's share from the counts above. img: its pictures, src and alt text (null:
+                a placeholder; the team's, from Ali Qureshi's pop-up galleries at d2672c3, cropped to 4:3). eventsHead
+                and eventsLine: the heading and line over the events, the team's (2026-10-07).
 
    How the molar draws it (radial.js, pathogenCounts()): the % is how often a pathogen turns up among the genomes
    recovered, not how common the disease was (counts are not prevalence). Each pathogen adds particles to its kind's
@@ -46,10 +48,16 @@
     ],
     colours: { bacteria: "#b0362f", virus: "#2f55b0", parasite: "#16907a", other: "#8a8983" },
     events: [
-      { label: "First plague pandemic", note: "the first plague pandemic", short: "Plague pandemic", from: 541, to: 750, taxa: ["Yersinia pestis"], band: true },
-      { label: "Black Death", note: "the Black Death", short: "Black Death", from: 1347, to: 1351, taxa: ["Yersinia pestis"], band: true },
-      { label: "Medieval leprosy", note: "medieval leprosy", short: "Medieval leprosy", from: 1000, to: 1400, taxa: ["Mycobacterium leprae"] },
+      { label: "First plague pandemic", note: "the first plague pandemic", short: "Plague pandemic", from: 541, to: 750, taxa: ["Yersinia pestis"], band: true,
+        img: { src: "img/plague-541-engraving.jpg", alt: "A modern illustration in the style of an engraving: plague dead in a city street, 541 CE" } },
+      { label: "Black Death", note: "the Black Death", short: "Black Death", from: 1347, to: 1351, taxa: ["Yersinia pestis"], band: true,
+        img: { src: "img/black-death.jpg", alt: "An etching of the plague in Florence, 1348: a procession with a banner passes the dead and dying in the street" } },
+      { label: "Medieval leprosy", note: "medieval leprosy", short: "Medieval leprosy", from: 1000, to: 1400, taxa: ["Mycobacterium leprae"],
+        img: { src: "img/medieval-leprosy.jpg", alt: "An illuminated manuscript painting: a haloed friar and his brothers tending sick people covered in sores" } },
     ],
+    // the events' heading and line, the team's (2026-10-07), once on the slide above them
+    eventsHead: "What disease did to us",
+    eventsLine: "These are the clearest involuntary marks. A plague genome in a tooth is the opposite of a filling, because nobody consented to it.",
     kinds: [["bacteria", "Bacteria"], ["virus", "Viruses"], ["parasite", "Parasites"], ["other", "Not disease agents"]],
   };
 })();
