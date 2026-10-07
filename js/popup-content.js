@@ -13,7 +13,11 @@
    matrix), cut down to the centuries around the one clicked, with its hover and its pull-out (strandChart); the
    supporting chart, every organism found in the century by its share of the century's genomes; the third slide, the
    events of the team's list the century falls in (context, not data), with their organism's share of it. A century
-   in no event has two slides. */
+   in no event has two slides.
+
+   Metals (js/metals-data.js): the main chart, the prototype's radial chart (its Plate 4.A), one petal for the period
+   clicked (bloomChart; two compared, one petal morphing between them in step with the molar); the supporting chart, its
+   line graph (Plate 4.B), drawn for the period clicked alone (lineChart); the third slide, the template's placeholder. */
 (function () {
   "use strict";
   const P = window.ToothPopup; if (!P) return;
@@ -417,5 +421,239 @@
     const slides = [{ html: pathLead1(rs), body: ch.body(0) }, { html: pathLead2(rs), body: ch.body(1) }];
     if (evs.length) slides.push({ html: pathLead3(evs, rs), body: eventsHTML(evs, rs) });
     return { slides, mount: ch.mount, source: "AncientMetagenomeDir (SPAAM, CC-BY 4.0) · European dental samples · n = " + rs.map(r => r.n).join(" and ") + " genomes" };
+  };
+
+  // ---- metals
+  const MD = window.METALS_DATA;
+  const EL = MD ? MD.elements.map(([el, name]) => ({ el, name })) : [];
+  const EA = EL.map((e, i) => i / EL.length * 2 * Math.PI);   // the spokes, lead at the top, clockwise
+  const NONIND = new Set(MD ? MD.groups.nonindustrial : []);
+  const LASTP = MD ? MD.periods.length - 1 : 0;
+  const UP = "#c0392b", DOWN = "#2e8540";
+  const fmtV = v => v >= 100 ? v.toLocaleString("en-GB") : String(v), ppmS = v => fmtV(v) + " ppm";
+  const times = r => r >= 10 ? String(Math.round(r)) : (+r.toFixed(1)).toString();
+  const pname = p => title(MD.periods[p].p);
+  const phr = p => { const n = MD.periods[p].p; return "the " + (/(Age|century|Neolithic)$/.test(n) ? n : (/^Roman$/.test(n) ? n : low(n)) + " period"); };   // "the Roman period", "the late medieval period"
+  // one value: its ppm; its change from the archaeological level in the same study (lead against 0.63 ppm, the others
+  // against their pooled value, as on the prototype's radial chart); whether it is the pooled stand-in (no value for the
+  // period itself); its statistic, range (lowest, highest) and the teeth behind it
+  function mcell(el, p) {
+    if (el === "Pb") return { ppm: MD.lead[p], x: MD.lead[p] / MD.leadArch, pooled: false, stat: p === LASTP ? "mean" : "median", rg: MD.leadRange[p], n: MD.periods[p].n };
+    const now = p === LASTP, ppm = now ? MD.modern[el] : MD.pooled[el];
+    return { ppm, x: ppm / MD.pooled[el], pooled: !now, stat: "mean", rg: now ? MD.modernRange[el] || null : null, n: now ? MD.periods[p].n : MD.pooledN };
+  }
+  // the hover note on a value, as the prototype's lead orbs read: the value, then its lowest and highest and the teeth
+  const mtip1 = (e, p) => { const c = mcell(e.el, p);
+    return c.stat + " " + ppmS(c.ppm) + " in childhood enamel<br><span class='m'>" + (c.pooled ? "no " + pname(p) + " measurement: the mean of " + c.n + " ancient teeth"
+      : c.rg ? "lowest " + (c.rg[0] == null ? "too low to detect" : c.rg[0]) + ", highest " + c.rg[1] + " ppm, n = " + c.n : "n = " + c.n) + "</span>"; };
+  const mtip = (e, ps) => "<b>" + esc(cap(e.name)) + (ps.length > 1 ? "" : ", " + pname(ps[0])) + "</b><br>" + ps.map(p => (ps.length > 1 ? pname(p) + ": " : "") + mtip1(e, p)).join("<br>");
+  // a change in words, for the radial chart's labels: from the period before (one picked) or the earlier of two
+  function change(el, p, q) {
+    if (q < 0) return { dir: "first", l1: "earliest", l2: "period measured", s: "earliest" };
+    const a = mcell(el, q), b = mcell(el, p);
+    if (b.pooled) return { dir: "same", l1: "no value for", l2: "this period", s: "no value" };
+    const r = b.ppm / a.ppm, than = a.pooled ? "ancient teeth" : pname(q);
+    if (Math.abs(r - 1) < 0.005) return { dir: "same", l1: "no change", l2: "from " + than, s: "same" };
+    return r > 1 ? { dir: "up", l1: "▲ " + times(r) + "× more", l2: "than " + than, s: "▲ " + times(r) + "×" } : { dir: "down", l1: "▼ " + times(1 / r) + "× less", l2: "than " + than, s: "▼ " + times(1 / r) + "×" };
+  }
+  const mix = (c, d, t) => { const h = s => [1, 3, 5].map(k => parseInt(s.slice(k, k + 2), 16)), a = h(c), b = h(d); return "#" + a.map((v, k) => Math.round(v + (b[k] - v) * t).toString(16).padStart(2, "0")).join(""); };
+  const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(2 - 2 * k, 3) / 2;
+  let UID = 0;
+  // the period the molar shows now, of two compared (popup.js, mark()): "metals:i"
+  const markOf = panel => { const m = /^metals:(\d+)$/.exec((panel && panel.dataset.mark) || ""); return m ? +m[1] : null; };
+  const onMark = (el, f) => { const panel = el.closest(".pp"); if (!panel) return; if (el._off) el._off();
+    const h = ev => { const m = /^metals:(\d+)$/.exec(ev.detail || ""); if (m) f(+m[1], true); }; panel.addEventListener("pp:mark", h); el._off = () => panel.removeEventListener("pp:mark", h);
+    const now = markOf(panel); if (now != null) f(now, false); };
+
+  // the main chart: the prototype's radial chart (its Plate 4.A), one petal for the period clicked across the eight
+  // element spokes, each spoke's length its element's change from the archaeological level in the same study, on a log
+  // scale (×1 is no change; as on the prototype, x 0.08 to x 20); a filled dot where the period has its own value, a
+  // hollow one where it shows the pooled archaeological mean (no value for the period). Each spoke's end names the
+  // element, its ppm and its change from the period before. Two compared: one petal morphing between the two, in step
+  // with the molar, both outlined, and each change between the two.
+  const XLO = 0.08, XHI = 20;
+  const radX = (x, R, r0) => r0 + (R - r0) * Math.max(0, Math.min(1, (Math.log(x) - Math.log(XLO)) / (Math.log(XHI) - Math.log(XLO))));
+  const ptA = (a, r) => [Math.sin(a) * r, -Math.cos(a) * r];
+  // a closed petal, as the prototype's: the spoke values joined through pinched valleys between neighbours
+  function petal(radii) {
+    const P = [], n = radii.length;
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n, a0 = EA[i], a1 = j ? EA[j] : EA[0] + 2 * Math.PI, lo = Math.min(radii[i], radii[j]), hi = Math.max(radii[i], radii[j]);
+      P.push(ptA(a0, Math.max(4, radii[i]))); P.push(ptA((a0 + a1) / 2, Math.max(3.2, lo * 0.5 + hi * 0.24))); }
+    const m = P.length; let d = "M" + fx(P[0][0]) + " " + fx(P[0][1]);
+    for (let k = 0; k < m; k++) { const p0 = P[(k + m - 1) % m], p1 = P[k], p2 = P[(k + 1) % m], p3 = P[(k + 2) % m];
+      d += "C" + [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]].map(fx).join(" "); }
+    return d + "Z";
+  }
+  function bloomChart(ps, st) {
+    const two = ps.length > 1;
+    return W => {
+      const G = "#8a8983", lh = s => s + 3.5;
+      // each spoke's label: in full (element, ppm, change in two lines), or, in a narrow box, compact
+      const blocks = EL.map(e => { const cs = ps.map(p => mcell(e.el, p)), c = two ? change(e.el, ps[1], ps[0]) : change(e.el, ps[0], ps[0] - 1), col = c.dir === "up" ? UP : c.dir === "down" ? DOWN : G;
+        const v = two ? fmtV(cs[0].ppm) + " → " + fmtV(cs[1].ppm) + " ppm" : ppmS(cs[0].ppm);
+        return { full: [[e.el, 15, 600, MD.colours[e.el]], [v, 12.5, 400, "#1a1a18"], [c.l1, 12, 600, col], [c.l2, 11, 400, G]],
+          compact: [[e.el + "  " + (two ? fmtV(cs[0].ppm) + "→" + fmtV(cs[1].ppm) : fmtV(cs[0].ppm)), 12, 600, MD.colours[e.el]], [c.s, 11.5, 600, col]],
+          tiny: [[e.el, 12, 600, MD.colours[e.el]], [c.s, 11.5, 600, col]] }; });   // the values left to the hover notes
+      const fit = mode => { let R = 150; EA.forEach((a, i) => { const sn = Math.abs(Math.sin(a)), w = Math.max(...blocks[i][mode].map(([t, s, wt]) => tw(t, s) * (wt > 400 ? 1.06 : 1)));
+        if (sn > 0.3) R = Math.min(R, (W / 2 - 3 - w) / sn - 12); }); return R; };
+      let mode = "full", R = fit(mode); if (R < 74) { mode = "compact"; R = fit(mode); } if (R < 56) { mode = "tiny"; R = fit(mode); }
+      R = Math.max(40, R); const r0 = R * 0.1;
+      const pos = blocks.map((b, i) => { const a = EA[i], [x, y] = ptA(a, R + 12), c = Math.cos(a), lines = b[mode], h = lines.reduce((s2, l) => s2 + lh(l[1]), 0), w = Math.max(...lines.map(([t, sz, wt]) => tw(t, sz) * (wt > 400 ? 1.06 : 1)));
+        return { x, w, top: c > 0.9 ? y - h - 2 : c < -0.9 ? y + 4 : c > 0.3 ? y - h + 12 : c < -0.3 ? y - 8 : y - h / 2, h, an: Math.abs(x) < 4 ? "middle" : x > 0 ? "start" : "end", lines }; });
+      // the top and bottom labels clear of their diagonal neighbours' where they would meet
+      [[0, 1, 7, -1], [4, 3, 5, 1]].forEach(([i, j, k, dir]) => { const q = pos[i], nb = [pos[j], pos[k]].filter(z => q.w / 2 + 6 > Math.abs(z.x)); if (!nb.length) return;
+        if (dir < 0) q.top = Math.min(q.top, Math.min(...nb.map(z => z.top)) - q.h - 4); else q.top = Math.max(q.top, Math.max(...nb.map(z => z.top + z.h)) + 4); });
+      const top = Math.min(...pos.map(q => q.top), -radX(10, R, r0) - 16), bot = Math.max(...pos.map(q => q.top + q.h)), cx = W / 2, cy = -top + 4, H = cy + bot + 30;
+      const radii = p => EL.map(e => radX(mcell(e.el, p).x, R, r0)), pcol = p => (MD.periodColours || [])[p] || "#7a6a9a";
+      let s = "<g transform='translate(" + fx(cx) + "," + fx(cy) + ")'>";
+      // the rings (x 0.1, x 1, the archaeological level, x 10) and the spokes
+      [0.1, 1, 10].forEach(v => { const r = radX(v, R, r0); s += "<circle r='" + fx(r) + "' fill='none' stroke='" + (v === 1 ? G : "#c6c4bd") + "' stroke-width='" + (v === 1 ? 0.8 : 0.8) + "'" + (v === 1 ? "" : " stroke-dasharray='2 3'") + "/>"; });
+      EA.forEach(a => { const [x, y] = ptA(a, R + 4); s += L(0, 0, x, y, G, 1, "1 4") + "<circle cx='" + fx(x) + "' cy='" + fx(y) + "' r='2' fill='#1a1a18'/>"; });
+      // two compared: each period's petal outlined (the earlier dashed), under the one that morphs between them
+      if (two) ps.forEach((p, k) => { s += "<path d='" + petal(radii(p)) + "' fill='none' stroke='" + pcol(p) + "' stroke-width='1.1' stroke-opacity='.7'" + (k ? "" : " stroke-dasharray='3 3'") + "/>"; });
+      const p0 = two ? (st.show != null ? st.show : ps[0]) : ps[0];
+      s += "<path class='mb-p' d='" + petal(radii(p0)) + "' fill='" + pcol(p0) + "' fill-opacity='.3'/>";
+      EL.forEach((e, i) => { const [x, y] = ptA(EA[i], radii(p0)[i]), pooled = mcell(e.el, p0).pooled;
+        s += "<circle class='mb-v' data-i='" + i + "' cx='" + fx(x) + "' cy='" + fx(y) + "' r='4' fill='" + (pooled ? "#f3f2ee" : "#1a1a18") + "' stroke='#1a1a18' stroke-width='1.3'/>"; });
+      [[0.1, "×0.1"], [1, R >= 100 ? "×1 Archaeological Level" : "×1"], [10, "×10"]].forEach(([v, t]) => { s += "<text x='4' y='" + fx(-radX(v, R, r0) - 3) + "' font-size='10.5' fill='" + G + "' paint-order='stroke' stroke='#f3f2ee' stroke-width='3' stroke-linejoin='round'>" + esc(t) + "</text>"; });
+      // the labels
+      pos.forEach(q => { let y = q.top; q.lines.forEach(([t, sz, wt, c]) => { y += lh(sz); s += T(q.x, y - 3.5, t, { a: q.an, s: sz, c, w: wt > 400 ? wt : 0 }); }); });
+      s += "</g>";
+      // the key: a filled dot, the period's own value; hollow, the archaeological mean shown in its place
+      const k1 = "Measured This Period", k2 = "No Value for This Period", w1 = 14 + tw(k1, 11), w2 = 14 + tw(k2, 11), one = w1 + 18 + w2 <= W, Hk = H + (one ? 0 : 18);
+      const key = (x, y, t, hollow) => "<circle cx='" + fx(x + 4) + "' cy='" + fx(y - 4) + "' r='3.5' fill='" + (hollow ? "#f3f2ee" : "#1a1a18") + "'" + (hollow ? " stroke='#1a1a18' stroke-width='1.2'" : "") + "/>" + T(x + 12, y, t, { s: 11, c: G });
+      s += one ? key((W - w1 - 18 - w2) / 2, H - 5, k1) + key((W - w1 - 18 - w2) / 2 + w1 + 18, H - 5, k2, true) : key(0, H - 5, k1) + key(0, H + 13, k2, true);
+      const html = svg(W, Hk, s, "Metals in childhood enamel, " + ps.map(pname).join(" and ") + ": each element's change from the archaeological level");
+
+      const wire = el => {
+        const sv = el.querySelector("svg"), path = sv.querySelector(".mb-p"), vs = [...sv.querySelectorAll(".mb-v")];
+        vs.forEach(v => { const e = EL[+v.dataset.i]; v.addEventListener("pointermove", ev => tip(mtip(e, ps), ev)); v.addEventListener("pointerleave", () => tip(null)); });
+        if (!two) return;
+        // two compared: the petal morphs to the period the molar shows, as the molar changes over
+        let cur = p0, rr = radii(p0), stop = null;
+        const draw = (r, col, p) => { path.setAttribute("d", petal(r)); path.setAttribute("fill", col);
+          vs.forEach((v, i) => { const [x, y] = ptA(EA[i], r[i]); v.setAttribute("cx", fx(x)); v.setAttribute("cy", fx(y)); v.setAttribute("fill", mcell(EL[i].el, p).pooled ? "#f3f2ee" : "#1a1a18"); }); };
+        const to = (p, anim) => { if (!ps.includes(p) || p === cur) return; if (stop) stop();
+          const from = rr.slice(), r1 = radii(p), c0 = pcol(cur), c1 = pcol(p), was = cur; cur = p; st.show = p;
+          if (!anim || REDUCED) { rr = r1; draw(r1, c1, p); return; }
+          const t0 = performance.now(); let raf = 0;
+          const step = now => { const k = Math.min(1, (now - t0) / 1300), e = ease(k); rr = from.map((v, j) => v + (r1[j] - v) * e); draw(rr, mix(c0, c1, e), e < 0.5 ? was : p);
+            if (k < 1) raf = requestAnimationFrame(step); else stop = null; };
+          raf = requestAnimationFrame(step); stop = () => cancelAnimationFrame(raf); };
+        onMark(el, to);
+      };
+      return { html, wire };
+    };
+  }
+
+  // the supporting chart: the prototype's line graph (its Plate 4.B), every element in ppm on one log scale, drawn for
+  // the period clicked alone: each element a glowing orb at its value (sized by the teeth behind it), lead with a streak
+  // from its lowest to its highest child; faded where the period has no value of its own (the archaeological mean in
+  // its place). Two compared: each period's column, and a line from each element's value in one to the other. Hovering
+  // an element picks it out (zinc, barium, strontium and magnesium together) and reads its value.
+  function lineChart(ps, st) {
+    const two = ps.length > 1;
+    return W => {
+      const id = "ml" + (++UID), G = "#8a8983", H = 320, T0 = 12, T1 = H - 36;
+      const ly = v => { const lo = Math.log(0.002), hi = Math.log(4000); return T1 - (T1 - T0) * (Math.log(Math.max(0.002, Math.min(4000, v))) - lo) / (hi - lo); };
+      const axW = Math.ceil(tw("1,000 ppm", 11)) + 10, val = (e, k) => fmtV(mcell(e.el, ps[k]).ppm);
+      const vtxt = e => two ? val(e, 0) + " → " + val(e, 1) : val(e, 0);
+      const full = W - axW - (Math.max(...EL.map(e => tw(e.el + "  " + vtxt(e), 12))) + 34) >= (two ? 150 : 90);   // room for each value beside its name
+      const labW = Math.ceil(Math.max(...EL.map(e => tw(full ? e.el + "  " + vtxt(e) : e.el, 12)))) + 34, lx = W - labW + 26;
+      const xs = two ? [axW + 30, W - labW - 16] : [axW + (W - axW - labW) * 0.5];
+      const rOrb = n => 3 + 0.62 * Math.sqrt(n);
+      // each column's orbs, set side by side where two would overlap (their heights stay true)
+      const cols = ps.map((p, k) => { const items = EL.map((e, j) => { const c = mcell(e.el, p); return { e, j, c, y: ly(c.ppm), r: rOrb(c.n), x: xs[k] }; });
+        const placed = []; items.slice().sort((a, b) => a.y - b.y).forEach(q => { for (const o of [0, 1, -1, 2, -2, 3, -3]) { const x = xs[k] + o * 15;
+          if (!placed.some(z => Math.hypot(z.x - x, z.y - q.y) < z.r + q.r + 1)) { q.x = x; break; } } placed.push(q); }); return items; });
+      let defs = "<filter id='" + id + "g' x='-100%' y='-100%' width='300%' height='300%'><feGaussianBlur stdDeviation='5'/></filter>" +
+        "<filter id='" + id + "n' x='-60%' y='-60%' width='220%' height='220%'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='1' seed='7' result='t'/><feColorMatrix in='t' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.75' result='m'/><feComposite in='SourceGraphic' in2='m' operator='in'/></filter>" +
+        "<filter id='" + id + "s' x='-100%' y='-100%' width='300%' height='300%'><feGaussianBlur stdDeviation='1.6'/></filter>";
+      EL.forEach(e => { const c = MD.colours[e.el];
+        defs += "<radialGradient id='" + id + e.el + "' cx='36%' cy='34%' r='70%'><stop offset='0' stop-color='#fff' stop-opacity='.85'/><stop offset='.28' stop-color='" + mix(c, "#ffffff", 0.3) + "'/><stop offset='.75' stop-color='" + c + "'/><stop offset='1' stop-color='" + mix(c, "#000000", 0.3) + "' stop-opacity='.85'/></radialGradient>"; });
+      // the grid, in ppm, and each column's guide and period
+      let s = "";
+      [0.01, 0.1, 1, 10, 100, 1000].forEach(v => { s += L(axW - 4, ly(v), xs[xs.length - 1] + 26, ly(v), "#c6c4bd", 0.7, "2 3") + T(axW - 8, ly(v) + 4, fmtV(v) + " ppm", { a: "end", s: 11, c: G }); });
+      // (two whose names would meet, on two lines)
+      const stag = two && xs[1] - xs[0] < (tw(pname(ps[0]), 12) + tw(pname(ps[1]), 12)) / 2 * 1.06 + 10;
+      ps.forEach((p, k) => { s += L(xs[k], T0, xs[k], T1, "rgba(26,26,24,.12)", 1) + "<text class='mt-era' data-p='" + p + "' x='" + fx(xs[k]) + "' y='" + (stag ? T1 + 17 + k * 15 : T1 + 24) + "' text-anchor='middle' font-size='12' fill='#55544f'>" + esc(pname(p)) + "</text>"; });
+      // the names at the right, spread so none overlap, on a hairline to their orb in the last column
+      const last = cols[cols.length - 1], labs = last.map(q => ({ q, y: q.y })).sort((a, b) => a.y - b.y);
+      for (let k = 1; k < labs.length; k++) labs[k].y = Math.max(labs[k].y, labs[k - 1].y + 15);
+      for (let k = labs.length - 1; k >= 0; k--) labs[k].y = Math.min(labs[k].y, k === labs.length - 1 ? T1 : labs[k + 1].y - 15);
+      const labY = {}; labs.forEach(l => { labY[l.q.j] = l.y; });
+      EL.forEach((e, j) => {
+        const col = MD.colours[e.el], qs = cols.map(c => c[j]);
+        let g = "<g class='mt-g' data-j='" + j + "'>";
+        if (two) { const d = "M" + fx(qs[0].x) + " " + fx(qs[0].y) + "L" + fx(qs[1].x) + " " + fx(qs[1].y); g += "<path class='mt-hit' d='" + d + "'/><path class='mt-ln' d='" + d + "' stroke='" + col + "'/>"; }
+        qs.forEach((q, k) => { if (!q.c.rg) return;   // the streak: lowest to highest (lead always; the others' 20th-century range while hovered)
+          const a = ly(q.c.rg[1]), b = ly(q.c.rg[0] == null ? 0.002 : q.c.rg[0]), m = (q.y - a) / Math.max(1, b - a), gid = id + "t" + j + "_" + k;
+          defs += "<linearGradient id='" + gid + "' gradientUnits='userSpaceOnUse' x1='0' x2='0' y1='" + fx(a) + "' y2='" + fx(b) + "'>" + [[0, 0], [Math.max(0, m - 0.25), 0.3], [m, 0.75], [Math.min(1, m + 0.25), 0.3], [1, 0]].map(([o, op]) => "<stop offset='" + o.toFixed(3) + "' stop-color='" + col + "' stop-opacity='" + op + "'/>").join("") + "</linearGradient>";
+          g += "<rect class='mt-tail" + (e.el === "Pb" ? "" : " m") + "' x='" + fx(q.x - 5) + "' y='" + fx(a) + "' width='10' height='" + fx(b - a) + "' rx='5' fill='url(#" + gid + ")' filter='url(#" + id + "n)'/>"; });
+        qs.forEach(q => { const r = q.r;
+          g += "<g opacity='" + (q.c.pooled ? 0.45 : 1) + "'><circle cx='" + fx(q.x) + "' cy='" + fx(q.y) + "' r='" + fx(r * 1.7) + "' fill='" + col + "' opacity='.35' filter='url(#" + id + "g)'/>" +
+            "<circle cx='" + fx(q.x) + "' cy='" + fx(q.y) + "' r='" + fx(r) + "' fill='url(#" + id + e.el + ")' filter='url(#" + id + "n)'/>" +
+            "<circle cx='" + fx(q.x - r * 0.3) + "' cy='" + fx(q.y - r * 0.32) + "' r='" + fx(r * 0.38) + "' fill='#fff' opacity='.55' filter='url(#" + id + "s)'/></g>" +
+            "<circle class='mt-dot' data-k='" + qs.indexOf(q) + "' cx='" + fx(q.x) + "' cy='" + fx(q.y) + "' r='" + fx(r + 6) + "' fill='transparent'/>"; });
+        const q = qs[qs.length - 1], y = labY[j];
+        g += L(q.x + q.r + 3, q.y, lx - 5, y, "#8a8983", 0.5) + "<text x='" + fx(lx) + "' y='" + fx(y + 4) + "' font-size='12'><tspan font-weight='600' fill='" + col + "'>" + e.el + "</tspan>" +
+          (full ? "<tspan fill='#55544f'>  " + esc(vtxt(e)) + "</tspan>" : "") + "</text><rect x='" + fx(lx - 4) + "' y='" + fx(y - 8) + "' width='" + fx(W - lx + 4) + "' height='15' fill='transparent'/></g>";
+        s += g; });
+      const html = "<div class='mt'>" + svg(W, H, "<defs>" + defs + "</defs>" + s, "Metals in childhood enamel in ppm, " + ps.map(pname).join(" and "), "mt-svg") + "<p class='pd-hint mt-hint' aria-live='polite'></p></div>";
+
+      const wire = el => {
+        const sv = el.querySelector(".mt-svg"), hint = el.querySelector(".mt-hint"), gs = [...sv.querySelectorAll(".mt-g")];
+        const pooled = ps.some(p => p !== LASTP);
+        const rest = "Lead's streak runs from its lowest to its highest " + (ps.every(p => p === LASTP) ? "tooth" : "child") + ". " + (pooled ? "Faded: no value for this period; the mean of " + MD.pooledN + " ancient teeth stands in. " : "") + "Hover a metal to read it.";
+        hint.textContent = rest;
+        const k0 = (ev, j) => { if (!two) return 0; const r = sv.getBoundingClientRect(), x = (ev.clientX - r.left) * W / r.width; return Math.abs(x - cols[0][j].x) <= Math.abs(x - cols[1][j].x) ? 0 : 1; };
+        gs.forEach(g => { const j = +g.dataset.j, e = EL[j], grp = NONIND.has(e.el) ? gs.filter(h => NONIND.has(EL[+h.dataset.j].el)) : [g];
+          g.addEventListener("pointerenter", () => { sv.classList.add("hov"); gs.forEach(h => h.classList.toggle("on", grp.includes(h)));
+            if (NONIND.has(e.el)) hint.textContent = "Zinc, barium, strontium and magnesium are part of enamel itself, not industrial."; });
+          g.addEventListener("pointermove", ev => { const k = ev.target.dataset && ev.target.dataset.k != null ? +ev.target.dataset.k : k0(ev, j); tip(mtip(e, [ps[k]]), ev); });
+          g.addEventListener("pointerleave", () => { sv.classList.remove("hov"); gs.forEach(h => h.classList.remove("on")); hint.textContent = rest; tip(null); }); });
+        // two compared: the period the molar shows now, its name in the heavier weight
+        if (two) onMark(el, p => sv.querySelectorAll(".mt-era").forEach(t => { t.setAttribute("font-weight", +t.dataset.p === p ? 600 : 400); t.setAttribute("fill", +t.dataset.p === p ? "#1a1a18" : "#55544f"); }));
+      };
+      return { html, wire };
+    };
+  }
+
+  // the slides' lines of text, from the values
+  const lvl = x => x >= 1 ? B("×" + times(x)) + " the archaeological level" : B(Math.round(x * 100) + "%") + " of the archaeological level";
+  const moved = (a, b) => { const r = b / a; return Math.abs(r - 1) < 0.005 ? "no change" : r > 1 ? B("×" + times(r)) : B(times(1 / r) + "×") + " less"; };
+  // the 20th century against archaeological teeth: copper, chromium and nickel, then the elements of enamel itself
+  const othersNow = () => { const ind = MD.groups.industrial.filter(x => x !== "Pb"), nm = x => EL.find(e => e.el === x).name, rs = MD.groups.nonindustrial.map(x => MD.modern[x] / MD.pooled[x]);
+    const span = Math.max(...rs.map(r => Math.max(r, 1 / r)));
+    return cap(andList(ind.map(nm))) + " rose " + andList(ind.map(x => B("×" + times(MD.modern[x] / MD.pooled[x])))) + " from ancient teeth; " + andList(MD.groups.nonindustrial.map(nm)) + ", part of enamel itself, stayed within " + B("×" + (Math.ceil(span * 10) / 10)) + "."; };
+  function metLead1(ps) {
+    const Lp = MD.lead, A = MD.leadArch, st = p => p === LASTP ? "averaged " : "had a median of ";
+    if (ps.length > 1) { const [a, b] = ps;
+      return "Lead in childhood enamel went from " + B(ppmS(Lp[a])) + " in " + phr(a) + " to " + B(ppmS(Lp[b])) + " in " + phr(b) + ", " + moved(Lp[a], Lp[b]) + ".<br>" +
+        (b === LASTP ? othersNow() : "The other metals have no value for either period, only one mean for all early teeth."); }
+    const p = ps[0], one = "In " + phr(p) + ", lead in childhood enamel " + st(p) + B(ppmS(Lp[p])) + ", " + lvl(Lp[p] / A) + ".";
+    if (p === LASTP) return one + "<br>" + othersNow();
+    if (!p) return one + "<br>Only lead was measured period by period; the other metals show one mean for all early teeth.";
+    const r = Lp[p] / Lp[p - 1];
+    return one + "<br>" + (Math.abs(r - 1) < 0.005 ? "The same as " + phr(p - 1) + "'s " + ppmS(Lp[p - 1]) + "." : r > 1 ? "That is " + B("×" + times(r)) + " " + phr(p - 1) + "'s " + ppmS(Lp[p - 1]) + "."
+      : "That is " + B(times(1 / r) + "×") + " less than " + phr(p - 1) + "'s " + ppmS(Lp[p - 1]) + ".");
+  }
+  function metLead2(ps) {
+    const R = MD.leadRange, who = p => p === LASTP ? "modern teeth" : "children";
+    if (ps.length > 1) { const [a, b] = ps, ha = R[a][1], hb = R[b][1], ma = MD.lead[a], mb = MD.lead[b], dir = (x, y) => y > x ? "rose" : y < x ? "fell" : "held";
+      return "Lead ranged from " + B(R[a][0]) + " to " + B(ppmS(R[a][1])) + " in " + phr(a) + ", and from " + B(R[b][0]) + " to " + B(ppmS(R[b][1])) + " in " + phr(b) + ".<br>" +
+        "Its highest " + dir(ha, hb) + " from " + B(fmtV(ha)) + " to " + B(ppmS(hb)) + (dir(ha, hb) === dir(ma, mb) ? ", as the median did." : ", while the median " + dir(ma, mb) + "."); }
+    const p = ps[0], rg = R[p];
+    return "Lead ranged from " + B(rg[0]) + " to " + B(ppmS(rg[1])) + " across the " + B(MD.periods[p].n) + " " + who(p) + ".<br>The most exposed held " + B("×" + times(rg[1] / rg[0])) + " the lead of the least.";
+  }
+  const metSource = ps => ps.every(p => p === LASTP) ? "Kamenov et al. 2018 · 20th-century births · n = " + MD.periods[LASTP].n
+    : "Montgomery et al. 2010 (British lead) · Kamenov et al. 2018 · n = " + ps.map(p => MD.periods[p].n).join(" and ");
+
+  P.CONTENT.metals = pick => {
+    if (!MD || !MD.leadRange) return {};
+    const ps = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b);
+    if (ps.some(p => !MD.periods[p])) return {};
+    const st = { show: null }, ch = charts([bloomChart(ps, st), lineChart(ps, st)]);
+    return { slides: [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }, EVENT], mount: ch.mount, source: metSource(ps) };
   };
 })();

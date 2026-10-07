@@ -10,6 +10,12 @@
      pooled   the other elements in archaeological enamel, one pooled value (Kamenov et al. 2018, Table 1; Florida,
               the Philippines and Peru, n = 38): there is no per-period measurement before 1900
      modern   the same elements in 20th-century births (Kamenov et al. 2018, Table 1, n = 77)
+     leadRange  lead, lowest to highest individual, per period (Montgomery et al. 2010, Table 11.4, the British periods;
+              Kamenov et al. 2018, Table 1, the 20th century)
+     modernRange  the other elements in 20th-century births, lowest to highest (Kamenov et al. 2018, Table 1); null where
+              the lowest was below detection; none given for magnesium
+     pooledN  the archaeological teeth the pooled values come from (Kamenov et al. 2018: Florida, the Philippines, Peru)
+     periodColours  each period's colour on the prototype's radial chart (its petals), a drawing choice, not data
      colours  each element's colour, as the prototype's radial chart and grain used them
      groups   not industrial (zinc, barium, strontium, magnesium: part of enamel itself) and industrial (lead, copper,
               chromium, nickel), as the prototype's Metals plate groups them (metals.js, NONIND)
@@ -36,8 +42,12 @@
     ],
     lead: [0.1, 0.06, 0.06, 1.21, 0.39, 1.93, 4.69, 6.55],
     leadArch: 0.63,
+    leadRange: [[0.03, 0.68], [0.003, 0.13], [0.04, 0.15], [0.24, 30.1], [0.13, 8.16], [0.03, 31.6], [0.02, 14.5], [0.04, 45.5]],
     pooled: { Cu: 0.25, Cr: 0.072, Ni: 0.24, Zn: 145, Ba: 3.2, Sr: 188, Mg: 2430 },
     modern: { Cu: 3.6, Cr: 0.8, Ni: 2.2, Zn: 215, Ba: 4.6, Sr: 168, Mg: 3075 },
+    modernRange: { Cu: [0.01, 32.9], Cr: [null, 10.3], Ni: [0.11, 36.5], Zn: [80.4, 474], Ba: [0.52, 31.3], Sr: [58, 1344] },
+    pooledN: 38,
+    periodColours: ["#9a8fbf", "#8a78c4", "#7a63c9", "#3f72c4", "#3c9a6e", "#d4a21f", "#d0612b", "#b0362f"],
     elements: [["Pb", "lead"], ["Cu", "copper"], ["Cr", "chromium"], ["Ni", "nickel"], ["Zn", "zinc"], ["Ba", "barium"], ["Sr", "strontium"], ["Mg", "magnesium"]],
     colours: { Pb: "#c62828", Cu: "#e5780e", Cr: "#b89a00", Ni: "#2f9a3a", Zn: "#0aa1b0", Ba: "#2f5fd8", Sr: "#8a4fd6", Mg: "#d4439a" },
     groups: { nonindustrial: ["Zn", "Ba", "Sr", "Mg"], industrial: ["Pb", "Cu", "Cr", "Ni"] },

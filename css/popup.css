@@ -272,3 +272,15 @@
 .pp-evd{display:block;margin:1px 0 6px;font-size:12px;color:var(--ink-3)}
 .pp-evn{margin:0;font-size:11px;font-style:italic;line-height:1.4;color:var(--ink-3)}
 @media (prefers-reduced-motion: reduce){.pd-leads{transition:none}.pd-pull .pd-in{animation:none}}
+/* metals: the radial chart's petal (js/popup-content.js, bloomChart) and the line graph (lineChart), whose hovered
+   metal stands out (zinc, barium, strontium and magnesium together), its line heavier and its 20th-century range shown */
+.mb-p{mix-blend-mode:multiply}
+.mb-v{cursor:default}
+.mt-svg .mt-g{transition:opacity .25s}
+.mt-svg.hov .mt-g:not(.on){opacity:.12}
+.mt-ln{fill:none;stroke-width:1.8;stroke-linecap:round;transition:stroke-width .25s}
+.mt-g.on .mt-ln{stroke-width:3}
+.mt-hit{fill:none;stroke:transparent;stroke-width:16}
+.mt-tail.m{opacity:0;transition:opacity .3s}
+.mt-g.on .mt-tail.m{opacity:1}
+@media (prefers-reduced-motion: reduce){.mt-svg .mt-g,.mt-ln,.mt-tail.m{transition:none}}
