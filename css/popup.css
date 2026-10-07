@@ -327,7 +327,7 @@
 .lc-row{cursor:default}
 .lc-row.on rect:first-child{fill:rgba(26,26,24,.05)}
 .lc-b{margin-top:8px}
-.lc .pd-hint,.wp .pd-hint{min-height:0}
+.lc .pd-hint,.wp .pd-hint,.iv .pd-hint{min-height:0}
 .ls-row,.ls-col{transition:opacity .25s}
 .ls-row.dim,.ls-col.dim{opacity:.25}
 .ls-b{margin-top:14px}
@@ -344,3 +344,12 @@
 /* the scroll bar out in the card's right margin, under the X, with a clear gap between it and the slides (their arrows,
    charts and labels) */
 .pp-box.two .pp .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable}
+/* a single card that scrolls on its own (popup.js, SCROLL): the same, its body scrolling under its header wherever the
+   card is taller than the pop-up's room, the scroll bar in its right margin */
+@media (min-width:900px){
+  .pp-box .pp.pp-sc .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin;overscroll-behavior:contain}
+}
+.pp.pp-sc .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable}
+.pp.pp-sc .pp-when{padding-bottom:4px}
+.pp.pp-sc .pp-lead{margin-top:4px}
+.pp.pp-sc .pp-evs.sc{max-height:none;overflow:visible;padding-right:0}   /* the card scrolls, so its events list does not scroll inside it */

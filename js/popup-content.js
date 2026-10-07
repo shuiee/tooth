@@ -24,7 +24,13 @@
    wear landscape with the period clicked raised (wearChart), its peaks opening Smith's stage diagram (smithHTML), and
    the team's milling events. Stress lines, on the lower canine: the share with a line (lehBar), by age with each
    cemetery's slope (lehAge), by severity with each cemetery's share (lehSev), and the team's events on childhood
-   stress. */
+   stress.
+
+   Artificial interventions (js/interventions-data.js): the main chart, the prototype's "Tooth repair, drawn straight
+   through" (the team's c7 chart): repaired teeth per 100 people examined, log scale, with the 95% intervals, the pale
+   what-if bars (arithmetic) and the 2009 level (repairChart); the supporting chart, every person examined as a dot, one
+   circle per sample, those with dental work in colour (samplesChart); the third slide, the events of the team's
+   timeline on the interventions layer that the period overlaps. */
 (function () {
   "use strict";
   const P = window.ToothPopup; if (!P) return;
@@ -1164,5 +1170,165 @@
       return "In the " + low(c.p) + " period, " + B(c.pct.toFixed(1) + "%") + " of adults had a line on the lower canine" + (pv ? ", " + (c.pct >= pv.pct ? "up" : "down") + " from " + pv.pct.toFixed(1) + "% in the " + low(pv.p) : "") + "."; }).join(" "),
       "Event dates are historical context. Shares are of adults 18–69 with a scorable lower canine.") });
     return { slides, mount: ch.mount, source: "Global History of Health Project (Europe) · adults 18–69, scorable lower canine · Schultz (1988) · n = " + sel.map(i => LC.eras[i].n.toLocaleString("en-GB")).join(" and ") };
+  };
+  // ---- artificial interventions (js/interventions-data.js)
+  const ID = window.INTERVENTIONS_DATA, IE = window.INTERVENTIONS_EVENTS || { events: [] };
+  const IP = ID ? ID.periods : [], LASTI = IP.length - 1;   // the last: the 2009 survey
+  const PAPER = "#f3f2ee";
+  const nf = v => v.toLocaleString("en-GB");
+  const per = v => v >= 10 ? nf(Math.round(v)) : v.toFixed(1);   // a rate per 100, as the team's chart gives it
+  const archMean = () => { const a = IP.slice(0, LASTI); return a.reduce((m, q) => m + q.per100, 0) / a.length; };
+  const timesAs = (a, b) => Math.round(b / a);
+  const ivTip = i => { const q = IP[i];
+    return (i === LASTI ? "<b>England, Adult Dental Health Survey 2009</b><br>A mean of " + q.teeth + " restored, otherwise sound teeth per person: " + per(q.per100) + " per 100<br>" + nf(q.people) + " people examined"
+      : "<b>" + esc(q.site + ", " + q.place + ", " + q.when) + "</b><br>" + q.teeth + " repaired teeth among " + nf(q.people) + " people: " + q.per100 + " per 100<br>95% interval " + q.lo + " to " + q.hi + "<br>" + esc(cap(q.detail))) + "<br><i>" + esc(q.short) + "</i>"; };
+  const wireTips = (el, sel) => el.querySelectorAll("[data-iv]").forEach(h => { const i = +h.dataset.iv;
+    h.addEventListener("pointermove", ev => tip(ivTip(i), ev)); h.addEventListener("pointerleave", () => tip(null)); });
+
+  // the main chart: the prototype's "Tooth repair, drawn straight through" (its Artificial interventions figure, after
+  // the team's c7 chart): repaired teeth per 100 people examined, on a log scale; each archaeological sample with its 95%
+  // interval and its pale what-if bars (the rate as if 90% or 99% of repairs had gone unseen: arithmetic, said so under
+  // the chart), the 2009 survey, a dashed line at its level, and a line through all four. The period clicked is in the
+  // record's colour, the others dimmed; a label that would meet another is left out (its point's hover note keeps it)
+  function repairChart(sel, col) {
+    return W => {
+      const G = "#8a8983", on = i => sel.includes(i), dim = mix(col, PAPER, 0.58), H = 300, l = 50, r = 14, t = 14, b = 44;
+      const x0 = 880, x1 = 2040, lo = 0.1, hi = 4000, M = ID.modern;
+      const X = yr => l + (W - l - r) * (yr - x0) / (x1 - x0), Y = v => t + (H - t - b) * (Math.log(hi) - Math.log(Math.max(lo, v))) / (Math.log(hi) - Math.log(lo));
+      const boxes = [], hits = q => q[0] < l || q[2] > W || q[1] < 0 || q[3] > H - b - 2 || boxes.some(z => z[0] < q[2] && q[0] < z[2] && z[1] < q[3] && q[1] < z[3]);   // inside the plot, clear of the rest
+      const tbox = (x, y, txt, px, an) => { const w = tw(txt, px) * 1.04 + 2, x0b = an === "end" ? x - w : an === "middle" ? x - w / 2 : x; return [x0b, y - px, x0b + w, y + px * 0.3]; };
+      let s = "";
+      // the grid (log), the years, the axes' names
+      [0.1, 1, 10, 100, 1000].forEach(v => { s += L(l, Y(v), W - r, Y(v), "rgba(26,26,24,.1)") + T(l - 8, Y(v) + 4, v >= 1000 ? nf(v) : String(v), { a: "end", s: 11, c: G }); });
+      s += L(l, H - b, W - r, H - b, "rgba(26,26,24,.3)");
+      ((W - l - r) >= 300 ? [1000, 1200, 1400, 1600, 1800, 2000] : [1000, 1500, 2000]).forEach(v => { s += L(X(v), H - b, X(v), H - b + 5, G) + T(X(v), H - b + 18, String(v), { a: "middle", s: 11, c: G }); });
+      s += T((l + W - r) / 2, H - 6, "Year", { a: "middle", s: 11, c: G, i: true });
+      const ym = (t + H - b) / 2;
+      s += "<text x='12' y='" + fx(ym) + "' text-anchor='middle' font-size='11' font-style='italic' fill='" + G + "' transform='rotate(-90 12 " + fx(ym) + ")'>Repaired Teeth per 100 People</text>";
+      // the 2009 level, dashed across
+      const yM = Y(M); s += L(l, yM, W - r, yM, mix(col, PAPER, 0.3), 1, "4 4") + T(l + 4, yM - 6, "2009 Level", { s: 10.5, c: G, i: true }); boxes.push(tbox(l + 4, yM - 6, "2009 Level", 10.5, "start"));
+      // the what-if bars, faint, and the line through the four
+      const bw = 12, k10 = 1 / (1 - ID.missRates[0]), k100 = 1 / (1 - ID.missRates[1]);
+      IP.forEach((q, i) => { if (i === LASTI) return; const x = X(q.x), a = on(i) ? 1 : 0.45;
+        s += "<rect x='" + fx(x - bw / 2) + "' y='" + fx(Y(q.per100 * k100)) + "' width='" + bw + "' height='" + fx(Y(q.per100 * k10) - Y(q.per100 * k100)) + "' fill='" + col + "' fill-opacity='" + (0.07 * a).toFixed(3) + "'/>" +
+          "<rect x='" + fx(x - bw / 2) + "' y='" + fx(Y(q.per100 * k10)) + "' width='" + bw + "' height='" + fx(Y(q.per100) - Y(q.per100 * k10)) + "' fill='" + col + "' fill-opacity='" + (0.15 * a).toFixed(3) + "'/>";
+        boxes.push([x - bw / 2 - 2, Y(q.per100 * k100), x + bw / 2 + 2, Y(q.lo)]); });
+      s += "<polyline points='" + IP.map(q => fx(X(q.x)) + "," + fx(Y(q.per100))).join(" ") + "' fill='none' stroke='" + mix(col, PAPER, 0.4) + "' stroke-width='2' stroke-linejoin='round'/>";
+      // the intervals and the points
+      IP.forEach((q, i) => { const x = X(q.x), y = Y(q.per100), c = on(i) ? col : dim, rr = i === LASTI ? (on(i) ? 6.5 : 5) : (on(i) ? 5.5 : 4);
+        if (q.lo != null) s += L(x, Y(q.lo), x, Y(q.hi), c, on(i) ? 2 : 1.5);
+        s += "<circle cx='" + fx(x) + "' cy='" + fx(y) + "' r='" + rr + "' fill='" + c + "' stroke='" + PAPER + "' stroke-width='1.5'/>"; boxes.push([x - rr - 2, y - rr - 2, x + rr + 2, y + rr + 2]); });
+      // the 2009 survey's value and name, left of its point above the dashed line
+      { const x = X(IP[LASTI].x) - 11, c = on(LASTI) ? col : dim, name = "England, 2009", w = tw(per(M), 15);
+        s += T(x, yM - 8, per(M), { a: "end", s: 15, c, w: 600 }) + T(x - w - 7, yM - 8, name, { a: "end", s: 11, c: on(LASTI) ? "#3b3a36" : G });
+        boxes.push([x - w - 9 - tw(name, 11), yM - 22, x, yM - 4]); }
+      // the what-if bars of the sample clicked, named beside them (shorter, or not at all, where there is no room)
+      sel.filter(i => i !== LASTI).forEach(i => { const q = IP[i], x = X(q.x);
+        [[q.per100 * k10, "×10, as if 90% were missed", "×10"], [q.per100 * k100, "×100, as if 99% were missed", "×100"]].forEach(([v, long, short]) => {
+          const y = Y(v) + 4;
+          for (const [txt, an] of [[long, "start"], [long, "end"], [short, "start"], [short, "end"]]) { const xx = an === "start" ? x + bw / 2 + 5 : x - bw / 2 - 5, bx = tbox(xx, y, txt, 10.5, an);
+            if (!hits(bx)) { s += T(xx, y, txt, { a: an, s: 10.5, c: G }); boxes.push(bx); break; } } }); });
+      // each sample's name and count, by its point: the one clicked first, the others where there is room
+      sel.concat(IP.map((_, i) => i).filter(i => !on(i))).forEach(i => { if (i === LASTI) return; const q = IP[i], x = X(q.x), y = Y(q.per100);
+        const l1 = q.site, l2 = q.teeth + " teeth / " + nf(q.people) + " people";
+        const dw = Math.max(18, Y(q.lo) - y + 16);   // under its interval
+        for (const [dx, dy, an] of [[10, 18, "start"], [-10, 18, "end"], [0, dw, "middle"], [10, -24, "start"], [-10, -24, "end"], [10, dw, "start"], [-10, dw, "end"]]) {
+          const b1 = tbox(x + dx, y + dy, l1, 12, an), b2 = tbox(x + dx, y + dy + 14, l2, 11, an), bx = [Math.min(b1[0], b2[0]), b1[1], Math.max(b1[2], b2[2]), b2[3]];
+          if (hits(bx)) continue;
+          s += T(x + dx, y + dy, l1, { a: an, s: 12, c: on(i) ? "#1a1a18" : G, w: on(i) ? 600 : 0 }) + T(x + dx, y + dy + 14, l2, { a: an, s: 11, c: on(i) ? "#55544f" : G }); boxes.push(bx); break; } });
+      // the points answer the pointer
+      s += IP.map((q, i) => "<circle class='iv-pt' data-iv='" + i + "' cx='" + fx(X(q.x)) + "' cy='" + fx(Y(q.per100)) + "' r='11' fill='transparent'/>").join("");
+      const be = ((1 - archMean() / M) * 100).toFixed(2);
+      const html = "<div class='iv'>" + svg(W, H, s, "Repaired teeth per 100 people examined, log scale, " + sel.map(i => IP[i].p).join(" and ") + " picked out") +
+        "<p class='pd-hint'>Log scale; whiskers are 95% intervals. The pale bars are arithmetic, not estimates: the rate as if 90% (×10) or 99% (×100) of repairs had gone unseen. The archaeological mean reaches the 2009 level only if " + be + "% were missed. Hover a point to read it.</p></div>";
+      return { html, wire: el => wireTips(el, sel) };
+    };
+  }
+
+  // the supporting chart: every person examined, one dot each, every sample a circle as large as its count (the dots as
+  // dense in all four), those with dental work (in 2009, with fillings) in the record's colour: how few people the
+  // archaeological rates rest on, and how many the modern one. The three samples side by side, the survey below; the
+  // period clicked outlined in the colour, the others dimmed
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
+  function samplesChart(sel, col) {
+    return W => {
+      const G = "#8a8983", on = i => sel.includes(i), n = IP.map(q => q.people), Nmax = Math.max(...n);
+      const R4 = Math.max(64, Math.min(118, (W - 8) / 2)), rad = i => R4 * Math.sqrt(n[i] / Nmax), dr = Math.max(0.5, Math.sqrt(Math.PI * R4 * R4 / Nmax) * 0.36);
+      const work = i => i === LASTI ? Math.round(IP[i].people * IP[i].withPct / 100) : IP[i].withWork;
+      let brief = false;   // where the box is narrow, the second lines without "people"
+      const line2 = i => i === LASTI ? IP[i].withPct + "% of " + nf(IP[i].people) + " adults" : IP[i].withWork + " of " + nf(IP[i].people) + (brief ? "" : " people");
+      const name = i => i === LASTI ? "England, 2009" : IP[i].site;
+      // one circle of dots: on Vogel's spiral, so they fill it evenly; which of them are coloured, drawn at random but the same every time
+      const disc = (i, cx, cy) => { const N = n[i], R = rad(i), m = work(i), pick = new Uint8Array(N), rnd = rng(17 + i * 31);
+        const idx = Array.from({ length: N }, (_, k) => k); for (let k = N - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [idx[k], idx[j]] = [idx[j], idx[k]]; }
+        for (let k = 0; k < m; k++) pick[idx[k]] = 1;
+        let d0 = "", d1 = "", rings = "";
+        for (let k = 0; k < N; k++) { const rr = (R - dr - 1) * Math.sqrt((k + 0.5) / N), a = k * 2.399963, x = cx + rr * Math.cos(a), y = cy + rr * Math.sin(a);
+          const p = "M" + fx(x - dr) + " " + fx(y) + "a" + dr + " " + dr + " 0 1 0 " + fx(2 * dr) + " 0a" + dr + " " + dr + " 0 1 0 " + fx(-2 * dr) + " 0";
+          if (pick[k]) { d1 += p; if (m <= 5) rings += "<circle cx='" + fx(x) + "' cy='" + fx(y) + "' r='" + fx(dr + 3) + "' fill='none' stroke='" + col + "' stroke-width='1' opacity='" + (on(i) ? 0.9 : 0.4) + "'/>"; } else d0 += p; }
+        return "<circle cx='" + fx(cx) + "' cy='" + fx(cy) + "' r='" + fx(R) + "' fill='" + (on(i) ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.3)") + "' stroke='" + (on(i) ? col : "rgba(26,26,24,.25)") + "' stroke-width='" + (on(i) ? 1.5 : 1) + "'/>" +
+          "<path d='" + d0 + "' fill='" + (on(i) ? "#b9b7b0" : "#d9d7d0") + "'/><path d='" + d1 + "' fill='" + (on(i) ? col : mix(col, PAPER, 0.5)) + "'/>" + rings +
+          "<circle data-iv='" + i + "' class='iv-pt' cx='" + fx(cx) + "' cy='" + fx(cy) + "' r='" + fx(Math.max(R, 12)) + "' fill='transparent'/>"; };
+      // the three samples, spaced evenly across, each its circle over its two lines (a size smaller where the box is narrow);
+      // the survey centred below
+      const cols = px => IP.slice(0, LASTI).map((q, i) => ({ i, r: rad(i), w: Math.max(2 * rad(i), tw(name(i), px) * (on(i) ? 1.12 : 1.05), tw(line2(i), px - 1) * 1.05) }));
+      const gapOf = cs => (W - cs.reduce((a, c) => a + c.w, 0)) / (cs.length + 1);
+      const fit = [[12, false], [11, false], [11, true], [10, true]].find(([p2, br]) => { brief = br; return gapOf(cols(p2)) >= 8; }) || [10, true];
+      brief = fit[1]; const px = fit[0], small = cols(px), gap = Math.max(2, gapOf(small)), rMax = Math.max(...small.map(c => c.r)), cy1 = rMax + 2;
+      const label = (i, x, y) => T(x, y, name(i), { a: "middle", s: px, c: on(i) ? "#1a1a18" : G, w: on(i) ? 600 : 0 }) + T(x, y + px + 3, line2(i), { a: "middle", s: px - 1, c: on(i) ? "#55544f" : G });
+      let s = "", x = gap;
+      small.forEach(c => { const cx = x + c.w / 2; s += disc(c.i, cx, cy1 + rMax - c.r) + label(c.i, cx, cy1 + rMax + 20); x += c.w + gap; });
+      const cy2 = cy1 + rMax + 54 + R4;
+      s += disc(LASTI, W / 2, cy2) + label(LASTI, W / 2, cy2 + R4 + 20);
+      const H = cy2 + R4 + 40;
+      const html = "<div class='iv'>" + svg(W, H, s, "Every person examined, one dot each: " + IP.map((q, i) => name(i) + ", " + line2(i)).join("; ")) +
+        "<p class='pd-hint'>One dot for each person examined; in colour, those with dental work in the graves, and with one or more fillings in 2009 (not the same measure). Hover a circle to read it.</p></div>";
+      return { html, wire: el => wireTips(el, sel) };
+    };
+  }
+
+  // the slides' lines of text, from the values
+  const ivNm = i => i === LASTI ? "England in 2009" : IP[i].site;
+  function ivLead1(sel) {
+    const M = ID.modern;
+    if (sel.length > 1) { const [ia, ib] = sel, a = IP[ia], q = IP[ib];
+      const one = "From " + ivNm(ia) + " to " + ivNm(ib) + ", repaired teeth per 100 people examined went from " + B(per(a.per100)) + " to " + B(per(q.per100)) + (q.per100 / a.per100 >= 10 ? ", about " + B(timesAs(a.per100, q.per100) + " times") + " as many" : "") + ".<br>";
+      if (ib === LASTI) return one + "The 2009 figure is a floor: it leaves out restored teeth that are also decayed, and crowns, bridges, implants, dentures and extractions.";
+      const iv = x => x.lo.toFixed(1) + "–" + x.hi.toFixed(1), ov = a.lo <= q.hi && q.lo <= a.hi;
+      return one + "Their 95% intervals " + (ov ? "overlap (" + iv(a) + " and " + iv(q) + "), so the two samples do not differ significantly." : "do not overlap (" + iv(a) + " and " + iv(q) + ").");
+    }
+    const i = sel[0], q = IP[i];
+    if (i === LASTI) return "England's 2009 survey found a mean of " + B(q.teeth) + " restored, otherwise sound teeth per adult, " + B(per(q.per100)) + " per 100 people.<br>That is about " + B(timesAs(archMean(), q.per100) + " times") + " the mean of the three archaeological samples, " + B(archMean().toFixed(1)) + " per 100.";
+    return q.site + ", in " + q.place + ", had " + B(q.teeth) + " repaired teeth among the " + B(nf(q.people)) + " people examined, " + B(per(q.per100)) + " per 100.<br>England's 2009 survey found " + B(per(M)) + " per 100, about " + B(timesAs(q.per100, M) + " times") + " as many.";
+  }
+  function ivLead2(sel) {
+    const q9 = IP[LASTI], arch = IP.slice(0, LASTI), at = (i, first) => (first ? "At " : "at ") + IP[i].site + ", " + B(IP[i].withWork) + " of the " + B(nf(IP[i].people)) + " people examined had dental work";
+    const now = "England's 2009 survey examined " + B(nf(q9.people)) + " adults, and " + B(q9.withPct + "%") + " had fillings";
+    if (sel.length > 1) return sel.map(i => i === LASTI ? now : at(i, true)).join(".<br>") + ".";
+    const i = sel[0];
+    if (i === LASTI) return now + ".<br>The three archaeological samples hold " + B(nf(arch.reduce((m, q) => m + q.people, 0))) + " people between them, " + B(arch.reduce((m, q) => m + q.withWork, 0)) + " with any dental work.";
+    return at(i, true) + ".<br>" + now + ".";
+  }
+  // the third slide: the events whose years overlap the period clicked (INTERVENTIONS_EVENTS; context, not data)
+  const ivYrs = e => e.from === e.to ? String(e.from) : e.from + "–" + e.to;
+  const ivOver = (e, i) => e.from <= IP[i].y[1] && e.to >= IP[i].y[0];
+  const ivEvents = sel => IE.events.filter(e => sel.some(i => ivOver(e, i)));
+  function ivLead3(evs, sel) {
+    return sel.filter(i => evs.some(e => ivOver(e, i))).map(i => { const qs = [{ from: IP[i].y[0], to: IP[i].y[1] }];
+      return (i === LASTI ? "The 2009 survey " : "The " + IP[i].when + " sample from " + IP[i].site + " ") + andList(evs.filter(e => ivOver(e, i)).map(e => evVerb(e, qs) + " " + e.note + " (" + ivYrs(e) + ")")) + "."; }).join("<br>");
+  }
+  function ivEventsHTML(evs) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" + evPics(e) +
+      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + ivYrs(e) + "</span><p>" + esc(e.line) + "</p><p>" + esc(e.effect) + "</p></figcaption></figure>").join("") +
+      "<p class='pp-evn'>Event dates are historical context." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  }
+  P.CONTENT.interventions = pick => {
+    if (!ID || !IP.length) return {};
+    const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !IP[i])) return {};
+    const col = /^#[0-9a-f]{6}$/i.test(pick.col || "") ? pick.col : "#2f55b0", ch = charts([repairChart(sel, col), samplesChart(sel, col)]), evs = ivEvents(sel);
+    const slides = [{ html: ivLead1(sel), body: ch.body(0) }, { html: ivLead2(sel), body: ch.body(1) }];
+    if (evs.length) slides.push({ html: ivLead3(evs, sel), body: ivEventsHTML(evs) });
+    // the source of the period clicked (each point's hover note names its own)
+    return { slides, mount: ch.mount, source: sel.map(i => IP[i].short).join(" and ") + " · n = " + sel.map(i => nf(IP[i].people)).join(" and ") };
   };
 })();

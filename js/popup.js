@@ -53,6 +53,9 @@
   const CONTENT = { caries: placeholder, pathogens: placeholder, wear: placeholder, leh: placeholder, metals: placeholder, interventions: placeholder };
   // the Wear and LEH line opens two cards for one period (or two compared), stacked: molar wear and stress lines (sub)
   const SUBS = { wear: [["wear", "Molar Wear"], ["leh", "Stress Lines (LEH)"]] };
+  // records whose single card scrolls on its own, as the stacked ones do: its body under its header, wherever the card
+  // is taller than the pop-up's room, so nothing runs past the card's edge (the interventions' samples chart is tall)
+  const SCROLL = new Set(["interventions"]);
 
   function create(opts) {
     opts = opts || {};
@@ -78,16 +81,17 @@
 
     function open(pick) {
       const c = (CONTENT[pick.sub || pick.key] || placeholder)(pick), sl = c.slides && c.slides.length ? c.slides : SLIDES, panel = document.createElement("section");
-      panel.className = "pp"; panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
+      const own = !!pick.sub || SCROLL.has(pick.key);   // a card whose body scrolls under its header
+      panel.className = "pp" + (SCROLL.has(pick.key) ? " pp-sc" : ""); panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
       const head = "<p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span class='pp-rec'>" + esc(pick.name) + "</span><span>" + (pick.pair ? "Selected Times:</span><span class='pp-pl'>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span></p>";
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
         // the X on the card itself, not in its body (which scrolls, and clips, on narrow pages)
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
         // of two stacked cards, a button to fold this one to its header, or open it again
         (pick.sub ? "<button class='pp-fold pp-in' style='--i:0' type='button' aria-expanded='true' aria-label='Fold " + esc(pick.name) + "'><svg viewBox='0 0 14 9' aria-hidden='true'><path d='M1 8l6-6 6 6'/></svg></button>" : "") +
-        // the header: of two stacked cards (whose bodies scroll), above the body, so it stays put and the scroll bar starts
-        // below the X
-        (pick.sub ? head : "") + "<div class='pp-body'>" + (pick.sub ? "" : head) +
+        // the header: of a card whose body scrolls (two stacked, or SCROLL's), above the body, so it stays put and the
+        // scroll bar starts below the X
+        (own ? head : "") + "<div class='pp-body'>" + (own ? "" : head) +
         "<div class='pp-car pp-in' style='--i:1'><div class='pp-leads'>" + sl.map((x, j) => "<p class='pp-lead" + (j ? "" : " on") + "'>" + (x.html || esc(x.lead)) + "</p>").join("") + "</div>" +
         "<div class='pp-stage'><button class='pp-arw prev' type='button' aria-label='Previous'>" + CHEV("M10 1 1 11l9 10") + "</button>" +
         "<div class='pp-views'>" + sl.map((x, j) => "<div class='pp-view" + (j ? "" : " on") + "'>" + (x.body || "") + "</div>").join("") + "</div>" +
