@@ -235,3 +235,40 @@
 /* two compared: "Selected Times:" on its own line, then both periods and the record's name on the next */
 .pp-when.pair{margin-right:0}   /* the second line runs below the close button, so it may take the card's full width */
 .pp-when.pair>span:first-child{flex-basis:100%;padding-right:36px;box-sizing:border-box}
+/* pathogens: the strand (js/popup-content.js, strandChart): its column heads, the strand (scrolling where two compared
+   centuries lie far apart), and the line under it naming the organism pulled out */
+.pd{width:100%}
+.pd-sc.sc{overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain}
+.pd-head .pd-ticks{display:none}
+.pd-head.pulled .pd-ticks{display:inline}
+.pd-head.pulled .pd-lh{display:none}
+.pd-leads{transition:opacity .25s ease}
+.pd-hit path{cursor:pointer}
+.pd-row{cursor:pointer}
+.pd-pull .pd-in{animation:pdIn .3s ease both}
+@keyframes pdIn{from{opacity:0}to{opacity:1}}
+.pd-hint{margin:8px 0 0;min-height:2.9em;font-size:12px;line-height:1.45;color:var(--ink-2);text-wrap:pretty}
+.pd-hint b{font-weight:600;color:var(--ink)}
+.pd-back{border:0;background:none;padding:0;margin-left:4px;font:inherit;color:var(--ink-2);text-decoration:underline;text-decoration-color:var(--ink-3);text-underline-offset:3px;cursor:pointer}
+.pd-back:hover{color:var(--ink)}
+/* the hover note on a chart: dark, beside the pointer */
+.pp-tip{position:fixed;z-index:20;pointer-events:none;max-width:280px;padding:7px 10px;background:var(--ink);color:#f3f2ee;font-family:var(--serif);font-size:12px;line-height:1.4}
+.pp-tip[hidden]{display:none}
+.pp-tip b{font-weight:600}
+.pp-tip .m{font-size:11px;color:#bdbcb6}
+/* the human events (pathogens): a picture on the left, its caption on the right; more than one, one under the other,
+   scrolling */
+.pp-view:has(.pp-evs){aspect-ratio:auto;height:auto}
+.pp-evs{width:100%;display:flex;flex-direction:column;gap:16px}
+.pp-evs.sc{max-height:236px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain;padding-right:10px}
+.pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:14px;align-items:start}
+.pp-ev .pp-ph{flex:none;aspect-ratio:4/3}
+.pp-ev figcaption{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.pp-ev figcaption>b{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink)}
+.pp-ev figcaption p{margin:0}
+.pp-ev figcaption p b{font-weight:600;color:var(--ink)}
+.pp-evk{display:block;margin-bottom:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.pp-evk i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.pp-evd{display:block;margin:1px 0 6px;font-size:12px;color:var(--ink-3)}
+.pp-evn{margin:0;font-size:11px;font-style:italic;line-height:1.4;color:var(--ink-3)}
+@media (prefers-reduced-motion: reduce){.pd-leads{transition:none}.pd-pull .pd-in{animation:none}}

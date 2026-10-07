@@ -7,6 +7,12 @@
      taxa       each pathogen: its name as the prototype's pathogen strand gave it, its kind (bacteria, virus, parasite;
                 "other" is not a disease agent), and per century [genomes it was found in, % of that century's genomes]
      colours    each kind's colour, as on the prototype ("other" in its grey)
+     disease    what it causes, as the prototype's data gave it (its labels from pathogen_reference.csv)
+     events     the pathogen events (label; note, its name mid-sentence) from the team's "Events To Include" list (#5, #6, #7), as the prototype's pathogen
+                strand gave them (app.js, STRAND_CONTEXT): context, not data. from and to are years (the list dates the
+                first pandemic 5th to 7th c.; the prototype gives it as the documented 541 to 750); taxa, the organisms
+                whose record the event concerns; band, also shaded across the strand. No numbers are kept with them: the
+                pop-up reads each organism's share from the counts above.
 
    How the molar draws it (radial.js, pathogenCounts()): the % is how often a pathogen turns up among the genomes
    recovered, not how common the disease was (counts are not prevalence). Each pathogen adds particles to its kind's
@@ -19,26 +25,31 @@
     centuries: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800],
     genomes: { 100: 3, 200: 2, 300: 3, 400: 22, 500: 5, 600: 20, 700: 11, 900: 14, 1000: 7, 1100: 10, 1200: 11, 1300: 51, 1400: 9, 1500: 54, 1600: 22, 1700: 13, 1800: 10 },
     taxa: [
-      { taxon: "Salmonella enterica", name: "enteric fever", kind: "bacteria", total: 14, cells: { 100: [1, 33.33], 1100: [1, 10.0], 1300: [8, 15.69], 1800: [4, 40.0] } },
-      { taxon: "Plasmodium falciparum", name: "falciparum malaria", kind: "parasite", total: 10, cells: { 100: [2, 66.67], 200: [1, 50.0], 1100: [1, 10.0], 1300: [1, 1.96], 1500: [3, 5.56], 1700: [1, 7.69], 1800: [1, 10.0] } },
-      { taxon: "Tannerella forsythia", name: "gum-disease bacterium", kind: "other", total: 2, cells: { 200: [1, 50.0], 1000: [1, 14.29] } },
-      { taxon: "Yersinia pestis", name: "plague", kind: "bacteria", total: 143, cells: { 300: [2, 66.67], 400: [19, 86.36], 500: [2, 40.0], 600: [12, 60.0], 1100: [1, 10.0], 1200: [3, 27.27], 1300: [35, 68.63], 1400: [3, 33.33], 1500: [39, 72.22], 1600: [17, 77.27], 1700: [10, 76.92] } },
-      { taxon: "Human alphaherpesvirus 1", name: "oral herpes", kind: "virus", total: 4, cells: { 300: [1, 33.33], 400: [1, 4.55], 1300: [1, 1.96], 1600: [1, 4.55] } },
-      { taxon: "Hepatitis B virus", name: "hepatitis B", kind: "virus", total: 14, cells: { 400: [1, 4.55], 600: [2, 10.0], 700: [2, 18.18], 1000: [1, 14.29], 1100: [3, 30.0], 1200: [2, 18.18], 1300: [3, 5.88] } },
-      { taxon: "Haemophilus influenzae", name: "H. influenzae", kind: "bacteria", total: 1, cells: { 400: [1, 4.55] } },
-      { taxon: "Mycobacterium leprae", name: "leprosy", kind: "bacteria", total: 21, cells: { 500: [1, 20.0], 900: [1, 7.14], 1000: [3, 42.86], 1100: [2, 20.0], 1200: [6, 54.55], 1300: [3, 5.88], 1400: [4, 44.44], 1800: [1, 10.0] } },
-      { taxon: "Clostridium tetani", name: "tetanus", kind: "bacteria", total: 11, cells: { 500: [1, 20.0], 600: [3, 15.0], 700: [2, 18.18], 900: [3, 21.43], 1600: [1, 4.55], 1700: [1, 7.69] } },
-      { taxon: "Plasmodium vivax", name: "vivax malaria", kind: "parasite", total: 10, cells: { 500: [1, 20.0], 1000: [1, 14.29], 1100: [2, 20.0], 1400: [1, 11.11], 1500: [3, 5.56], 1600: [1, 4.55], 1700: [1, 7.69] } },
-      { taxon: "Variola virus", name: "smallpox", kind: "virus", total: 12, cells: { 600: [2, 10.0], 700: [1, 9.09], 900: [8, 57.14], 1800: [1, 10.0] } },
-      { taxon: "Methanobrevibacter oralis", name: "oral archaeon", kind: "other", total: 1, cells: { 600: [1, 5.0] } },
-      { taxon: "Parvovirus B19", name: "parvovirus B19", kind: "virus", total: 5, cells: { 700: [1, 9.09], 900: [2, 14.29], 1000: [1, 14.29], 1400: [1, 11.11] } },
-      { taxon: "Streptococcus pneumoniae", name: "pneumococcus", kind: "bacteria", total: 2, cells: { 700: [2, 18.18] } },
-      { taxon: "Erysipelothrix rhusiopathiae", name: "erysipeloid", kind: "bacteria", total: 2, cells: { 700: [2, 18.18] } },
-      { taxon: "Borrelia recurrentis", name: "relapsing fever", kind: "bacteria", total: 4, cells: { 1500: [2, 3.7], 1800: [2, 20.0] } },
-      { taxon: "Plasmodium malariae", name: "quartan malaria", kind: "parasite", total: 4, cells: { 1500: [2, 3.7], 1600: [1, 4.55], 1800: [1, 10.0] } },
-      { taxon: "Treponema pallidum", name: "treponemal disease", kind: "bacteria", total: 3, cells: { 1500: [2, 3.7], 1600: [1, 4.55] } },
+      { taxon: "Salmonella enterica", name: "enteric fever", kind: "bacteria", total: 14, disease: "enteric fever · typhoid & paratyphoid", cells: { 100: [1, 33.33], 1100: [1, 10.0], 1300: [8, 15.69], 1800: [4, 40.0] } },
+      { taxon: "Plasmodium falciparum", name: "falciparum malaria", kind: "parasite", total: 10, disease: "malaria", cells: { 100: [2, 66.67], 200: [1, 50.0], 1100: [1, 10.0], 1300: [1, 1.96], 1500: [3, 5.56], 1700: [1, 7.69], 1800: [1, 10.0] } },
+      { taxon: "Tannerella forsythia", name: "gum-disease bacterium", kind: "other", total: 2, disease: "NOT an epidemic disease — gum disease", cells: { 200: [1, 50.0], 1000: [1, 14.29] } },
+      { taxon: "Yersinia pestis", name: "plague", kind: "bacteria", total: 143, disease: "plague — bubonic, pneumonic, septicaemic", cells: { 300: [2, 66.67], 400: [19, 86.36], 500: [2, 40.0], 600: [12, 60.0], 1100: [1, 10.0], 1200: [3, 27.27], 1300: [35, 68.63], 1400: [3, 33.33], 1500: [39, 72.22], 1600: [17, 77.27], 1700: [10, 76.92] } },
+      { taxon: "Human alphaherpesvirus 1", name: "oral herpes", kind: "virus", total: 4, disease: "oral herpes", cells: { 300: [1, 33.33], 400: [1, 4.55], 1300: [1, 1.96], 1600: [1, 4.55] } },
+      { taxon: "Hepatitis B virus", name: "hepatitis B", kind: "virus", total: 14, disease: "hepatitis B", cells: { 400: [1, 4.55], 600: [2, 10.0], 700: [2, 18.18], 1000: [1, 14.29], 1100: [3, 30.0], 1200: [2, 18.18], 1300: [3, 5.88] } },
+      { taxon: "Haemophilus influenzae", name: "H. influenzae", kind: "bacteria", total: 1, disease: "pneumonia, meningitis", cells: { 400: [1, 4.55] } },
+      { taxon: "Mycobacterium leprae", name: "leprosy", kind: "bacteria", total: 21, disease: "leprosy", cells: { 500: [1, 20.0], 900: [1, 7.14], 1000: [3, 42.86], 1100: [2, 20.0], 1200: [6, 54.55], 1300: [3, 5.88], 1400: [4, 44.44], 1800: [1, 10.0] } },
+      { taxon: "Clostridium tetani", name: "tetanus", kind: "bacteria", total: 11, disease: "tetanus", cells: { 500: [1, 20.0], 600: [3, 15.0], 700: [2, 18.18], 900: [3, 21.43], 1600: [1, 4.55], 1700: [1, 7.69] } },
+      { taxon: "Plasmodium vivax", name: "vivax malaria", kind: "parasite", total: 10, disease: "malaria", cells: { 500: [1, 20.0], 1000: [1, 14.29], 1100: [2, 20.0], 1400: [1, 11.11], 1500: [3, 5.56], 1600: [1, 4.55], 1700: [1, 7.69] } },
+      { taxon: "Variola virus", name: "smallpox", kind: "virus", total: 12, disease: "smallpox", cells: { 600: [2, 10.0], 700: [1, 9.09], 900: [8, 57.14], 1800: [1, 10.0] } },
+      { taxon: "Methanobrevibacter oralis", name: "oral archaeon", kind: "other", total: 1, disease: "NOT a disease — oral archaeon", cells: { 600: [1, 5.0] } },
+      { taxon: "Parvovirus B19", name: "parvovirus B19", kind: "virus", total: 5, disease: "fifth disease (erythema infectiosum)", cells: { 700: [1, 9.09], 900: [2, 14.29], 1000: [1, 14.29], 1400: [1, 11.11] } },
+      { taxon: "Streptococcus pneumoniae", name: "pneumococcus", kind: "bacteria", total: 2, disease: "pneumonia, meningitis", cells: { 700: [2, 18.18] } },
+      { taxon: "Erysipelothrix rhusiopathiae", name: "erysipeloid", kind: "bacteria", total: 2, disease: "erysipeloid — a zoonosis of animal handling", cells: { 700: [2, 18.18] } },
+      { taxon: "Borrelia recurrentis", name: "relapsing fever", kind: "bacteria", total: 4, disease: "louse-borne relapsing fever", cells: { 1500: [2, 3.7], 1800: [2, 20.0] } },
+      { taxon: "Plasmodium malariae", name: "quartan malaria", kind: "parasite", total: 4, disease: "malaria", cells: { 1500: [2, 3.7], 1600: [1, 4.55], 1800: [1, 10.0] } },
+      { taxon: "Treponema pallidum", name: "treponemal disease", kind: "bacteria", total: 3, disease: "syphilis · yaws · bejel (by subspecies)", cells: { 1500: [2, 3.7], 1600: [1, 4.55] } },
     ],
     colours: { bacteria: "#b0362f", virus: "#2f55b0", parasite: "#16907a", other: "#8a8983" },
+    events: [
+      { label: "First plague pandemic", note: "the first plague pandemic", short: "Plague pandemic", from: 541, to: 750, taxa: ["Yersinia pestis"], band: true },
+      { label: "Black Death", note: "the Black Death", short: "Black Death", from: 1347, to: 1351, taxa: ["Yersinia pestis"], band: true },
+      { label: "Medieval leprosy", note: "medieval leprosy", short: "Medieval leprosy", from: 1000, to: 1400, taxa: ["Mycobacterium leprae"] },
+    ],
     kinds: [["bacteria", "Bacteria"], ["virus", "Viruses"], ["parasite", "Parasites"], ["other", "Not disease agents"]],
   };
 })();

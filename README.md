@@ -23,7 +23,7 @@ css/popup.css            the pop-up's styles and motion
 css/fonts.css            Lora, from fonts/
 js/main.js               mounts the diagram; Pause, Replay, Fast forward and Rewind, resize, the pop-up, the onOpen hook
 js/popup.js              the pop-up for a clicked time period: its header, three slides, the source
-js/popup-content.js      each record's slides as written (caries so far), lines and charts from the data
+js/popup-content.js      each record's slides as written (caries, pathogens), lines and charts from the data
 js/radial.js             the diagram (window.ToothRadial)
 js/radial-data.js        the data (window.RADIAL_DATA), with its sources
 js/*-data.js             caries, wear, stress lines, metals, pathogens and repairs per period, for the molar
