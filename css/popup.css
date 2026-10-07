@@ -234,7 +234,7 @@
 .pp-tm,.pp-tm.now{font-weight:600}
 /* two compared: "Selected Times:" on its own line, then both periods and the record's name on the next */
 .pp-when.pair{margin-right:0}   /* the second line runs below the close button, so it may take the card's full width */
-.pp-when.pair>span:first-child{flex-basis:100%;padding-right:36px;box-sizing:border-box}
+.pp-when.pair .pp-pl{flex-basis:100%}   /* the record's name and "Selected Times:" first, the periods on a line of their own */
 /* pathogens: the strand (js/popup-content.js, strandChart): its column heads, the strand (scrolling where two compared
    centuries lie far apart), and the line under it naming the organism pulled out */
 .pd{width:100%}
@@ -263,6 +263,7 @@
 .pp-evs.sc{max-height:236px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain;padding-right:10px}
 .pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:14px;align-items:start}
 .pp-ev .pp-ph{flex:none;aspect-ratio:4/3}
+.pp-ev img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#d8d7d2}   /* an event's picture, cropped to the placeholder's shape */
 .pp-ev figcaption{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
 .pp-ev figcaption>b{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink)}
 .pp-ev figcaption p{margin:0}

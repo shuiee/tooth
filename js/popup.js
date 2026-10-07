@@ -2,8 +2,8 @@
    lines. radial.js calls opts.onSelect with the period clicked, or null once it is let go. One pop-up shows at a time,
    laid over the diagram at the right of the page (along the bottom on narrow pages), about a quarter of the page.
 
-   Its header, from the circle clicked: "Selected Time: High Medieval Era, 1000 – 1250 CE" (era()), the record's name in
-   its colour, and a close
+   Its header, from the circle clicked: the record's name in its colour, then "Selected Time: High Medieval Era,
+   1000 – 1250 CE" (era()), and a close
    button (an X). Under it, three slides, stepped through with the arrows either side or the dots under them (and the
    arrow keys): the key data insight for this period with the record's main chart, the period's part of it
    highlighted; a further insight with a supplemental chart; and the human event this period correlates with, a
@@ -80,7 +80,7 @@
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
         // the X on the card itself, not in its body (which scrolls, and clips, on narrow pages)
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
-        "<div class='pp-body'><p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span>" + (pick.pair ? "Selected Times:</span><span>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span><span class='pp-rec'>" + esc(pick.name) + "</span></p>" +
+        "<div class='pp-body'><p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span class='pp-rec'>" + esc(pick.name) + "</span><span>" + (pick.pair ? "Selected Times:</span><span class='pp-pl'>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span></p>" +
         "<div class='pp-car pp-in' style='--i:1'><div class='pp-leads'>" + sl.map((x, j) => "<p class='pp-lead" + (j ? "" : " on") + "'>" + (x.html || esc(x.lead)) + "</p>").join("") + "</div>" +
         "<div class='pp-stage'><button class='pp-arw prev' type='button' aria-label='Previous'>" + CHEV("M10 1 1 11l9 10") + "</button>" +
         "<div class='pp-views'>" + sl.map((x, j) => "<div class='pp-view" + (j ? "" : " on") + "'>" + (x.body || "") + "</div>").join("") + "</div>" +
@@ -94,17 +94,14 @@
         prev.addEventListener("click", () => go(panel._slide - 1)); next.addEventListener("click", () => go(panel._slide + 1)); dots.forEach((d, j) => d.addEventListener("click", () => go(j)));
         panel.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); go(panel._slide + (e.key === "ArrowLeft" ? -1 : 1)); } });
         go(0); }
-      // two compared: the periods and the record's name on one line, in the fullest form that fits the card's width (the
-      // shortest form a little smaller, down to the record name's own size). In a card too narrow even for that, the record
-      // name drops below the periods, which keep one unbroken line if they can
-      if (pick.pair) { const fit = () => { const w = panel.querySelector(".pp-when"), [, line, rec] = w.children; if (!w.clientWidth) return;
-          const ok = r => line.scrollWidth +(r ? rec.offsetWidth + 12 : 0) <= w.clientWidth;
+      // two compared: the record's name and "Selected Times:" on the first line, the periods on the next, in the fullest
+      // form that fits the card's width (the shortest form a little smaller, down to the record name's own size); in a card
+      // too narrow even for that, the periods wrap
+      if (pick.pair) { const fit = () => { const w = panel.querySelector(".pp-when"), line = w.querySelector(".pp-pl"); if (!w.clientWidth || !line) return;
+          const ok = () => line.scrollWidth <= w.clientWidth;
           line.style.fontSize = ""; line.style.whiteSpace = "nowrap";
-          for (let f = 0; f <= 2; f++) { line.innerHTML = pairLine(pick, f); if (ok(1)) return; }
-          for (let px = 11.5; px >= 10.5; px -= 0.5) { line.style.fontSize = px + "px"; if (ok(1)) return; }
-          line.style.fontSize = "";
-          for (let f = 0; f <= 2; f++) { line.innerHTML = pairLine(pick, f); if (ok(0)) return; }
-          for (let px = 11.5; px >= 10.5; px -= 0.5) { line.style.fontSize = px + "px"; if (ok(0)) return; }
+          for (let f = 0; f <= 2; f++) { line.innerHTML = pairLine(pick, f); if (ok()) return; }
+          for (let px = 11.5; px >= 10.5; px -= 0.5) { line.style.fontSize = px + "px"; if (ok()) return; }
           line.style.fontSize = ""; line.style.whiteSpace = ""; };
         if (window.ResizeObserver) new ResizeObserver(fit).observe(panel); requestAnimationFrame(fit); }
       if (c.mount) c.mount(panel);

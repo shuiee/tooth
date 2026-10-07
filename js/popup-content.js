@@ -7,7 +7,9 @@
    Caries (js/caries-data.js): the main chart, every adult in the period sorted by how many of their own teeth were
    carious (CARIES_RATES sev: none, 1-2, 3-4, 5-9, 10+), from the team's c2b severity figure; the supporting chart,
    the share of adults with at least one carious tooth by age at death (CARIES_AGE), from its c1b figure. The figures'
-   footnotes are left out for now.
+   footnotes are left out for now. The third slide, the human events of the team's list whose years overlap the period
+   (CARIES_EVENTS; context, not data), with the team's measured effect in caries per tooth. A period in no event has two
+   slides.
 
    Pathogens (js/pathogens-data.js): the main chart, the prototype's pathogen strand (its Fig. 2.2, from the team's c4b
    matrix), cut down to the centuries around the one clicked, with its hover and its pull-out (strandChart); the
@@ -21,7 +23,6 @@
   const r0 = v => Math.round(v);
   const fx = v => (Math.round(v * 10) / 10).toString();
   const ph = (label, cls) => "<div class='pp-ph" + (cls ? " " + cls : "") + "'><span>" + label + "</span></div>";
-  const EVENT = { lead: "Correlating human event", body: ph("Image") + ph("Image caption", "pp-cap") };
   // an SVG drawing at its box's own width, in pixels, so its type is the page's size at any width; drawn (and drawn
   // again whenever the box changes width) once the card is on the page: chart(draw) puts the box in a slide, and the
   // card's mount draws it. A drawing is its HTML, or { html, wire(box) } for one that answers the pointer
@@ -102,6 +103,30 @@
     if (ps.length > 1) { const a = Y(ps[0].cells[0][0]), z = Y(ps[1].cells[0][0]), x = X(0); if (Math.abs(a - z) > 30) s += L(x, Math.min(a, z) + 20, x, Math.max(a, z) - 20, "#8a8983", 1, "2 3"); }
     return svg(W, H, s, "Share of adults with at least one carious tooth by age at death, " + ps.map(p => p.p).join(" and "));
   }
+  // the human events of the team's list (js/caries-data.js, CARIES_EVENTS; context, not data) whose years overlap the
+  // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right
+  // its name, years, what it shows and the team's measured effect, in caries per tooth
+  const CE = window.CARIES_EVENTS || [];
+  const cOver = (e, q) => e.from < q.to && e.to > q.from, pt = v => v.toFixed(3);
+  const cariesEventsOf = picks => CE.filter(e => picks.some(q => cOver(e, q))).sort((a, b) => (a.to - a.from) - (b.to - b.from));
+  function cariesEffect(e, picks) {
+    if (e.per) { const s = e.per, lo = s.reduce((m, x) => x[1] < m[1] ? x : m, s[0]), hi = s.reduce((m, x) => x[1] > m[1] ? x : m, s[0]);
+      return "Caries per tooth rose from " + B(pt(s[0][1])) + " in " + s[0][0] + " to " + andList(s.slice(1).map(x => B(pt(x[1])) + " in " + x[0])) + ", " + B(fx(hi[1] / lo[1])) + " times the " + lo[0] + " low."; }
+    return "";
+  }
+  function cariesEventsHTML(evs, picks) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" +
+      (e.img ? "<img src='" + esc(e.img.src) + "' alt='" + esc(e.img.alt) + "'>" : ph("Image")) +
+      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span><p>" + esc(e.line) + "</p><p>" + cariesEffect(e, picks) + "</p></figcaption></figure>").join("") +
+      "<p class='pp-evn'>Events, their years and their lines are context from the team's list. Caries per tooth (carious teeth among the teeth observed) is the team's measured effect, a different measure from the share of adults on the slides before." +
+      (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  }
+  function cariesLead3(evs, picks) {
+    const ps = e => picks.filter(q => cOver(e, q)).map(q => low(CR[q.i].p)), nameOf = e => low(e.name) + " (" + e.from + "–" + e.to + ")";
+    const groups = []; evs.forEach(e => { const k = ps(e).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, ps: ps(e), evs: [e] }); });
+    return groups.map(g => "The " + andList(g.ps) + " period" + (g.ps.length > 1 ? "s overlap" : " overlaps") +
+      (g.evs.length > 1 ? " " + word(g.evs.length) + " events: " + andList(g.evs.map(nameOf)) + "." : " " + nameOf(g.evs[0]) + ".")).join("<br>");
+  }
   P.CONTENT.caries = pick => {
     const picks = pick.pair || [pick], rs = picks.map(q => CR[q.i]).filter(Boolean), ag = picks.map(q => CA.periods[q.i]).filter(Boolean);
     if (rs.length !== picks.length) return {};
@@ -117,8 +142,10 @@
       if (ag.length === 2) { const ya = r0(100 - ag[0].cells[0][0]), yb = r0(100 - ag[1].cells[0][0]);
         lead2 = "At 18–24, " + B(ya + "%") + " of " + low(a.p) + " young adults " + (ya > yb ? "still " : "") + "had no caries at all.<br>" + (yb < ya ? "By the " + low(b.p) + " period, " + B((100 - yb) + "%") + " already had a carious tooth, and only " + B(yb + "%") + " had escaped."
           : "In the " + low(b.p) + " period, " + B(yb + "%") + " had escaped, and " + B((100 - yb) + "%") + " already had a carious tooth."); } }
+    const evs = cariesEventsOf(picks), slides = [{ html: lead1, body: ch.body(0) }, { html: lead2, body: ag.length ? ch.body(1) : ph("Supplemental chart") }];
+    if (evs.length) slides.push({ html: cariesLead3(evs, picks), body: cariesEventsHTML(evs, picks) });
     return {
-      slides: [{ html: lead1, body: ch.body(0) }, { html: lead2, body: ag.length ? ch.body(1) : ph("Supplemental chart") }, EVENT], mount: ch.mount,
+      slides, mount: ch.mount,
       source: "Global History of Health Project (Europe) · adults 18–69 · n = " + rs.map(r => r.n.toLocaleString("en-GB")).join(" and "),
     };
   };

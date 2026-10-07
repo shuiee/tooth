@@ -12,7 +12,14 @@
     return true;
   };
   const boxes = [];
-  const add = (r, t, el) => { if (r.width >= 1 && r.height >= 1) boxes.push({ x: r.left, y: r.top, w: r.width, h: r.height, t: t.trim().slice(0, 28), el }); };
+  // the part of a box left showing by the boxes that clip it (a scrolling list, a card that hides its overflow): text
+  // scrolled out of sight is not on the page to overlap anything
+  const shown = (r, el) => { let x0 = r.left, y0 = r.top, x1 = r.right, y1 = r.bottom;
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const c = getComputedStyle(e); if (c.overflowX === "visible" && c.overflowY === "visible") continue;
+      const b = e.getBoundingClientRect(); x0 = Math.max(x0, b.left); y0 = Math.max(y0, b.top); x1 = Math.min(x1, b.right); y1 = Math.min(y1, b.bottom); }
+    return { left: x0, top: y0, width: x1 - x0, height: y1 - y0 }; };
+  const add = (r0, t, el) => { const r = shown(r0, el); if (r.width >= 1 && r.height >= 1) boxes.push({ x: r.left, y: r.top, w: r.width, h: r.height, t: t.trim().slice(0, 28), el }); };
   // SVG text, per tspan where it has them
   document.querySelectorAll("svg text").forEach(n => {
     if (!vis(n) || !n.textContent.trim()) return;
