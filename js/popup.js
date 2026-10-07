@@ -64,6 +64,7 @@
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
         "<div class='pp-body'><p class='pp-when pp-in' style='--i:0'><span>Selected time: " + esc(pick.range) + "</span><span class='pp-rec'>" + esc(pick.name) + "</span></p>" +
         "<p class='pp-lead pp-in' style='--i:1'>" + esc(c.lead) + "</p>" + c.body + "</div>";
+      if (c.mount) c.mount(panel);
       panel.querySelector(".pp-x").addEventListener("click", () => opts.onClose && opts.onClose(pick));   // this card's period only
       box0.appendChild(panel); live.textContent = pick.name + ", " + pick.range + ". " + c.lead;
       if (REDUCED) panel.classList.add("go"); else requestAnimationFrame(() => { marks(panel); panel.classList.add("go"); });
