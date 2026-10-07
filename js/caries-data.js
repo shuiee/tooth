@@ -47,3 +47,22 @@
     ],
   };
 })();
+
+// Human events that bear on caries, for the caries pop-up's third slide (js/popup-content.js): context, not data. Each
+// event's name, years and line are the team's list of events to include (2026-10-07); its figures are the team's
+// measured effect, in caries per tooth (carious teeth among the teeth observed, the GHHP's caries rate, not the share of
+// adults the radial shows), from its events list: shuiee/tooth-untold, research/Human Correlations/
+// timeline_events_display.csv (EV029, which dates it 1100–1700).
+//   name, from, to  the event and its years; a caries period whose years overlap them shows it
+//   line            what it shows
+//   img             its picture: src and alt text (null: a placeholder)
+//   per             caries per tooth by year: [year, value]
+(function () {
+  "use strict";
+  window.CARIES_EVENTS = [
+    { id: "EV029", name: "Sugar and refined starch", from: 1500, to: 1700,
+      img: { src: "img/rock-sugar.jpg", alt: "Crystals of rock sugar in a marbled bowl" },   // the team's picture, from Ali Qureshi's pop-up galleries (at d2672c3), cropped to the slot's 4:3
+      line: "Decay follows a food system nobody individually chose.",
+      per: [[1100, 0.042], [1200, 0.096], [1500, 0.140], [1600, 0.168], [1700, 0.273]] },
+  ];
+})();
