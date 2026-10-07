@@ -159,8 +159,9 @@
       // (kept on the card, and told to its charts as a "pp:mark" event, for those that follow the molar)
       mark(id) { cur.forEach(c => { c.panel.querySelectorAll(".pp-tm").forEach(e => e.classList.toggle("now", e.dataset.id === id)); c.panel.dataset.mark = id || "";
         c.panel.dispatchEvent(new CustomEvent("pp:mark", { detail: id })); }); },
-      // the page area the pop-up covers, for the diagram's labels to keep clear of: { side: "right" | "bottom", x, y, w, h }, or null
-      cover() { return box; },
+      // the page area the pop-up covers, for the diagram's labels to keep clear of: { side: "right" | "bottom", x, y, w, h }, or null.
+      // Measured afresh each time: the box keeps growing as its cards open, after the last resize the observer reports
+      cover() { measure(); return box; },
     };
   }
 

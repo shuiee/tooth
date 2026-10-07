@@ -52,26 +52,36 @@
   };
 })();
 
-// Human events that bear on tooth repair, for the pop-up's last slide: context, not data. From the team's timeline
-// (research/Human Correlations/timeline_events_display.csv in the prototype): the events whose layer is Artificial
-// interventions and whose years overlap one of its periods (EV031, EV033, EV034; EV025 and EV026, before 900, overlap
-// none). Each line is put plainly from the timeline's label and expected effect; each effect from its measured column.
+// Human events that bear on tooth repair, for the pop-up's last slide: context, not data. The team's list of events to
+// include (2026-10-07: #13, #15, #16, #17), with their years from the team's timeline (research/Human Correlations/
+// timeline_events_display.csv in the prototype: EV031, EV032, EV033, EV034), placed on the periods they apply to. An
+// event shows on a period its years overlap; fluoride (1945 to 1975) is placed on the 2009 survey by name (sites), since
+// it shaped the decay of the adults examined then and overlaps no sample's years. #3 (Etruscan gold teeth, EV025, 700
+// to 200 BCE) and #2 (Roman dentistry, EV026, 1 to 200 CE) come before every sample here and are not shown. Each line
+// is the team's framing put plainly; each effect from the timeline's measured column.
 //   id, name, from, to  the event and its years; note, its name mid-sentence
+//   sites, verb         for an event placed by name: the samples (site) it shows on, and the lead's verb for it
 //   line                what it was
 //   effect              what the record shows of it
-//   img                 its picture (src, alt, ref), or null for a placeholder
+//   img                 its picture (src, alt, ref), or null for a placeholder; from the team's earlier galleries (d2672c3)
 (function () {
   "use strict";
   window.INTERVENTIONS_EVENTS = {
     events: [
-      { id: "EV031", name: "Amalgam makes tooth repair routine", note: "amalgam making tooth repair routine", from: 1826, to: 1900, img: null,
-        line: "Amalgam fillings made the repair of decayed teeth routine. Once a cavity is filled, the decay it held can no longer be read from the tooth.",
+      { id: "EV031", name: "Dental amalgam", note: "the spread of dental amalgam", from: 1826, to: 1900,
+        img: { src: "img/amalgam-fillings.jpg", alt: "Two molars with large amalgam fillings", ref: "Clinical photograph. Source to be confirmed." },
+        line: "Amalgam made filling a decayed tooth routine. A filling stays in the mouth, so the tooth now carries a record of treatment as well as of decay, and dental surveys later counted decayed, missing and filled teeth separately.",
         effect: "Before 1850 no sample here reaches 1% of people with dental work: 1 of 204 at Pieve di Pava, 1 of 100 at Aberdeen and 2 of 450 at Middenbeemster." },
-      { id: "EV033", name: "Fillings come to follow a person's age", note: "fillings coming to follow a person's age", from: 1978, to: 2009, img: null,
-        line: "As decay fell among the young, the number of a person's fillings came to follow their age more than the years they lived in.",
+      { id: "EV032", name: "Fluoride", note: "the spread of fluoride", from: 1945, to: 1975, sites: ["England"], verb: "follows",
+        img: { src: "img/tap-water.jpg", alt: "A glass being filled with tap water", ref: "Photograph. Source to be confirmed." },
+        line: "Fluoride, added to drinking water from 1945 and later to toothpaste, cut tooth decay across whole populations. It leaves no mark of its own on a tooth: it shows only as decay that did not happen.",
+        effect: "No record here can measure it: the caries records end in 1900 and the enamel metals in 1975. Its effect is known from national dental surveys." },
+      { id: "EV033", name: "The cohort effect", note: "the cohort effect in fillings", from: 1978, to: 2009, img: null,
+        line: "As decay fell among the young, the number of fillings in a mouth came to follow when its owner was born. A tooth from 2009 points to a birth cohort, and to the dental care and access of the years that person grew up in.",
         effect: "Mean filled teeth per adult fell from 8.1 to 6.8 across all ages and from 7.8 to 1.7 at 16 to 24, and rose from 4.9 to 10.2 at 55 to 64." },
-      { id: "EV034", name: "Repair becomes near-universal", note: "repair becoming near-universal", from: 2009, to: 2009, img: null,
-        line: "By 2009 most adults in England had at least one filled tooth.",
+      { id: "EV034", name: "Intervention becomes near-universal", note: "intervention becoming near-universal", from: 2009, to: 2009,
+        img: { src: "img/amalgam-molars.jpg", alt: "Illustration of a row of molars with amalgam fillings", ref: "Illustration. Source to be confirmed." },
+        line: "In 2009 adults in England had about 670 restored, otherwise sound teeth per 100 people, and most had at least one filled tooth.",
         effect: "84% of the 6,470 adults examined, against 0.49%, 1.00% and 0.44% of people with any dental work in the three archaeological samples. Not the same measure: buried people screened for any dental work, living adults examined for fillings." },
     ],
   };

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- the radial in miniature: the tooth at the hub, the timeline's ring, and a circle in each record's colour, 72 degrees apart -->
+  <circle cx="16" cy="16" r="15" fill="#e9e8e4"/>
+  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#1a1a18" stroke-width="1.4"/>
+  <circle cx="16" cy="16" r="3.2" fill="#1a1a18"/>
+  <circle cx="26.5" cy="16" r="2.6" fill="#C2611A"/>
+  <circle cx="19.24" cy="25.99" r="2.6" fill="#B0362F"/>
+  <circle cx="7.51" cy="22.17" r="2.6" fill="#1A1A18"/>
+  <circle cx="7.51" cy="9.83" r="2.6" fill="#A67C00"/>
+  <circle cx="19.24" cy="6.01" r="2.6" fill="#2F55B0"/>
+</svg>

@@ -1313,11 +1313,11 @@
   }
   // the third slide: the events whose years overlap the period clicked (INTERVENTIONS_EVENTS; context, not data)
   const ivYrs = e => e.from === e.to ? String(e.from) : e.from + "–" + e.to;
-  const ivOver = (e, i) => e.from <= IP[i].y[1] && e.to >= IP[i].y[0];
+  const ivOver = (e, i) => e.sites ? e.sites.includes(IP[i].site) : e.from <= IP[i].y[1] && e.to >= IP[i].y[0];   // by years, or by name (sites)
   const ivEvents = sel => IE.events.filter(e => sel.some(i => ivOver(e, i)));
   function ivLead3(evs, sel) {
     return sel.filter(i => evs.some(e => ivOver(e, i))).map(i => { const qs = [{ from: IP[i].y[0], to: IP[i].y[1] }];
-      return (i === LASTI ? "The 2009 survey " : "The " + IP[i].when + " sample from " + IP[i].site + " ") + andList(evs.filter(e => ivOver(e, i)).map(e => evVerb(e, qs) + " " + e.note + " (" + ivYrs(e) + ")")) + "."; }).join("<br>");
+      return (i === LASTI ? "The 2009 survey " : "The " + IP[i].when + " sample from " + IP[i].site + " ") + andList(evs.filter(e => ivOver(e, i)).map(e => (e.verb || evVerb(e, qs)) + " " + e.note + " (" + ivYrs(e) + ")")) + "."; }).join("<br>");
   }
   function ivEventsHTML(evs) {
     return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" + evPics(e) +
