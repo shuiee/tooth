@@ -675,9 +675,9 @@
       shells.forEach(r => r.lab.textContent = r.a.toLocaleString("en-GB") + " years ago");
       // the timeline's ring, drawn as a soft, blurred band so it reads apart from the records' crisp lines: the same ring
       // stroked five times over, widest faintest (stacked strokes, not a blur filter, which would be redrawn every frame)
-      // two periods compared: a soft band on the ground plane, in the compared record's colour, from one picked circle's
-      // distance to the other's, so it spans the years between them (placed in frame())
-      const cband = el("path", { class: "rd-cband", "fill-rule": "evenodd" }, gSphere);
+      // two periods compared: a soft band in the compared record's colour, from one picked circle to the other, so it
+      // spans the years between them (placed in frame()): its fill, and its two edges
+      const cband = el("path", { class: "rd-cband", style: "stroke:none" }, gSphere), cbandE = el("path", { class: "rd-cband", style: "fill:none" }, gSphere);
       const wave = el("g", { class: "rd-wave" }, gSphere), waveLab = el("text", { class: "rd-wlab" }, gSphere),
         waveL = [[14, 0.06], [9, 0.09], [6, 0.13], [3.5, 0.2], [1.6, 0.3]].map(([sw, so]) => el("polyline", { "stroke-width": sw, "stroke-opacity": so }, wave));
       const gAmb = el("g", { "aria-hidden": "true" }, svg), gLines = el("g", {}, svg), gArrows = el("g", { "aria-hidden": "true" }, svg), gBack = el("g", {}, svg), gTeeth = el("g", { class: "rd-teeth", "aria-hidden": "true" }, svg), gHub = el("g", { "aria-hidden": "true" }, svg), gFront = el("g", {}, svg), gCards = el("g", {}, svg), gRead = el("g", { class: "rd-read", "aria-hidden": "true" }, svg);
@@ -755,7 +755,7 @@
         ring.touched = true; waveU = cl(waveU - k * (e.shiftKey ? 0.1 : 0.02), 0, 1); setPlaying(false); lastInput = performance.now(); });
       const dpr = Math.min(2, window.devicePixelRatio || 1); sky.width = W * dpr; sky.height = H * dpr;
       if (!stars) stars = Array.from({ length: 260 }, () => { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = 1800 + Math.random() * 2200, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(a), r * u, r * s * Math.sin(a), Math.random()]; });
-      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, int: { era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, cband, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
+      S = { car: { out: 0, mid: 0, inn: 0, era: null }, wear: { share: 0, era: null }, met: { era: null, cEra: undefined, groups: null }, int: { era: null }, pat: { era: null, cEra: undefined, counts: null }, W, H, C, F, cband, cbandE, C0: C.slice(), F0: F, pb, pt, dpr, pins, amb, wave, waveL, waveLab, sph, equator, axis, poleA, poleB, shells, lines, teeth, gHalo, hubR1, hubR2, hubR3, gBack, gFront, gRead, rLine, rBg, rYr, rCt, rLh, rLa, rLb, gLeg, lgLine, lgBg, lgT, lgRows, LEG, leg: null, grip, kHalo, knob, kHit, read: null, born: performance.now(), anim: animate, last: 0 };
       applyOff();
     }
 
@@ -852,11 +852,20 @@
       { // the comparison's band: between the two picked circles' distances, faded in and out (it keeps its last place
         // and colour while it fades out)
         const cL = cmp && s.lines.find(L2 => L2.c.key === cmp.key), m1 = cL && cL.ms[cmp.eras[0]], m2 = cL && cL.ms[cmp.eras[1]];
-        if (m1 && m2) s.bandR = [Math.min(m1.m.w, m2.m.w), Math.max(m1.m.w, m2.m.w), COLS[cmp.key]];
+        if (m1 && m2) s.bandR = [Math.min(m1.m.w, m2.m.w), Math.max(m1.m.w, m2.m.w), COLS[cmp.key], cL.d];   // the line between the two picked circles swept round the tooth's axis: each edge level with its own circle, at its distance across the ground, so the band runs through both
         s.bandA = (s.bandA || 0) + ((m1 && m2 ? 1 : 0) - (s.bandA || 0)) * (REDUCED ? 1 : Math.min(1, dt * 4));
-        if (s.bandR && s.bandA > 0.01) { const ring = (w, rev) => { const pts = []; for (let i = 0; i <= 96; i++) { const a = (rev ? 96 - i : i) / 96 * Math.PI * 2, q = pj(w * Math.cos(a), 0, w * Math.sin(a)); if (q[3] > 60) pts.push(fx(q[0]) + "," + fx(q[1])); } return pts.length > 2 ? "M" + pts.join("L") + "Z" : ""; };
-          s.cband.setAttribute("d", ring(s.bandR[1], false) + ring(s.bandR[0], true)); s.cband.style.setProperty("--c", s.bandR[2]); s.cband.style.opacity = (s.bandA * appear).toFixed(2); }
-        else s.cband.style.opacity = 0; }
+        if (s.bandR && s.bandA > 0.01) { const [w0, w1, col, dd] = s.bandR, hd = Math.hypot(dd[0], dd[2]), N = 96;
+          const at = (w, i) => { const a = i / N * Math.PI * 2; return pj(w * hd * Math.cos(a), w * dd[1], w * hd * Math.sin(a)); };
+          const A = [], B = []; for (let i = 0; i <= N; i++) { A.push(at(w0, i)); B.push(at(w1, i)); }
+          // the fill: a panel per step round, each wound the same way on screen, so where the band's near and far sides
+          // overlap (a sloping band seen from the side) it fills once: one path, no seams, no doubled tint
+          let f = ""; for (let i = 0; i < N; i++) { const q = [A[i], A[i + 1], B[i + 1], B[i]]; if (q.some(p => p[3] < 60)) continue;
+            let ar = 0; for (let j = 0; j < 4; j++) { const p = q[j], n = q[(j + 1) % 4]; ar += p[0] * n[1] - n[0] * p[1]; } if (ar < 0) q.reverse();
+            f += "M" + q.map(p => fx(p[0]) + "," + fx(p[1])).join("L") + "Z"; }
+          const edge = P => { const pts = P.filter(p => p[3] > 60).map(p => fx(p[0]) + "," + fx(p[1])); return pts.length > 2 ? "M" + pts.join("L") + "Z" : ""; };
+          s.cband.setAttribute("d", f); s.cbandE.setAttribute("d", edge(A) + edge(B));
+          [s.cband, s.cbandE].forEach(el2 => { el2.style.setProperty("--c", col); el2.style.opacity = (s.bandA * appear).toFixed(2); }); }
+        else s.cband.style.opacity = s.cbandE.style.opacity = 0; }
       // hub
       const hb = pj(0, 0, 0), hubZ = hb[3], hr = cl(46 * hb[2] / U, 26, 80);
       s.gHalo.setAttribute("cx", fx(hb[0])); s.gHalo.setAttribute("cy", fx(hb[1])); s.gHalo.setAttribute("r", fx(hr * 5.5));
