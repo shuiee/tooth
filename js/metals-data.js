@@ -25,8 +25,25 @@
               name, note (mid-sentence), when (the years shown); periods: the exposure windows it is shown on (these
               overlap, so they are named, not matched by date); img: its picture (src, alt, ref; null: a placeholder);
               change: what its figure compares, read from the values above (lead: one period's median against
-              another's; modern: the 20th-century values against the archaeological ones). eventsHead and eventsLine:
-              the heading and line over the events
+              another's, and expect, the way the historical record says it went; modern: the 20th-century values
+              against the archaeological ones).
+              impact, impactRef: what the event was and did to people, and its sources (context, checked 2026-10-08):
+              Montgomery et al. 2010 (the uses of lead in Roman Britain, its mines by the 70s CE, the Romans' knowledge
+              that its fumes harmed health; its smelting after Rome on a far smaller scale, Roman lead possibly
+              recycled; lead pollution's rise through the second millennium CE, peaking in the 20th century); Historic
+              England, What happened after the end of Roman rule in Britain?, Heritage Calling, 28 November 2024 (direct
+              rule ended in 410; town life fell apart within a couple of generations, villas were abandoned, the
+              wheel-thrown pottery industry stopped); McConnell JR et al. (2018), Lead pollution recorded in Greenland
+              ice indicates European emissions tracked plagues, wars, and imperial expansion during antiquity, PNAS
+              115(22):5726-5731 (emissions "plunged coincident with two major plagues in the second and third
+              centuries, remaining low for >500 years"); Encyclopaedia Britannica, Industrial Revolution (the change
+              from an agrarian, handicraft economy to one dominated by industry and machine manufacture, beginning in
+              Britain in the 18th century); UNEP, Era of leaded petrol over, 30 August 2021 (tetraethyl lead in petrol
+              since 1922, the last country to stop, Algeria, in July 2021; it contaminated air, dust, soil, drinking
+              water and food crops, and harms children's developing brains).
+              why: the reason the enamel bears it out as it does, for the slide's ruled line (popup-content.js metRead)
+     modernFrom  where the 20th-century teeth come from (Kamenov et al. 2018, Materials and methods: "individuals from
+              Europe, North America, Central America, South America, Caribbean, and Africa", n = 77)
 
    How the molar draws it (radial.js, metalGroups()): each element's change from the archaeological level in the
    same study (lead: ppm / 0.63; the others: 1 until the 20th century, then modern / pooled), placed on the prototype
@@ -63,17 +80,25 @@
       { name: "Roman imperial plumbing", note: "Roman imperial plumbing", when: "1st–4th centuries CE", periods: ["Roman"],
         img: { src: "img/roman-bath-ruins.jpg", alt: "A painting of a ruined Roman bath, with women washing linen in the water channel",
                ref: "Hubert Robert, Ruins of a Roman Bath with Washerwomen, after 1766. Philadelphia Museum of Art." },
-        change: { lead: ["Iron Age", "Roman"] } },
+        change: { lead: ["Iron Age", "Roman"], expect: "rise" },
+        impact: "Britain was one of the Roman Empire's main sources of lead, mined on a large scale in the Mendips, Flintshire and Derbyshire by the 70s CE. Romans carried water in lead pipes, cooked in lead pans, and used lead compounds to sweeten and preserve wine and food, and in medicines, pottery glazes and cosmetics, though they knew that lead fumes harmed health.",
+        impactRef: "Montgomery et al. 2010.",
+        why: "Britain had used lead since the Bronze Age without its children's lead rising; Montgomery and colleagues trace the rise to lead in food and drink, from pipes, pans and sweeteners." },
       { name: "Collapse of the Roman economy", note: "the collapse of the Roman economy", when: "360–675 CE", periods: ["Post-Roman"],
         img: { src: "img/plague-of-ashdod.jpg", alt: "A painting of plague in an ancient city: the dead and dying in a street of classical buildings",
                ref: "Nicolas Poussin, The Plague of Ashdod, 1630–31. Musée du Louvre, Paris." },
-        change: { lead: ["Roman", "Post-Roman"] } },
+        change: { lead: ["Roman", "Post-Roman"], expect: "fall" },
+        impact: "Direct Roman rule in Britain ended in 410 CE. Within a couple of generations town life fell apart, villas were abandoned and the pottery industry stopped. Europe's lead pollution, recorded in Greenland ice, had already plunged at the time of two great epidemics in the 2nd and 3rd centuries, and it stayed low for more than 500 years.",
+        impactRef: "Historic England 2024; McConnell et al. 2018, PNAS 115(22).",
+        why: "Montgomery and colleagues suggest that Roman lead stayed in use and was recycled, while far less new ore was smelted." },
       { name: "Industrial Revolution", note: "the industrial era that began with the Industrial Revolution", when: "from about 1760", periods: ["20th century"],
         img: { src: "img/bottle-kilns.jpg", alt: "A black-and-white photograph of a smoky industrial town: bottle kilns and chimneys above rows of terraced houses",
                ref: "Bottle kilns, Stoke-on-Trent. Photograph, Unsplash+." },
-        change: { modern: true } },
+        change: { modern: true },
+        impact: "Beginning in Britain in the 18th century, the Industrial Revolution turned an economy of farming and handicrafts into one of industry and machine manufacture, and spread to much of the world. Mines, smelters and coal-burning factories multiplied, and people moved from the land into the growing industrial towns. From 1922, lead was added to petrol: its exhaust contaminated air, dust, soil, water and crops, and it harms children's developing brains. The last country to stop selling it did so in 2021.",
+        impactRef: "Britannica, Industrial Revolution; UNEP 2021.",
+        why: "Lead pollution in Europe rose through the second millennium CE and peaked in the 20th century (Montgomery et al. 2010), so much of the rise came before factories." },
     ],
-    eventsHead: "Lead and the economy",
-    eventsLine: "Lead in childhood enamel rises and falls with the economy around it: high under Rome, low after the Roman economy collapsed, and high again with industrial production. Enamel forms in childhood, so it records the exposure of the time and place a child grew up in.",
+    modernFrom: "Europe, the Americas, the Caribbean and Africa",
   };
 })();

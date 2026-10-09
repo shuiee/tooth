@@ -53,26 +53,34 @@
 
 // Human events that bear on molar wear, for the wear pop-up's last slide (js/popup-content.js): context, not data. Each
 // is from the team's list of events to include (#11 roller mills, #12 industrial urbanisation; 2026-10-07) and its
-// timeline (shuiee/tooth-untold, research/Human Correlations/timeline_events_display.csv: EV005, EV022), its line put
-// plainly (the mechanism, millstones shedding grit into flour, is the timeline's own, on EV005; the textile fibres in
-// calculus at Cross Street Chapel, Manchester, 1737–1847, are the list's, on #12). The timeline's water mills,
-// Domesday watermills and windmills (EV002 to EV004) are not on the list.
+// timeline (shuiee/tooth-untold, research/Human Correlations/timeline_events_display.csv: EV005, EV022). The timeline's
+// water mills, Domesday watermills and windmills (EV002 to EV004) are not on the list. Its heading and line, and each
+// event's line, were dropped 2026-10-08 for what the event was and did to people, checked: the timeline's mechanism for
+// EV005 (millstones shedding grit into flour) could not be confirmed and is not shown.
 //   id, name, from, to  the event and its years; a wear period whose years overlap them shows it
 //   note                its name mid-sentence
-//   line                what it was
+//   impact, impactRef   what it was and did to people, and its sources (checked 2026-10-08): Davenport RJ, Urbanisation
+//                       and mortality in Britain, c.1800-1850 (Cambridge Group for the History of Population and Social
+//                       Structure; towns of 2,500 or more: 30% of the English in 1801, over half by 1851, 80% by 1891);
+//                       The National Archives, Factory Act 1833 (education resource: no children under nine in textile
+//                       mills, nine hours a day at 9 to 13); Mintz SW, Time, Sugar, and Sweetness (tea imports, 167,000
+//                       to 23 million pounds over the 18th century); Pallant, The rise and fall of sourdough, Gresham
+//                       College 2017 (steel rollers, a Hungarian invention of the 1870s, made fine white flour); Rollinson
+//                       2016, Notes and Records of the Royal Society 70:63 (fashion for white flour moved mills to rollers);
+//                       Tann J, Jones RG 1996, Technology and Culture 37 (radical change in British milling, 1875-1900)
 //   img                 its picture (src, alt, ref), or null for a placeholder
 (function () {
   "use strict";
   window.WEAR_EVENTS = {
-    head: "Milling and molar wear",
-    line: "Grain ground between millstones carries grit, and grit wears teeth down. As milling moved from stone to steel and food became more processed, molars wore less.",
     events: [
       { id: "EV022", name: "Industrial urbanisation", note: "industrial urbanisation", from: 1750, to: 1900,
         img: { src: "img/mulberry-street.jpg", alt: "A hand-coloured photograph of a crowded market street in New York around 1900: stalls, carts and families in front of tenements", ref: "Detroit Publishing Co., Mulberry Street, New York City, about 1900. Library of Congress." },
-        line: "People moved into industrial towns and ate softer, more processed food. Molar wear fell while stress lines in childhood enamel became more common. Cotton and wool fibres in dental calculus from Cross Street Chapel, Manchester (1737–1847), record work in the textile trade." },
+        impact: "People left the land for industrial towns: about 30% of the English lived in towns of 2,500 or more in 1801, over half by 1851 and 80% by 1891. Children worked in the textile mills; the Factory Act of 1833 barred those under nine and held 9- to 13-year-olds to nine hours a day. Tea and sugar became everyday food: England's tea imports rose from 167,000 pounds to 23 million over the 18th century.",
+        impactRef: "Davenport, Cambridge Group for the History of Population; The National Archives, Factory Act 1833; Mintz." },
       { id: "EV005", name: "Roller mills", note: "roller mills", from: 1870, to: 1890,
         img: { src: "img/cotton-spinner.jpg", alt: "A black-and-white photograph of a young girl at a spinning machine in a cotton mill", ref: "Lewis Hine, a child spinner in a cotton mill, about 1908. Library of Congress." },
-        line: "Steel roller mills replaced millstones from the 1870s and industrial food processing began. Millstones shed grit into flour and steel rollers do not, and molar wear reached its lowest level in the record." },
+        impact: "Steel roller mills, a Hungarian invention of the 1870s, replaced millstones and made fine white flour. The fashion for white flour moved British mills to rollers, and between 1875 and 1900 the country's grain milling changed radically.",
+        impactRef: "Pallant 2017, Gresham College; Rollinson 2016; Tann and Jones 1996." },
     ],
   };
 })();

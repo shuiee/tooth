@@ -889,14 +889,14 @@
       const ctls = opts.controls ? [].concat(opts.controls() || []) : [];   // the page's own buttons (Pause and Replay, Fast forward), which the names keep clear of too
       // while the pop-up is open, the diagram moves over and shrinks into the space beside it (left of it, or above it on
       // narrow pages), so no circle lies under it and the reader can still pick a second period to compare. Beside it, the
-      // diagram's scale comes from the pop-up's usual width (so widening the pop-up does not shrink it again), and it is
+      // diagram's scale comes from the room left of the pop-up as it is (it keeps the width it opens with), and it is
       // moved further left (s.shiftX) until its content keeps the same margin from the page's left edge as the pop-up keeps
       // from the right (measured below, once the names are placed)
       const sideM = Math.max(16, Math.min(40, s.W * 0.024)), onRight = !!cv && cv.side === "right" && cv.x > s.W * 0.3;
       { let cx = s.C0[0], cy = s.C0[1], f = s.F0;
         if (!onRight) s.shiftT = 0;
         s.shiftX = (s.shiftX || 0) + ((s.shiftT || 0) - (s.shiftX || 0)) * (REDUCED ? 1 : Math.min(1, dt * 3));
-        if (onRight) { const fw2 = s.W - sideM - Math.min(460, Math.max(300, s.W * 0.25)) - 16; cx = fw2 / 2 + s.shiftX; f = Math.min(s.F0, fw2 * 1.1); }
+        if (onRight) { const fw2 = cv.x - 16; cx = fw2 / 2 + s.shiftX; f = Math.min(s.F0, fw2 * 1.1); }
         else if (cv && cv.side !== "right" && cv.y > s.pt + 140) { const fh = cv.y - 10 - s.pt; cy = s.pt + fh / 2; f = Math.min(s.F0, (fh - 40) * 1.95); }
         const e = REDUCED ? 1 : Math.min(1, dt * 4); s.C = [s.C[0] + (cx - s.C[0]) * e, s.C[1] + (cy - s.C[1]) * e]; s.F += (f - s.F) * e; }
       const { C, F } = s, U = F / D; s.cb = { pos, fw, rt, up };   // the camera, kept for dragging the timeline's handle
@@ -1131,17 +1131,18 @@
         seg(L.lead, b.ne, [b.ux < 0 ? b.x + b.w : b.x, b.y + 23, 1, b.ne[3]]); L.lead.style.opacity = L.card.style.opacity; });
       // the pop-up open at the right: the diagram's content (its names, lines and circles) is moved to keep the pop-up's
       // margin from the page's left edge, measured while the pop-up opens; once it has settled, the move is held (so the
-      // diagram does not wander as the tooth turns) and the pop-up widens leftwards (opts.onRoom) to the same gap from the
-      // content's right edge. Both hold while the pop-up stays open, and go back once it closes. The scale never changes here.
+      // diagram does not wander as the tooth turns), while the pop-up stays open, and goes back once it closes. The pop-up
+      // keeps the width it opened with (it no longer widens or narrows to the room left, 2026-10-09). The scale never
+      // changes here.
       if (onRight && !s.roomSent) { const xs = [];
         cards.forEach(b2 => { if (!b2.vis) return; const k2 = b2.L._bb || (b2.L._bb = b2.L.card.getBBox()); xs.push(b2.x + k2.x, b2.x + k2.x + k2.width); });
         all.forEach(o => { if (o.top) xs.push(o.top[0] - (o.r || 3) * 2.6, o.top[0] + (o.r || 3) * 2.6); });
         s.lines.forEach(L => { if (L._s) xs.push(L._s[0][0], L._s[1][0]); });
-        if (xs.length) { const lo = Math.min(...xs), hi = Math.max(...xs);
+        if (xs.length) { const lo = Math.min(...xs);
           s.shiftT = s.shiftX + (sideM - lo);
           if (s.cvAt == null) s.cvAt = now;
-          if (now - s.cvAt > 1100) { s.roomSent = true; if (opts.onRoom) { const usual = Math.min(460, Math.max(300, s.W * 0.25)), w = Math.round(cl(s.W - sideM - (hi + s.shiftT - s.shiftX) - sideM, usual, 680)); opts.onRoom(w > usual + 4 ? w : null); } } } }   // only ever wider than usual
-      else if (!onRight) { s.cvAt = null; if (s.roomSent && opts.onRoom) opts.onRoom(null); s.roomSent = false; }
+          if (now - s.cvAt > 1100) s.roomSent = true; } }
+      else if (!onRight) { s.cvAt = null; s.roomSent = false; }
       // the clicked period's years, in a box beside its circle: right of it, else left, below or above, whichever is first
       // clear of the names, the pop-up, the buttons, the timeline's handle and the page's edges; hidden if none is, or while its circle is hovered (the
       // readout says the same) or under the pop-up

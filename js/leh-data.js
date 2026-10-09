@@ -158,18 +158,30 @@
 
 // Human events that bear on stress lines, for the stress-line pop-up's last slide: context, not data. From the team's
 // timeline (research/Human Correlations/timeline_events_display.csv): the events whose expected or measured effect
-// names hypoplasia (EV014, EV022; the team's list of events to include, #7 and #12), their lines put plainly; the timeline's caution on EV014 (a line marks stress a child
-// survived) is kept in its line.
+// names hypoplasia (EV014, EV022; the team's list of events to include, #7 and #12). Each event's line was dropped
+// 2026-10-08 for what it was and did to people, checked:
+//   impact, impactRef  its sources: DeWitte SN, Wood JW (2008), Selectivity of Black Death mortality with respect to
+//                   preexisting health, PNAS 105(5):1436-1441 (30-50% of the populations it reached; at East Smithfield,
+//                   London, every lesion considered, linear enamel hypoplasia on the canines among them, raised the risk
+//                   of death); DeWitte SN (2014), Mortality risk and survival in the aftermath of the medieval Black
+//                   Death, PLoS ONE 9(5):e96513 (better survival after it); Davenport RJ, Urbanisation and mortality in
+//                   Britain (towns of 2,500 or more, 30% in 1801 to 80% by 1891; tuberculosis and crowded, poorly
+//                   ventilated workplaces and homes); The National Archives, Factory Act 1833
+//   why             the reasons the record bears it out as it does: the Great Famine, 1315-1322 (Jordan WC, The Great
+//                   Famine, Princeton University Press), its crops failing 1315-17 (Davenport, CAMPOP 2024)
 (function () {
   "use strict";
   window.LEH_EVENTS = {
     events: [
       { id: "EV014", name: "Black Death", note: "the Black Death", from: 1347, to: 1351,
         img: { src: "img/black-death.jpg", alt: "An etching of the plague in Florence, 1348: a procession with a banner passes the dead and dying in the street", ref: "Luigi Sabatelli the elder, The plague of Florence, 1348, etching. Wellcome Collection, M0000786, public domain." },
-        line: "Plague swept Europe in 1347–51. Stress lines in the people who lived through it are a second trace of the epidemic, alongside the plague genomes in the pathogen record. A line forms only in a child who survived the stress that caused it." },
+        impact: "Plague killed an estimated 30% to 50% of the people in the parts of Europe it reached. In London's East Smithfield plague cemetery, people who already carried signs of earlier ill health, stress lines on the canines among them, were more likely to die. In the generations after, Londoners lived longer than before the plague.",
+        impactRef: "DeWitte and Wood 2008, PNAS 105(5); DeWitte 2014, PLoS ONE.",
+        why: "The period also takes in the Great Famine of 1315 to 1322, when crops failed three years running across northern Europe. And since plague killed people already marked by stress more readily, it may have taken lines out of the record as well as adding them." },
       { id: "EV022", name: "Industrial urbanisation", note: "industrial urbanisation", from: 1750, to: 1900,
         img: { src: "img/mulberry-street.jpg", alt: "A hand-coloured photograph of a crowded market street in New York around 1900: stalls, carts and families in front of tenements", ref: "Detroit Publishing Co., Mulberry Street, New York City, about 1900. Library of Congress." },
-        line: "Children grew up in crowded industrial towns, many of them working in mills and factories. Stress lines became more common while molar wear fell." },
+        impact: "People left the land for industrial towns: about 30% of the English lived in towns of 2,500 or more in 1801, over half by 1851 and 80% by 1891. Crowded, poorly ventilated homes and workplaces spread tuberculosis. Children worked in the textile mills; the Factory Act of 1833 barred those under nine and held 9- to 13-year-olds to nine hours a day.",
+        impactRef: "Davenport, Cambridge Group for the History of Population; The National Archives, Factory Act 1833." },
     ],
   };
 })();

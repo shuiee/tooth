@@ -78,7 +78,8 @@
 /* narrow pages: along the bottom, above Pause and Replay */
 @media (max-width:899px){
   .pp-box{--side:bottom;top:auto;bottom:100px;left:16px;right:16px;width:auto;translate:none}
-  .pp-body{max-height:calc(38vh - 36px);overflow:hidden auto;scrollbar-width:thin}
+  .pp{display:flex;flex-direction:column;max-height:38vh}   /* the header and the body (which scrolls) within the card's height */
+  .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin}
   .pp-grid{grid-template-rows:40px 40px 34px}
 }
 
@@ -87,7 +88,7 @@
 /* narrow pages, two cards: each shorter, so both fit above the buttons */
 @media (max-width:899px){
   .pp-box{gap:22px}
-  .pp-box.two .pp-body{max-height:calc(19vh - 30px)}
+  .pp-box.two .pp{max-height:calc(19vh + 6px)}
 }
 
 /* the gallery: a lead tile (picture or chart), a side chart, then KPIs; every tile opens to the card's full size */
@@ -197,10 +198,12 @@
    grey placeholder boxes for the charts, the picture and its caption */
 /* the card's margins are the same both sides (its own 20px); a slide leaves a lane, 36px, only on the side that has an
    arrow, so the arrows stay clear of the charts and a slide with no arrow on its left lines up with the text above */
-.pp-stage.pv .pp-views{margin-left:36px}
-.pp-stage.nx .pp-views{margin-right:36px}
-/* no scroll bars: the card is as tall as the slide on show (asked before any card is let scroll) */
-@media (min-width:900px){.pp-box,.pp-box .pp-body{overflow:visible}}
+.pp-stage.pv .pp-view{padding-left:36px}   /* the lane is inside the slide, so the arrows sit above the slides (.pp-arw z-index) to stay clickable */
+.pp-stage.nx .pp-view{padding-right:36px}
+/* the events slide leaves no lane: its pictures run out to the card's left margin, in line with the text above, and
+   its arrow sits in the card's margin beside them (the events are always the last slide, so it has no next arrow) */
+.pp-stage .pp-view:has(.pp-evs){padding-left:0;padding-right:0}
+.pp-stage:has(.pp-view.on .pp-evs) .pp-arw.prev{left:-20px}
 /* the slide on show takes its place in the card (which fits it); the others lie over it, unseen */
 .pp-leads,.pp-views{position:relative;overflow:hidden}   /* the unseen slides add nothing to the card's height or scroll */
 .pp-leads>*,.pp-views>*{position:absolute;left:0;right:0;top:0;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s linear .35s}
@@ -211,7 +214,7 @@
 .pp-ph{position:relative;flex:1;min-width:0;background:#adaca7}
 .pp-ph.pp-cap{flex:0 0 30%;background:#d8d7d2}
 .pp-ph span{position:absolute;left:10px;top:9px;font-size:10px;font-style:italic;color:var(--ink-2)}
-.pp-arw{position:absolute;top:50%;translate:0 -50%;border:0;background:none;margin:0;padding:6px 4px;cursor:pointer;color:var(--ink-2);display:grid;place-items:center;transition:color .2s}
+.pp-arw{position:absolute;z-index:1;top:50%;translate:0 -50%;border:0;background:none;margin:0;padding:6px 4px;cursor:pointer;color:var(--ink-2);display:grid;place-items:center;transition:color .2s}
 .pp-arw.prev{left:-4px}
 .pp-arw.next{right:-4px}
 .pp-arw:hover{color:var(--ink)}
@@ -251,6 +254,7 @@
 .pd-hint b{font-weight:600;color:var(--ink)}
 .pd-back{border:0;background:none;padding:0;margin-left:4px;font:inherit;color:var(--ink-2);text-decoration:underline;text-decoration-color:var(--ink-3);text-underline-offset:3px;cursor:pointer}
 .pd-back:hover{color:var(--ink)}
+.pd-strand{cursor:pointer}   /* the emptied strand while the dots are out: a click sends them home */
 /* the hover note on a chart: dark, beside the pointer */
 .pp-tip{position:fixed;z-index:20;pointer-events:none;max-width:280px;padding:7px 10px;background:var(--ink);color:#f3f2ee;font-family:var(--serif);font-size:12px;line-height:1.4}
 .pp-tip[hidden]{display:none}
@@ -261,7 +265,9 @@
 .pp-view:has(.pp-evs){aspect-ratio:auto;height:auto}
 .pp-evs{width:100%;display:flex;flex-direction:column;gap:16px}
 .pp-evs.sc{max-height:236px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain;padding-right:10px}
-.pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:14px;align-items:start}
+/* the picture takes the lane's 36px on top of its 40%, so the caption keeps its place and width, and the gap between
+   them stays 14px: 40% of the slide 36px narrower, plus 36px, is 40% plus 21.6px */
+.pp-ev{margin:0;display:grid;grid-template-columns:minmax(0,calc(40% + 21.6px)) minmax(0,1fr);gap:14px;align-items:start}
 .pp-ev .pp-ph{flex:none;aspect-ratio:4/3}
 .pp-evp{display:flex;flex-direction:column;gap:6px}
 .pp-ref{display:block;margin-top:4px;font-size:10px;font-style:italic;line-height:1.35;color:var(--ink-3)}   /* a picture's line of reference */
@@ -271,18 +277,18 @@
 .pp-ev figcaption p{margin:0}
 .pp-ev figcaption p+p{margin-top:6px}
 .pp-evr{font-size:10.5px;font-style:italic;color:var(--ink-3)}   /* an event's figure's source */
-/* how the century's genomes bear the event out: a rule at the left, in the ink where they agree, the record's colour
-   where they contradict it */
-.pp-evv{padding-left:9px;border-left:2px solid rgba(26,26,24,.28)}
-.pp-evv.no{border-left-color:var(--c,#b0362f)}
-.pp-evv.no b{color:var(--c,#b0362f)}
+/* how the record bears an event out (every record's events): a rule at the left, and its first words, in the record's
+   colour where it agrees, that colour desaturated where it partly agrees (mixed with a mid grey in Oklab, so its hue
+   holds and its chroma falls; the Wear and LEH line's ink becomes a dark grey), and grey where it contradicts the
+   historical record */
+.pp-evv{--vc:#8a8983;padding-left:9px;border-left:2px solid var(--vc)}
+.pp-evv.yes{--vc:var(--c,#1a1a18)}
+.pp-evv.part{--vc:color-mix(in oklab,var(--c,#1a1a18) 45%,#7f7e79)}
+.pp-ev figcaption .pp-evv>b:first-child{color:var(--vc)}
 .pp-ev figcaption p b{font-weight:600;color:var(--ink)}
 .pp-evk{display:block;margin-bottom:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .pp-evk i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .pp-evd{display:block;margin:1px 0 6px;font-size:12px;color:var(--ink-3)}
-.pp-evi{margin:0;font-size:12.5px;line-height:1.45;color:var(--ink-2)}
-.pp-evi b{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
-.pp-evn{margin:0;font-size:11px;font-style:italic;line-height:1.4;color:var(--ink-3)}
 @media (prefers-reduced-motion: reduce){.pd-leads{transition:none}.pd-pull .pd-in{animation:none}}
 /* metals: the radial chart's petal (js/popup-content.js, bloomChart) and the line graph (lineChart), whose hovered
    metal stands out (zinc, barium, strontium and magnesium together), its line heavier and its 20th-century range shown */
@@ -340,24 +346,20 @@
 .ls-row.dim,.ls-col.dim{opacity:.25}
 .ls-b{margin-top:14px}
 @media (prefers-reduced-motion: reduce){.pp-fold svg,.wp-body,.wp-mesh,.lc-p,.ls-row,.ls-col{transition:none}}
-/* two cards stacked (the Wear and LEH line): they share the pop-up's height, each scrolling inside its own frame where
-   its content is taller than its share, so nothing (text, charts, the slide dots, the source) runs outside a card */
+/* every card (popup.js): the header stays put and the body, from the line of text to the source, scrolls under it with
+   a thin scroll bar wherever the card is taller than the pop-up's room, so nothing (text, charts, the slide dots, the
+   source) runs past the card's edge and the margins stay the same; where it all fits, there is no scroll bar. Two cards
+   stacked (the Wear and LEH line) share the pop-up's height, each scrolling inside its own frame */
 @media (min-width:900px){
+  .pp-box .pp .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin;overscroll-behavior:contain}
   .pp-box.two .pp{flex:0 1 auto;min-height:0;max-height:calc(50% - 11px)}   /* half the height each (the gap is 22px) */
   .pp-box.two .pp.min~.pp,.pp-box.two .pp:has(~.pp.min){max-height:100%}   /* the whole height while the other is folded */
-  .pp-box.two .pp .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin;scrollbar-gutter:stable;overscroll-behavior:contain}
+  .pp-box.two .pp.min{flex-shrink:0}   /* a folded card keeps its header's height whole; the open one gives way, and scrolls */
 }
 .pp-box.two .pp-view:has(.pp-chart),.pp-box.two .pp-view:has(.pp-evs){height:auto}
-.pp-box.two .pp-evs.sc{max-height:none;overflow:visible;padding-right:0}   /* the card itself scrolls, so its events list does not scroll inside it */
 /* the scroll bar out in the card's right margin, under the X, with a clear gap between it and the slides (their arrows,
    charts and labels) */
-.pp-box.two .pp .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable}
-/* a single card that scrolls on its own (popup.js, SCROLL): the same, its body scrolling under its header wherever the
-   card is taller than the pop-up's room, the scroll bar in its right margin */
-@media (min-width:900px){
-  .pp-box .pp.pp-sc .pp-body{flex:1 1 auto;min-height:0;overflow:hidden auto;scrollbar-width:thin;overscroll-behavior:contain}
-}
-.pp.pp-sc .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable}
-.pp.pp-sc .pp-when{padding-bottom:4px}
-.pp.pp-sc .pp-lead{margin-top:4px}
-.pp.pp-sc .pp-evs.sc{max-height:none;overflow:visible;padding-right:0}   /* the card scrolls, so its events list does not scroll inside it */
+.pp .pp-body{margin-right:-16px;padding-right:14px;scrollbar-gutter:stable;margin-left:-20px;padding-left:20px}   /* and out into the left margin, where the events slide's arrow sits, so the scroll does not clip it; the text stays in place */
+.pp .pp-when{padding-bottom:4px}
+.pp .pp-lead{margin-top:4px}
+.pp .pp-evs.sc{max-height:none;overflow:visible;padding-right:0}   /* the card scrolls, so its events list does not scroll inside it */

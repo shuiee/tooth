@@ -53,9 +53,8 @@
   const CONTENT = { caries: placeholder, pathogens: placeholder, wear: placeholder, leh: placeholder, metals: placeholder, interventions: placeholder };
   // the Wear and LEH line opens two cards for one period (or two compared), stacked: molar wear and stress lines (sub)
   const SUBS = { wear: [["wear", "Molar Wear"], ["leh", "Stress Lines (LEH)"]] };
-  // records whose single card scrolls on its own, as the stacked ones do: its body under its header, wherever the card
-  // is taller than the pop-up's room, so nothing runs past the card's edge (the interventions' samples chart is tall)
-  const SCROLL = new Set(["interventions"]);
+  // every card, single or stacked, scrolls its body under its header wherever the card is taller than the pop-up's
+  // room, so nothing runs past the card's edge and its margins stay the same (css/popup.css)
 
   function create(opts) {
     opts = opts || {};
@@ -81,18 +80,16 @@
 
     function open(pick) {
       const c = (CONTENT[pick.sub || pick.key] || placeholder)(pick), sl = c.slides && c.slides.length ? c.slides : SLIDES, panel = document.createElement("section");
-      const own = !!pick.sub || SCROLL.has(pick.key);   // a card whose body scrolls under its header
-      panel.className = "pp" + (SCROLL.has(pick.key) ? " pp-sc" : ""); panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
+      panel.className = "pp"; panel.style.setProperty("--c", pick.col); panel.setAttribute("aria-label", pick.name + ", " + pick.range);
       const head = "<p class='pp-when pp-in" + (pick.pair ? " pair" : "") + "' style='--i:0'><span class='pp-rec'>" + esc(pick.name) + "</span><span>" + (pick.pair ? "Selected Times:</span><span class='pp-pl'>" + pairLine(pick, 0) : "Selected Time: " + when(pick, 0)) + "</span></p>";
       panel.innerHTML = "<div class='pp-sur'></div>" + ["tl", "tr", "bl", "br"].map(k => "<i class='pp-br " + k + "'></i><i class='pp-tk " + k + "'></i>").join("") +
         // the X on the card itself, not in its body (which scrolls, and clips, on narrow pages)
         "<button class='pp-x pp-in' style='--i:0' type='button' aria-label='Close " + esc(pick.name + ", " + pick.range) + "'>&times;</button>" +
         // of two stacked cards, a button to fold this one to its header, or open it again
         (pick.sub ? "<button class='pp-fold pp-in' style='--i:0' type='button' aria-expanded='true' aria-label='Fold " + esc(pick.name) + "'><svg viewBox='0 0 14 9' aria-hidden='true'><path d='M1 8l6-6 6 6'/></svg></button>" : "") +
-        // the header: of a card whose body scrolls (two stacked, or SCROLL's), above the body, so it stays put and the
-        // scroll bar starts below the X
-        (own ? head : "") + "<div class='pp-body'>" + (own ? "" : head) +
-        "<div class='pp-car pp-in' style='--i:1'><div class='pp-leads'>" + sl.map((x, j) => "<p class='pp-lead" + (j ? "" : " on") + "'>" + (x.html || esc(x.lead)) + "</p>").join("") + "</div>" +
+        // the header: above the body, which scrolls, so it stays put and the scroll bar starts below the X
+        head + "<div class='pp-body'>" +
+        "<div class='pp-car pp-in' style='--i:1'><div class='pp-leads'>" + sl.map((x, j) => "<p class='pp-lead" + (j ? "" : " on") + "'>" + (x.html != null ? x.html : esc(x.lead || "")) + "</p>").join("") + "</div>" +
         "<div class='pp-stage'><button class='pp-arw prev' type='button' aria-label='Previous'>" + CHEV("M10 1 1 11l9 10") + "</button>" +
         "<div class='pp-views'>" + sl.map((x, j) => "<div class='pp-view" + (j ? "" : " on") + "'>" + (x.body || "") + "</div>").join("") + "</div>" +
         "<button class='pp-arw next' type='button' aria-label='Next'>" + CHEV("M2 1l9 10-9 10") + "</button></div>" +
@@ -153,8 +150,6 @@
         cur.forEach(c => { if (!c.wired && c.panel.querySelector(".pp-fold")) { c.wired = true; wireFold(c); } });
         measure();
       },
-      // the width the diagram leaves it (px), or null for its usual width; its cards stretch, their margins stay
-      width(px) { box0.style.width = px ? px + "px" : ""; measure(); },
       // of two compared, the period the molar shows now ("key:i"), or null: its years in the header, heavier
       // (kept on the card, and told to its charts as a "pp:mark" event, for those that follow the molar)
       mark(id) { cur.forEach(c => { c.panel.querySelectorAll(".pp-tm").forEach(e => e.classList.toggle("now", e.dataset.id === id)); c.panel.dataset.mark = id || "";

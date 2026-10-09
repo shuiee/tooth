@@ -8,8 +8,8 @@
    carious (CARIES_RATES sev: none, 1-2, 3-4, 5-9, 10+), from the team's c2b severity figure; the supporting chart,
    the share of adults with at least one carious tooth by age at death (CARIES_AGE), from its c1b figure. The figures'
    footnotes are left out for now. The third slide, the human events of the team's list whose years overlap the period
-   (CARIES_EVENTS; context, not data), with the team's measured effect in caries per tooth. A period in no event has two
-   slides.
+   (CARIES_EVENTS; context, not data), read in the first slide's measures (the share with no carious tooth, the share
+   with five or more), and how they bear each out. A period in no event has two slides.
 
    Pathogens (js/pathogens-data.js): the main chart, the prototype's pathogen strand (its Fig. 2.2, from the team's c4b
    matrix), cut down to the centuries around the one clicked, with its hover and its pull-out (strandChart); the
@@ -135,7 +135,7 @@
   }
   // the human events of the team's list (js/caries-data.js, CARIES_EVENTS; context, not data) whose years overlap the
   // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right
-  // its name, years, what it shows and the team's measured effect, in caries per tooth
+  // its name, years, what it was and did to people, what the first slide's measures show of it, and how they bear it out
   const CE = window.CARIES_EVENTS || [];
   // how a stretch of years (one period or several, each { from, to }) stands to an event: it includes an event inside
   // it, falls within one that spans it, and otherwise overlaps it (pl: the plural verb)
@@ -143,25 +143,39 @@
     return e.from >= lo && e.to <= hi ? (pl ? "include" : "includes") : e.from <= lo && e.to >= hi ? (pl ? "fall within" : "falls within") : (pl ? "overlap" : "overlaps"); };
   // an event's pictures (one, or several stacked), each with its line of reference under it, or a placeholder
   const evPics = e => { const a = e.img ? [].concat(e.img) : []; return a.length ? "<div class='pp-evp'>" + a.map(m => "<img src='" + esc(m.src) + "' alt='" + esc(m.alt) + "'>" + (m.ref ? "<span class='pp-ref'>" + esc(m.ref) + "</span>" : "")).join("") + "</div>" : ph("Image"); };
-  const cOver = (e, q) => e.from < q.to && e.to > q.from, pt = v => v.toFixed(3);
+  // an event's caption, after its name and years: what it was and did to people (context, with its sources in small
+  // type), then what the record shows of it, then how that bears the event out (a ruled line, as the pathogens' and
+  // metals': agrees, partly agrees, contradicts; css/popup.css .pp-evv)
+  const VERDICT = { yes: "Agrees with the historical record.", part: "Partly agrees with the historical record.", no: "Contradicts the historical record." };
+  const evImpact = e => e.impact ? "<p>" + esc(e.impact) + (e.impactRef ? " <span class='pp-evr'>" + esc(e.impactRef) + "</span>" : "") + "</p>" : "";
+  const evRule = v => v ? "<p class='pp-evv " + v.k + "'><b>" + VERDICT[v.k] + "</b> " + v.text + "</p>" : "";
+  // how much of a period an event covers: where it starts late in the period, or takes up little of it, the record
+  // cannot tie the period's change to it alone (a, b: the period's years)
+  const evSpan = (e, a, b) => { const o = Math.min(e.to, b) - Math.max(e.from, a);
+    return o * 2 >= b - a ? "" : e.from > a && e.to >= b ? " It began only in " + e.from + ", " + (b - e.from) + " years before the period ends in " + b + ", so the record cannot say how much of the change came with it."
+      : " The period runs from " + a + " to " + b + ", so the record cannot tie its change to " + (e.note || low(e.name)) + " alone."; };
+  const cOver = (e, q) => e.from < q.to && e.to > q.from;
   const cariesEventsOf = picks => CE.filter(e => picks.some(q => cOver(e, q))).sort((a, b) => (a.to - a.from) - (b.to - b.from));
-  function cariesEffect(e, picks) {
-    if (e.per) { const s = e.per, lo = s.reduce((m, x) => x[1] < m[1] ? x : m, s[0]), hi = s.reduce((m, x) => x[1] > m[1] ? x : m, s[0]);
-      return "Caries per tooth rose from " + B(pt(lo[1])) + " in " + lo[0] + " to " + B(pt(hi[1])) + " in " + hi[0] + ", a " + B(fx(hi[1] / lo[1]) + "-fold") + " increase."; }
-    return "";
+  const cPer = r => "the " + low(r.p) + " period";
+  // what a period shows of a caries event, in the first slide's measures, against the period before
+  const cariesShows = i => { const r = CR[i], pv = CR[i - 1];
+    return "In " + cPer(r) + ", " + B(r0(r.sev[0]) + "%") + " of adults had no carious tooth and " + B(r0(five(r)) + "%") + " had five or more" + (pv ? "; in " + cPer(pv) + ", " + r0(pv.sev[0]) + "% and " + r0(five(pv)) + "%." : "."); };
+  // how a period's adults bear a caries event out (the events are of more decay), against the period before, in the
+  // first slide's two measures: fewer with no carious tooth, and more with five or more (a point or more each); both
+  // agree, one partly agrees, neither contradicts. Where the period after went further, it says so
+  function cariesRead(e, i) {
+    const r = CR[i], pv = CR[i - 1], nx = CR[i + 1]; if (!pv) return null;
+    const mv = (x, y) => y - x >= 1 ? 1 : x - y >= 1 ? -1 : 0, dn = mv(pv.sev[0], r.sev[0]), df = mv(five(pv), five(r)), n = (dn < 0) + (df > 0), k = n === 2 ? "yes" : n ? "part" : "no";
+    const esc1 = dn < 0 ? "Fewer adults escaped caries than in " + cPer(pv) : dn > 0 ? "More adults escaped caries than in " + cPer(pv) : "As many adults escaped caries as in " + cPer(pv);
+    const deep = df > 0 ? "more had five or more carious teeth" : df < 0 ? "fewer had five or more carious teeth" : "as many had five or more carious teeth";
+    const further = nx && nx.sev[0] <= r.sev[0] - 1 && five(nx) >= five(r) + 1 ? " It went further in " + cPer(nx) + ": only " + r0(nx.sev[0]) + "% had no carious tooth, and " + r0(five(nx)) + "% had five or more." : "";
+    return { k, text: esc1 + ((dn < 0) === (df > 0) ? ", and " : ", but ") + deep + (dn === 0 && df > 0 ? ": decay deepened in mouths that already had it more than it reached new ones." : ".") + further + (e.why ? " " + esc(e.why) : "") };
   }
+  const cOn = (e, picks) => picks.filter(q => cOver(e, q)).map(q => q.i);
   function cariesEventsHTML(evs, picks) {
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" +
-      evPics(e) +
-      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span><p>" + esc(e.line) + "</p><p>" + cariesEffect(e, picks) + "</p></figcaption></figure>").join("") +
-      "<p class='pp-evn'>Event dates are historical context. Caries per tooth is the number of decayed teeth divided by the number of teeth examined, which is a different measure from the share of adults on the earlier slides." +
-      (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
-  }
-  function cariesLead3(evs, picks) {
-    const on = e => picks.filter(q => cOver(e, q)), groups = [];
-    evs.forEach(e => { const k = on(e).map(q => q.i).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, qs: on(e), evs: [e] }); });
-    return groups.map(g => "The " + andList(g.qs.map(q => low(CR[q.i].p))) + " period" + (g.qs.length > 1 ? "s " : " ") +
-      andList(g.evs.map(e => evVerb(e, g.qs, g.qs.length > 1) + " " + (e.note || low(e.name)) + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>");
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" + evPics(e) +
+      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span>" + evImpact(e) +
+      cOn(e, picks).map(i => "<p>" + cariesShows(i) + "</p>" + evRule(cariesRead(e, i))).join("") + "</figcaption></figure>").join("") + "</div>";
   }
   P.CONTENT.caries = pick => {
     const picks = pick.pair || [pick], rs = picks.map(q => CR[q.i]).filter(Boolean), ag = picks.map(q => CA.periods[q.i]).filter(Boolean);
@@ -179,7 +193,7 @@
         lead2 = "At 18–24, " + B(ya + "%") + " of " + low(a.p) + " young adults " + (ya > yb ? "still " : "") + "had no caries at all.<br>" + (yb < ya ? "By the " + low(b.p) + " period, " + B((100 - yb) + "%") + " already had a carious tooth, and only " + B(yb + "%") + " had escaped."
           : "In the " + low(b.p) + " period, " + B(yb + "%") + " had escaped, and " + B((100 - yb) + "%") + " already had a carious tooth."); } }
     const evs = cariesEventsOf(picks), slides = [{ html: lead1, body: ch.body(0) }, { html: lead2, body: ag.length ? ch.body(1) : ph("Supplemental chart") }];
-    if (evs.length) slides.push({ html: cariesLead3(evs, picks), body: cariesEventsHTML(evs, picks) });
+    if (evs.length) slides.push({ html: "", body: cariesEventsHTML(evs, picks) });
     return {
       slides, mount: ch.mount,
       source: "Global History of Health Project (Europe) · adults 18–69 · n = " + rs.map(r => r.n.toLocaleString("en-GB")).join(" and "),
@@ -232,7 +246,8 @@
   // the hover note: dark, beside the pointer, as on the prototype
   let tipEl = null;
   function tip(html, ev) {
-    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "pp-tip"; tipEl.setAttribute("role", "tooltip"); tipEl.hidden = true; document.body.appendChild(tipEl); }
+    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "pp-tip"; tipEl.setAttribute("role", "tooltip"); tipEl.hidden = true; document.body.appendChild(tipEl);
+      addEventListener("scroll", () => { tipEl.hidden = true; }, true); }   // a card scrolling moves the point away from its note
     if (!html) { tipEl.hidden = true; return; }
     if (tipEl.innerHTML !== html) tipEl.innerHTML = html; tipEl.hidden = false;
     const w = tipEl.offsetWidth, h = tipEl.offsetHeight; let x = ev.clientX + 14, y = ev.clientY + 14;
@@ -258,8 +273,9 @@
   // share is named in bold. Two compared show the stretch from one to the other, a century beyond each; where that is
   // more than VIS centuries, it scrolls. Hovering an organism's dots names it and its share and lights it in every
   // century shown; clicking them pulls every century's dots out of the strand into a row on the right, 50 to the row,
-  // the organism's first in its colour (its share against the whole century, as on the prototype); clicking again, or
-  // on the row, sends them home. The events the prototype shaded across its strand are shaded here too.
+  // the organism's first in its colour (its share against the whole century, as on the prototype); clicking again, on
+  // the row, anywhere on the emptied strand, or "Back to the strand" sends them home. The events the prototype shaded
+  // across its strand are shaded here too.
   const VIS = 8;
   function strandChart(sel, col, st) {
     const D = strandData(), R = D.rows, last = R.length - 1, lo = Math.min(...sel), hi = Math.max(...sel);
@@ -361,8 +377,11 @@
             for (let i = a; i <= b; i++) { const r = R[i]; if (r.n == null) continue; const d = r.cells.find(x => x.l === hl), y = yRow(i);
               g += "<text class='pd-in' style='animation-delay:" + (anim ? 500 + (i - a) * 35 : 0) + "ms' x='" + fx(leadX + 50 * unit + 7) + "' y='" + fx(y + 4) + "' font-size='12.5' fill='" + (r.thin ? G : "#1a1a18") + "'>" +
                 (d ? "<tspan font-weight='" + (r.lead.includes(d) ? 600 : 400) + "'>" + pc(d.v) + "</tspan>" + (showK ? "<tspan font-size='11' fill='" + G + "'>  " + d.k + "/" + r.n + "</tspan>" : "") : "<tspan font-size='11' fill='" + G + "'>none</tspan>") + "</text>" +
-                "<rect class='pd-row' data-i='" + i + "' x='" + fx(leadX - 4) + "' y='" + fx(y - pitch / 2 + 3) + "' width='" + fx(Wg - leadX + 4) + "' height='" + (pitch - 6) + "' fill='transparent'/>"; } }
+                "<rect class='pd-row' data-i='" + i + "' x='" + fx(leadX - 4) + "' y='" + fx(y - pitch / 2 + 3) + "' width='" + fx(Wg - leadX + 4) + "' height='" + (pitch - 6) + "' fill='transparent'/>"; }
+            // the emptied strand: a click sends the dots home
+            g += "<rect class='pd-strand' x='" + fx(cx - ribW / 2 - 8) + "' y='0' width='" + fx(ribW + 16) + "' height='" + fx(H) + "' fill='transparent'/>"; }
           pullG.innerHTML = g;
+          const back = pullG.querySelector(".pd-strand"); if (back) back.addEventListener("click", () => { tip(null); select(null, true); });
           pullG.querySelectorAll(".pd-row").forEach(e => { const r = R[+e.dataset.i], d = r.cells.find(x => x.l === hl);
             e.addEventListener("pointermove", ev => tip("<b>" + esc(cap(hl.name)) + "</b>, " + r.c + "s<br>" + (d ? d.k + " of " + r.n + " genomes, " + pc(d.v) : "none of " + r.n + " genomes"), ev));
             e.addEventListener("pointerleave", () => tip(null)); e.addEventListener("click", () => { tip(null); select(null, true); }); });
@@ -406,10 +425,11 @@
     keys.forEach(k => { const w = (k.bar != null ? 22 : 14) + tw(k.t, 12) + 18; if (x && x + w - 18 > W) { x = 0; y += 20; }
       s += (k.bar != null ? "<rect x='" + fx(x) + "' y='" + (y + 3) + "' width='16' height='7' fill='" + k.c + "' fill-opacity='" + k.bar + "'/>" : "<circle cx='" + fx(x + 5) + "' cy='" + (y + 6.5) + "' r='4.5' fill='" + k.c + "'/>") + T(x + (k.bar != null ? 22 : 14), y + 11, k.t, { s: 12 }); x += w; });
     const valW = tw("100%", 12.5) + tw("  35/51", 11) + 8, side = Math.min(W * 0.4, Math.max(...ls.map(l => tw(title(l.name), 12.5)))) + 12, over = W - side - valW < 150;
-    const labW = over ? 0 : side, bw = W - labW - valW, bh = two ? 9 : 14, nh = over ? 17 : 0, rp = nh + (two ? 2 * bh + 3 : bh) + 12, y0 = y + 26;
+    // two compared: the two bars far enough apart that their values, which can sit one over the other, keep clear
+    const labW = over ? 0 : side, bw = W - labW - valW, bh = two ? 9 : 14, gp = 6, nh = over ? 17 : 0, rp = nh + (two ? 2 * bh + gp : bh) + 12, y0 = y + 26;
     ls.forEach((l, j) => { const yy = y0 + j * rp + nh, c = colOf(l);
-      s += over ? T(0, yy - 5, title(l.name), { s: 12.5, c: "#1a1a18" }) : T(labW - 12, yy + (two ? bh + 6 : bh / 2 + 4.5), title(l.name), { a: "end", s: 12.5, c: "#1a1a18" });
-      rs.forEach((r, k) => { const d = cell(r, l), by = yy + k * (bh + 3), w = d ? bw * d.v / 100 : 0;
+      s += over ? T(0, yy - 5, title(l.name), { s: 12.5, c: "#1a1a18" }) : T(labW - 12, yy + (two ? bh + gp / 2 + 4.5 : bh / 2 + 4.5), title(l.name), { a: "end", s: 12.5, c: "#1a1a18" });
+      rs.forEach((r, k) => { const d = cell(r, l), by = yy + k * (bh + gp), w = d ? bw * d.v / 100 : 0;
         if (d) s += "<rect x='" + fx(labW) + "' y='" + fx(by) + "' width='" + fx(Math.max(1.5, w)) + "' height='" + bh + "' fill='" + c + "'" + (two && !k ? " fill-opacity='.4'" : "") + "/>";
         s += T(labW + w + 6, by + bh / 2 + 4, d ? pc(d.v) : "none", { s: two ? 11.5 : 12.5, c: d ? "#1a1a18" : G, w: d && r.lead.includes(d) ? 600 : 0 });
         if (d && !two) s += T(labW + w + 10 + tw(pc(d.v), 12.5), by + bh / 2 + 4, d.k + "/" + r.n, { s: 11, c: G }); }); });
@@ -432,12 +452,12 @@
   // partly agrees, none disagrees; with the reasons the record gives (its size, its sites, its dating)
   function evRead(e, l, r) {
     const d = r.cells.find(x => x.l === l), lead = d && r.lead.includes(d), ldr = andList(r.lead.map(x => x.l.name)), n = r.n, sites = (PD.sites || {})[r.c];
-    if (!d) return { k: "no", lead: "None of the " + r.c + "s' " + n + " genomes is " + l.name + ", which contradicts the historical record.",
+    if (!d) return { k: "no",
       text: "<b>Contradicts the historical record.</b> The " + r.c + "s " + evVerb(e, [{ from: r.c, to: r.c + 100 }], true) + " " + e.note + ", yet none of their " + n + " genomes" + (sites ? ", from " + word(sites) + " sites," : "") + " is " + l.name + ". " +
         "The record holds only the teeth that have been excavated and sequenced. " + esc(e.dating || "") };
-    if (lead) return { k: "yes", lead: cap(l.name) + " leads the " + r.c + "s' genomes, with " + pc(d.v) + ".",
+    if (lead) return { k: "yes",
       text: "<b>Agrees with the historical record.</b> " + cap(l.name) + " is the largest share of the " + r.c + "s' genomes" + (n < 10 ? ", though with only " + n + " genomes each one moves the share by " + Math.round(100 / n) + " points." : ".") };
-    return { k: "part", lead: cap(l.name) + " is " + pc(d.v) + " of the " + r.c + "s' genomes, behind " + ldr + ".",
+    return { k: "part",
       text: "<b>Partly agrees with the historical record.</b> " + cap(l.name) + " is present, behind " + ldr + ", which make" + (r.lead.length > 1 ? "" : "s") + " up " + pc(r.max) + (r.lead.length > 1 ? " each" : "") + " of the century's genomes." +
         (n < 15 ? " With only " + n + " genomes, one more or fewer could change the order." : "") };
   }
@@ -485,14 +505,6 @@
     return cap(cnt(r)) + (r.cells.length > 1 ? " were" : " was") + " identified among the century's " + B(r.n) + " genomes.<br>" +
       (k.length === 1 ? "All were " + KINDS[k[0][0]] + "." : cap(KINDS[k[0][0]]) + " made up " + B(pc(k[0][1])) + ", " + andList(k.slice(1).map(([kk, v]) => KINDS[kk] + " " + B(pc(v)))) + ".");
   }
-  function pathLead3(evs, rs) {
-    const on = e => rs.filter(r => over(e, r)), groups = [];
-    evs.forEach(e => { const k = on(e).map(r => r.c).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, rs: on(e), evs: [e] }); });
-    const D = strandData(), reads = [];
-    evs.forEach(e => e.taxa.map(t => D.lanes.find(l => l.taxon === t)).filter(Boolean).forEach(l => on(e).forEach(r => { const t = evRead(e, l, r).lead; if (!reads.includes(t)) reads.push(t); })));
-    return groups.map(g => cap(andList(g.rs.map(r => "the " + r.c + "s"))) + " " +
-      andList(g.evs.map(e => evVerb(e, g.rs.map(r => ({ from: r.c, to: r.c + 100 })), true) + " " + e.note + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>") + (reads.length ? "<br>" + reads.join(" ") : "");
-  }
 
   P.CONTENT.pathogens = pick => {
     const D = strandData(); if (!D) return {};
@@ -500,7 +512,7 @@
     if (sel.some(i => i < 0 || D.rows[i].n == null)) return {};
     const rs = sel.map(i => D.rows[i]), st = { hl: null }, ch = charts([strandChart(sel, pick.col || "#7a6a9a", st), W => mixChart(rs, W)]), evs = eventsOf(rs);
     const slides = [{ html: pathLead1(rs), body: ch.body(0) }, { html: pathLead2(rs), body: ch.body(1) }];
-    if (evs.length) slides.push({ html: pathLead3(evs, rs), body: eventsHTML(evs, rs) });
+    if (evs.length) slides.push({ html: "", body: eventsHTML(evs, rs) });
     return { slides, mount: ch.mount, source: "AncientMetagenomeDir (SPAAM, CC-BY 4.0) · European dental samples · n = " + rs.map(r => r.n).join(" and ") + " genomes" };
   };
 
@@ -550,8 +562,9 @@
   // element spokes, each spoke's length its element's change from the archaeological level in the same study, on a log
   // scale (×1 is no change; as on the prototype, x 0.08 to x 20); a filled dot where the period has its own value, a
   // hollow one where it shows the pooled archaeological mean (no value for the period). Each spoke's end names the
-  // element, its ppm and its change from the period before. Two compared: one petal morphing between the two, in step
-  // with the molar, both outlined, and each change between the two.
+  // element, its ppm and its change from the period before. Two compared: one petal morphing between the two on a quick
+  // loop of its own from the moment the card opens (with reduced motion, still, following the molar), both outlined,
+  // and each change between the two.
   const XLO = 0.08, XHI = 20;
   const radX = (x, R, r0) => r0 + (R - r0) * Math.max(0, Math.min(1, (Math.log(x) - Math.log(XLO)) / (Math.log(XHI) - Math.log(XLO))));
   const ptA = (a, r) => [Math.sin(a) * r, -Math.cos(a) * r];
@@ -610,7 +623,10 @@
         const sv = el.querySelector("svg"), path = sv.querySelector(".mb-p"), vs = [...sv.querySelectorAll(".mb-v")];
         vs.forEach(v => { const e = EL[+v.dataset.i]; v.addEventListener("pointermove", ev => tip(mtip(e, ps), ev)); v.addEventListener("pointerleave", () => tip(null)); });
         if (!two) return;
-        // two compared: the petal morphs to the period the molar shows, as the molar changes over
+        // two compared: the petal morphs from one period to the other and back, MORPH ms each way with HOLD ms on each,
+        // looping from the moment the card opens, so the change shows before the reader moves on (the molar's own swap,
+        // every 5 s, is too slow for that); with reduced motion it does not move, and shows the period the molar shows
+        const MORPH = 700, HOLD = 1000;
         let cur = p0, rr = radii(p0), stop = null;
         const draw = (r, col, p) => { path.setAttribute("d", petal(r)); path.setAttribute("fill", col);
           vs.forEach((v, i) => { const [x, y] = ptA(EA[i], r[i]); v.setAttribute("cx", fx(x)); v.setAttribute("cy", fx(y)); v.setAttribute("fill", mcell(EL[i].el, p).pooled ? "#f3f2ee" : "#1a1a18"); }); };
@@ -618,10 +634,13 @@
           const from = rr.slice(), r1 = radii(p), c0 = pcol(cur), c1 = pcol(p), was = cur; cur = p; st.show = p;
           if (!anim || REDUCED) { rr = r1; draw(r1, c1, p); return; }
           const t0 = performance.now(); let raf = 0;
-          const step = now => { const k = Math.min(1, (now - t0) / 1300), e = ease(k); rr = from.map((v, j) => v + (r1[j] - v) * e); draw(rr, mix(c0, c1, e), e < 0.5 ? was : p);
+          const step = now => { const k = Math.min(1, (now - t0) / MORPH), e = ease(k); rr = from.map((v, j) => v + (r1[j] - v) * e); draw(rr, mix(c0, c1, e), e < 0.5 ? was : p);
             if (k < 1) raf = requestAnimationFrame(step); else stop = null; };
           raf = requestAnimationFrame(step); stop = () => cancelAnimationFrame(raf); };
-        onMark(el, to);
+        if (REDUCED) { onMark(el, p => to(p, false)); return; }
+        // the loop ends once the chart leaves the page (the card closed, or the chart redrawn at a new width)
+        const loop = () => { if (!path.isConnected) return; to(cur === ps[0] ? ps[1] : ps[0], true); setTimeout(loop, MORPH + HOLD); };
+        setTimeout(loop, HOLD);
       };
       return { html, wire };
     };
@@ -731,29 +750,53 @@
     : "Montgomery et al. 2010 (British lead) · Kamenov et al. 2018 · n = " + ps.map(p => MD.periods[p].n).join(" and ");
 
   // ---- metals events: what each figure compares, read from METALS_DATA (js/metals-data.js)
-  const ppm = v => (v < 1 ? v.toFixed(2) : String(Math.round(v * 100) / 100)) + " ppm";
+  const num = v => v < 1 ? v.toFixed(2) : String(Math.round(v * 100) / 100), ppm = v => num(v) + " ppm";
+  // the 20th century's industrial metals against archaeological enamel: the lowest and highest of their changes
+  const indSpan = () => { const last = MD.lead.length - 1, xs = MD.groups.industrial.map(k => k === "Pb" ? MD.lead[last] / MD.leadArch : MD.modern[k] / MD.pooled[k]);
+    return Math.floor(Math.min(...xs)) + " to " + Math.round(Math.max(...xs)) + " times"; };
   function metChange(e) {
     const c = e.change || {};
     if (c.lead) { const [a, b] = c.lead.map(n => MD.periods.findIndex(p => p.p === n)); if (a < 0 || b < 0) return "";
       const pn = n => /^(Post-|Early |Late )/.test(n) ? low(n) : n, va = MD.lead[a], vb = MD.lead[b], la = pn(MD.periods[a].p), lb = pn(MD.periods[b].p);
       return vb > va ? "Median lead in childhood enamel rose from " + B(ppm(va)) + " in the " + la + " window to " + B(ppm(vb)) + " in the " + lb + " window, about " + B(Math.round(vb / va) + " times") + " higher."
         : "Median lead in childhood enamel fell from " + B(ppm(va)) + " in the " + la + " window to " + B(ppm(vb)) + " in the " + lb + " window, " + B(Math.round(100 * (1 - vb / va)) + "%") + " lower."; }
-    if (c.modern) { const last = MD.lead.length - 1, x = k => k === "Pb" ? MD.lead[last] / MD.leadArch : MD.modern[k] / MD.pooled[k];
-      const ind = MD.groups.industrial.map(x), name = k => (MD.elements.find(el => el[0] === k) || [k, k])[1], ctl = ["Zn", "Ba"].map(k => name(k));
-      return "In 20th-century enamel, " + andList(MD.groups.industrial.map(name)) + " were " + B(Math.floor(Math.min(...ind)) + " to " + Math.round(Math.max(...ind)) + " times") + " their levels in archaeological enamel. " +
+    if (c.modern) { const name = k => (MD.elements.find(el => el[0] === k) || [k, k])[1], ctl = ["Zn", "Ba"].map(k => name(k));
+      return "In 20th-century enamel, " + andList(MD.groups.industrial.map(name)) + " were " + B(indSpan()) + " their levels in archaeological enamel. " +
         cap(andList(ctl)) + ", which are part of enamel itself, rose by less than half, and strontium fell from " + B(ppm(MD.pooled.Sr)) + " to " + B(ppm(MD.modern.Sr)) + "."; }
     return "";
   }
-  function metLead3(evs, ps) {
-    const yr = v => v < 0 ? -v + " BCE" : v + " CE", w = p => { const [a, b] = MD.periods[p].y; return a < 0 && b < 0 ? -a + "–" + -b + " BCE" : a >= 0 ? a + "–" + b + " CE" : yr(a) + "–" + yr(b); };
-    return evs.map(e => { const on = ps.filter(p => e.periods.includes(MD.periods[p].p));
-      return "The exposure window" + (on.length > 1 ? "s " : " ") + andList(on.map(w)) + (on.length > 1 ? " coincide" : " coincides") + " with " + e.note + " (" + e.when + ")."; }).join("<br>");
+  // how the enamel bears an event out (as evRead does for the pathogens): a median that moves the way the historical
+  // record says agrees, and the other way contradicts it; the 20th century partly agrees, its rise clear against
+  // archaeological teeth in the same study but small against Britain's own series, which has no window between the
+  // late medieval period and 1860; with the reasons (the event's why, and the values)
+  function metRead(e) {
+    const c = e.change || {}, L = MD.lead, R = MD.leadRange, why = e.why ? " " + esc(e.why) : "";
+    if (c.lead) { const [a, b] = c.lead.map(n => MD.periods.findIndex(p => p.p === n)); if (a < 0 || b < 0) return null;
+      const up = L[b] > L[a];
+      if (up !== (c.expect !== "fall")) return { k: "no",
+        text: "<b>Contradicts the historical record.</b> Median lead " + (up ? "rose" : "fell") + " where the record says it " + (up ? "fell" : "rose") + "." + why };
+      if (up) { const pre = L.slice(0, b);
+        return { k: "yes",
+          text: "<b>Agrees with the historical record.</b> Before " + phr(b) + ", the medians had stayed between " + num(Math.min(...pre)) + " and " + ppm(Math.max(...pre)) + "." + why +
+            " In " + phr(b) + ", children ranged from " + num(R[b][0]) + " to " + ppm(R[b][1]) + ", so some were far more exposed than others." }; }
+      return { k: "yes",
+        text: "<b>Agrees with the historical record.</b> Lead fell, yet " + (a > 0 ? "stayed " + times(L[b] / L[a - 1]) + " times " + phr(a - 1) + "'s median of " + ppm(L[a - 1]) + ", and " : "") +
+          "some children still reached " + ppm(R[b][1]) + "." + why }; }
+    if (c.modern) { const n = LASTP, m1 = n - 2, m2 = n - 1;
+      return { k: "part",
+        text: "<b>Partly agrees with the historical record.</b> Against archaeological teeth from the same study, the rise is what industrial exposure predicts. Against Britain's own series it is smaller: lead rose again after Rome, to " +
+          ppm(L[m1]) + " in " + phr(m1) + " and " + ppm(L[m2]) + " in " + phr(m2) + ", already " + Math.round(100 * L[m2] / L[n]) + "% of the 20th century's " + ppm(L[n]) + "." + why +
+          " This record has no exposure window between " + MD.periods[m2].y[1] + " and " + MD.periods[n].y[0] + ", which takes in the Industrial Revolution's first century. Its 20th-century teeth also come from " + esc(MD.modernFrom || "") + ", while the earlier windows' are British." }; }
+    return null;
   }
+  // the events slide: only the events of the period clicked (or the two compared), each its picture beside its caption:
+  // what the event was and did to people (context, with its sources in small type), what the enamel shows, and how that
+  // bears the event out (a ruled line)
   function metEventsHTML(evs) {
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (MD.eventsLine ? "<p class='pp-evi'>" + (MD.eventsHead ? "<b>" + esc(MD.eventsHead) + "</b>" : "") + esc(MD.eventsLine) + "</p>" : "") +
-      evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + esc(e.when) + "</span><p>" + metChange(e) + "</p></figcaption></figure>").join("") +
-      "<p class='pp-evn'>Event dates are historical context. Lead is the median in childhood enamel, in parts per million; 20th-century values are compared with archaeological enamel from the same study." +
-      (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => { const v = metRead(e);
+      return "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + esc(e.when) + "</span>" +
+        (e.impact ? "<p>" + esc(e.impact) + (e.impactRef ? " <span class='pp-evr'>" + esc(e.impactRef) + "</span>" : "") + "</p>" : "") +
+        "<p>" + metChange(e) + "</p>" + (v ? "<p class='pp-evv " + v.k + "'>" + v.text + "</p>" : "") + "</figcaption></figure>"; }).join("") + "</div>";
   }
   P.CONTENT.metals = pick => {
     if (!MD || !MD.leadRange) return {};
@@ -763,7 +806,7 @@
     // the third slide: the events named for the period clicked (MD.events); a period in none has two slides
     const evs = (MD.events || []).filter(e => ps.some(p => e.periods.includes(MD.periods[p].p)));
     const slides = [{ html: metLead1(ps), body: ch.body(0) }, { html: metLead2(ps), body: ch.body(1) }];
-    if (evs.length) slides.push({ html: metLead3(evs, ps), body: metEventsHTML(evs) });
+    if (evs.length) slides.push({ html: "", body: metEventsHTML(evs) });
     return { slides, mount: ch.mount, source: metSource(ps) };
   };
   // ---- wear (the Wear and LEH line's first card)
@@ -834,9 +877,13 @@
       // further right, down the edge); on the right, room for the last age, set out from the edge. Both move with the
       // cells' size, and that with them, so they are settled in a few rounds
       const vOf = c => Math.max(0.5, Math.max(15, 15 + (20 - c) * 1.1) / c), tl = tw(A[nJ - 1], 11);
+      // each period's name keeps GAPN px from the floor's left edge where they come closest, at the top of its letters
+      // (the edge slopes down to the right, so it runs nearer the text's top than its middle): CAP, the letters' height
+      // above the baseline at 11.5 px
+      const GAPN = 18, CAP = 8.5;   // 18 px across, about 9 px square to the edge, which runs at 30 degrees or steeper
       let labL = Math.ceil(Math.max(...P.map(q => tw(title(q.p), 11.5) * 1.06))) + 12, padR = Math.ceil(tl / 2) + 22, c = 0;
       for (let k = 0; k < 4; k++) { c = (W - labL - padR) / (cos * (nI + nJ)); const v = vOf(c), nl = Math.hypot(cos, v), nx = v / nl, ny = cos / nl;
-        labL = Math.ceil(Math.max(...P.map((q, i) => tw(title(q.p), 11.5) * (sel.includes(i) ? 1.1 : 1.04) + 10 - cos * (i + 0.5) * c))) + 2;
+        labL = Math.ceil(Math.max(...P.map((q, i) => tw(title(q.p), 11.5) * (sel.includes(i) ? 1.1 : 1.04) + GAPN + (CAP - 4) * cos / v - cos * (i + 0.5) * c))) + 2;
         padR = Math.ceil(Math.max(8, nx * Math.max(14, (tl / 2 + 2) * nx + 8 * ny + 3) + 0.55 * tl + 4 - 0.5 * cos * c)); }
       c = (W - labL - padR) / (cos * (nI + nJ));
       const hs = c * 0.42, hsDim = hs * 0.26;
@@ -856,7 +903,7 @@
       let s = "<path d='M" + [[0, 0], [0, nJ], [nI, nJ], [nI, 0]].map(q => fx(X(q[0], q[1])) + "," + fx(Y(q[0], q[1]))).join("L") + "Z' fill='rgba(26,26,24,.025)' stroke='#1a1a18' stroke-width='1'/>";
       // every period named down the left edge, at least a line apart: the one clicked in ink, the others dimmer
       let py = -1e9;
-      P.forEach((q, i) => { const t = title(q.p), x = X(i + 0.5, 0) - 8, y = Math.max(Y(i + 0.5, 0) + 4, py + 13.5); py = y; boxes.push(boxOf(x, y, t, 11.5, "end"));
+      P.forEach((q, i) => { const t = title(q.p), y = Math.max(Y(i + 0.5, 0) + 4, py + 13.5), x = X(i + 0.5, 0) + (y - CAP - Y(i + 0.5, 0)) * cos / v - GAPN; py = y; boxes.push(boxOf(x, y, t, 11.5, "end"));
         s += "<text x='" + fx(x) + "' y='" + fx(y) + "' text-anchor='end' font-size='11.5' fill='" + (on(i) ? "#1a1a18" : "#8a8983") + "'" + (on(i) ? " font-weight='600'" : "") + ">" + esc(t) + "</text>"; });
       // the ages under the front-right edge, each centred on a line parallel to it (every other where the cells are too
       // small for all eight to stand apart); the axis's name beyond them, centred on the edge
@@ -895,7 +942,10 @@
         peaks += "<g class='wp-peak" + (on(i) ? " on" : "") + "' data-i='" + i + "' data-j='" + j + "' opacity='" + (on(i) ? 1 : 0.42) + "'><path class='wp-body' d='" + g.b + "' fill='" + col + "'/><path class='wp-mesh' d='" + g.d + "' stroke='" + col + "'/></g>"; }
       spots.forEach(q => { labs += q.on ? "<text class='wp-v on' data-i='" + q.i + "' data-j='" + q.j + "' x='" + fx(q.x) + "' y='" + fx(q.y) + "' text-anchor='middle' font-size='" + fv + "' font-weight='600' fill='#1a1a18'" + (st.risen ? "" : " opacity='0'") + ">" + q.t + "</text>"
         : "<text class='wp-v' data-i='" + q.i + "' data-j='" + q.j + "' x='" + fx(q.x) + "' y='" + fx(q.y) + "' text-anchor='middle' font-size='" + q.px + "' fill='#8a8983'>" + q.t + "</text>"; });
-      const html = "<div class='wp'>" + svg(W, H, s + "<g class='wp-peaks'>" + peaks + "</g><g class='wp-labs'>" + labs + "</g>", "Mean molar wear by period and age at death, " + sel.map(i => P[i].p).join(" and ") + " picked out", "wp-svg") +
+      // the room above the landscape: only what its highest point needs (the clicked period's peaks at full height, the
+      // others flattened, every label), so the chart sits close under the slide's line; the drawing is lifted to fit
+      const top = Math.min(Y(0, nJ), ...boxes.map(q => q[1]), ...Object.keys(M).map(id => { const [i, j] = id.split(":").map(Number); return P[i].cells[A[j]] ? topAt(i, j, 1)[1] + 6 : Infinity; })), lift = Math.max(0, top - 4);
+      const html = "<div class='wp'>" + svg(W, H - lift, "<g transform='translate(0," + fx(-lift) + ")'>" + s + "<g class='wp-peaks'>" + peaks + "</g><g class='wp-labs'>" + labs + "</g></g>", "Mean molar wear by period and age at death, " + sel.map(i => P[i].p).join(" and ") + " picked out", "wp-svg") +
         "<div class='wp-smith' aria-live='polite'></div></div>";
 
       const wire = el => {
@@ -1001,25 +1051,33 @@
   const ghhpSpan = i => { const cl = (window.RADIAL_DATA || []).find(c => c.key === "wear"); return cl ? [cl.dens[i][0], cl.dens[i][1]] : [0, 0]; };
   function evsFor(list, sel) { return list.filter(e => sel.some(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); })).sort((p, q) => p.from - q.from); }
   const evWhen = e => e.from === e.to ? String(e.from) : e.from + "–" + e.to;
-  function wlEventsHTML(E, evs, effect, note) {
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (E.line ? "<p class='pp-evi'>" + (E.head ? "<b>" + esc(E.head) + "</b>" : "") + esc(E.line) + "</p>" : "") +
-      evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + evWhen(e) + "</span><p>" + esc(e.line) + "</p>" + (effect ? "<p>" + effect(e) + "</p>" : "") + "</figcaption></figure>").join("") +
-      "<p class='pp-evn'>" + note + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+  // the periods clicked that an event's years overlap
+  const evOn = (e, sel) => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); });
+  // the events slide: only the events of the period clicked (or the two compared), each its picture and caption: what it
+  // was and did to people, what the record shows of it in each period (shows), and how that bears it out (read)
+  function wlEventsHTML(evs, sel, shows, read) {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" + evPics(e) + "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + evWhen(e) + "</span>" + evImpact(e) +
+      evOn(e, sel).map(i => "<p>" + shows(i) + "</p>" + evRule(read(e, i))).join("") + "</figcaption></figure>").join("") + "</div>";
   }
-  // one sentence per group of periods, its verb from the dates (evVerb: includes, falls within, overlaps)
-  const evLeadFor = (evs, sel, nm) => { const on = e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); });
-    const groups = []; evs.forEach(e => { const k = on(e).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, is: on(e), evs: [e] }); });
-    return groups.map(g => { const qs = g.is.map(i => { const [a, b] = ghhpSpan(i); return { from: a, to: b }; }), pl = g.is.length > 1;
-      return "The " + andList(g.is.map(i => low(nm(i)))) + (pl ? " periods " : " period ") + andList(g.evs.map(e => evVerb(e, qs, pl) + " " + (e.note || e.name) + " (" + evWhen(e) + ")")) + "."; }).join("<br>"); };
+  // how a period's molars bear a wear event out (the events are of softer, cleaner food), against the period before: a
+  // fall of a tenth of a stage or more agrees, a rise as large contradicts, less partly agrees; with how much of the
+  // period the event covers, and a caution where the period has few adults
+  function wearRead(e, i) {
+    const pd = WD.pooled || [], P = WD.periods; if (!pd[i] || !pd[i - 1]) return null;
+    const v = pd[i][0], v0 = pd[i - 1][0], n = pd[i][1], k = v0 - v >= 0.1 ? "yes" : v - v0 >= 0.1 ? "no" : "part", least = v === Math.min(...pd.map(q => q[0]));
+    const pp = j => "the " + low(P[j].p) + " period", [a, b] = ghhpSpan(i), old = P[i].cells["60+"];
+    return { k, text: (k === "yes" ? "Molars wore less than in " + pp(i - 1) + (least ? ", the least of any period" : "") + "." : k === "no" ? "Molars wore more than in " + pp(i - 1) + "." : "Molars wore about as much as in " + pp(i - 1) + ".") +
+      evSpan(e, a, b) + (k === "yes" && pd[i - 2] && pd[i - 2][0] - v0 >= 0.1 ? " Wear had already fallen in " + pp(i - 1) + ", from " + pd[i - 2][0].toFixed(2) + " to " + v0.toFixed(2) + "." : "") +
+      (e.why ? " " + esc(e.why) : "") + (n < 300 ? " The period has only " + n + " adults' molars" + (old ? ", " + old[1] + " of them from people 60 or over" : "") + ", so its mean is less certain." : "") };
+  }
 
   P.CONTENT.wear = pick => {
     if (!WD || !WD.periods) return {};
     const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !WD.periods[i])) return {};
     const st = { picks: [], risen: false }, ch = charts([wearChart(sel, st)]), evs = evsFor(WE.events || [], sel), pooled = WD.pooled || [];
     const slides = [{ html: wearLead(sel), body: ch.body(0) }];
-    if (evs.length) slides.push({ html: evLeadFor(evs, sel, i => WD.periods[i].p), body: wlEventsHTML(WE, evs, e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i =>
-      "Mean molar wear in the " + low(WD.periods[i].p) + " period: stage " + B(pooled[i][0].toFixed(2)) + (i ? ", " + (pooled[i][0] < pooled[i - 1][0] ? "down" : "up") + " from " + pooled[i - 1][0].toFixed(2) + " in the " + low(WD.periods[i - 1].p) : "") + ".").join(" "),
-      "Event dates are historical context. Wear is the mean Smith stage of adults' molars, from 1 (unworn) to 8.") });
+    if (evs.length) slides.push({ html: "", body: wlEventsHTML(evs, sel, i =>
+      "Mean molar wear in the " + low(WD.periods[i].p) + " period: stage " + B(pooled[i][0].toFixed(2)) + (i ? ", " + (pooled[i][0] < pooled[i - 1][0] ? "down" : "up") + " from " + pooled[i - 1][0].toFixed(2) + " in the " + low(WD.periods[i - 1].p) : "") + " (1 is unworn, 8 the most worn).", wearRead) });
     return { slides, mount: ch.mount, source: "Global History of Health Project (Europe) · adults 18–69 · Smith (1984) stages · n = " + sel.map(i => pooled[i] ? pooled[i][1].toLocaleString("en-GB") : "").join(" and ") };
   };
 
@@ -1198,14 +1256,25 @@
       (lo && hi && lo !== hi ? "Across its cemeteries, two or more ranged from " + B(lo[3] + "%") + " (" + esc(lo[0]) + ") to " + B(hi[3] + "%") + " (" + esc(hi[0]) + ")." : "");
   }
 
+  // how a period's canines bear a stress event out (the events are of more childhood stress), against the period before:
+  // a rise of a point or more beyond both periods' 95% intervals agrees, a rise within them partly agrees (it may be
+  // chance), a fall contradicts; with the share with two or more lines, how much of the period the event covers, and the
+  // event's own reasons (why)
+  function lehRead(e, i) {
+    const c = LC.eras[i], pv = LC.eras[i - 1]; if (!pv) return null;
+    const d = c.pct - pv.pct, apart = c.ci[0] > pv.ci[1] || c.ci[1] < pv.ci[0], f = v => v.toFixed(1) + "%", ci = x => x.ci[0].toFixed(1) + "–" + f(x.ci[1]), [a, b] = ghhpSpan(i), pp = x => "the " + low(x.p) + " period";
+    const k = d >= 1 ? (apart ? "yes" : "part") : d <= -1 ? "no" : "part";
+    const two = "The share with two or more lines went from " + f(pv.comp[2]) + " to " + f(c.comp[2]) + ".";
+    return { k, text: (d >= 1 ? "More adults carried a line than in " + pp(pv) + (apart ? ", beyond both periods' 95% intervals (" + ci(pv) + " and " + ci(c) + ")." : ", but the two periods' 95% intervals overlap (" + ci(pv) + " and " + ci(c) + "), so the rise may be chance.")
+        : d <= -1 ? "Fewer adults carried a line than in " + pp(pv) + "." : "About as many adults carried a line as in " + pp(pv) + ".") + " " + two + evSpan(e, a, b) + (e.why ? " " + esc(e.why) : "") };
+  }
   P.CONTENT.leh = pick => {
     if (!LC || !LC.eras) return {};
     const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !LC.eras[i])) return {};
     const cols = lehCols(sel, pick.col), st = {}, ch = charts([W => lehBar(sel, cols, W), lehAge(sel, cols, st), lehSev(sel, cols)]), evs = evsFor(LE.events || [], sel);
     const slides = [0, 1, 2].map(n => ({ html: lehLead(sel, n), body: ch.body(n) }));
-    if (evs.length) slides.push({ html: evLeadFor(evs, sel, i => LC.eras[i].p), body: wlEventsHTML(LE, evs, e => sel.filter(i => { const [a, b] = ghhpSpan(i); return overlapsY(e, a, b); }).map(i => { const c = LC.eras[i], pv = LC.eras[i - 1];
-      return "In the " + low(c.p) + " period, " + B(c.pct.toFixed(1) + "%") + " of adults had a line on the lower canine" + (pv ? ", " + (c.pct >= pv.pct ? "up" : "down") + " from " + pv.pct.toFixed(1) + "% in the " + low(pv.p) : "") + "."; }).join(" "),
-      "Event dates are historical context. Shares are of adults 18–69 with a scorable lower canine.") });
+    if (evs.length) slides.push({ html: "", body: wlEventsHTML(evs, sel, i => { const c = LC.eras[i], pv = LC.eras[i - 1];
+      return "In the " + low(c.p) + " period, " + B(c.pct.toFixed(1) + "%") + " of adults had a line on the lower canine" + (pv ? ", " + (c.pct >= pv.pct ? "up" : "down") + " from " + pv.pct.toFixed(1) + "% in the " + low(pv.p) : "") + "."; }, lehRead) });
     return { slides, mount: ch.mount, source: "Global History of Health Project (Europe) · adults 18–69, scorable lower canine · Schultz (1988) · n = " + sel.map(i => LC.eras[i].n.toLocaleString("en-GB")).join(" and ") };
   };
   // ---- artificial interventions (js/interventions-data.js)
@@ -1350,21 +1419,19 @@
   const ivYrs = e => e.from === e.to ? String(e.from) : e.from + "–" + e.to;
   const ivOver = (e, i) => e.sites ? e.sites.includes(IP[i].site) : e.from <= IP[i].y[1] && e.to >= IP[i].y[0];   // by years, or by name (sites)
   const ivEvents = sel => IE.events.filter(e => sel.some(i => ivOver(e, i)));
-  function ivLead3(evs, sel) {
-    return sel.filter(i => evs.some(e => ivOver(e, i))).map(i => { const qs = [{ from: IP[i].y[0], to: IP[i].y[1] }];
-      return (i === LASTI ? "The 2009 survey " : "The " + IP[i].when + " sample from " + IP[i].site + " ") + andList(evs.filter(e => ivOver(e, i)).map(e => (e.verb || evVerb(e, qs)) + " " + e.note + " (" + ivYrs(e) + ")")) + "."; }).join("<br>");
-  }
-  function ivEventsHTML(evs) {
+  // what the record shows of an event: its measured effect, or the counts of the samples it shows on
+  const ivShows = (e, sel) => e.effect ? esc(e.effect) : sel.filter(i => i !== LASTI && ivOver(e, i)).map(i => "At " + IP[i].site + ", " + B(IP[i].withWork) + " of the " + B(nf(IP[i].people)) + " people examined had dental work: " + esc(IP[i].detail) + ".").join(" ");
+  function ivEventsHTML(evs, sel) {
     return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => "<figure class='pp-ev'>" + evPics(e) +
-      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + ivYrs(e) + "</span><p>" + esc(e.line) + "</p><p>" + esc(e.effect) + "</p></figcaption></figure>").join("") +
-      "<p class='pp-evn'>Event dates are historical context." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+      "<figcaption><b>" + esc(e.name) + "</b><span class='pp-evd'>" + ivYrs(e) + "</span>" + evImpact(e) + "<p>" + ivShows(e, sel) + "</p>" +
+      (e.read ? evRule({ k: e.read.k, text: esc(e.read.text) }) : "") + "</figcaption></figure>").join("") + "</div>";
   }
   P.CONTENT.interventions = pick => {
     if (!ID || !IP.length) return {};
     const sel = (pick.pair || [pick]).map(q => q.i).sort((a, b) => a - b); if (sel.some(i => !IP[i])) return {};
     const col = /^#[0-9a-f]{6}$/i.test(pick.col || "") ? pick.col : "#2f55b0", ch = charts([repairChart(sel, col), samplesChart(sel, col)]), evs = ivEvents(sel);
     const slides = [{ html: ivLead1(sel), body: ch.body(0) }, { html: ivLead2(sel), body: ch.body(1) }];
-    if (evs.length) slides.push({ html: ivLead3(evs, sel), body: ivEventsHTML(evs) });
+    if (evs.length) slides.push({ html: "", body: ivEventsHTML(evs, sel) });
     // the source of the period clicked (each point's hover note names its own)
     return { slides, mount: ch.mount, source: sel.map(i => IP[i].short).join(" and ") + " · n = " + sel.map(i => nf(IP[i].people)).join(" and ") };
   };

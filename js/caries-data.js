@@ -49,21 +49,30 @@
 })();
 
 // Human events that bear on caries, for the caries pop-up's third slide (js/popup-content.js): context, not data. Each
-// event's name, years and line are the team's list of events to include (2026-10-07); its figures are the team's
-// measured effect, in caries per tooth (carious teeth among the teeth observed, the GHHP's caries rate, not the share of
-// adults the radial shows), from its events list: shuiee/tooth-untold, research/Human Correlations/
-// timeline_events_display.csv (EV029, which dates it 1100–1700).
+// event's name and years are the team's list of events to include (2026-10-07; its timeline, shuiee/tooth-untold,
+// research/Human Correlations/timeline_events_display.csv, EV029, dates it 1100-1700). The pop-up reads it in the first
+// slide's measures, CARIES_RATES above (the share with no carious tooth, the share with five or more); the team's
+// caries-per-tooth figures are no longer shown (2026-10-08).
 //   name, from, to  the event and its years; a caries period whose years overlap them shows it
 //   note            its name mid-sentence, for the slide's lead
-//   line            what it shows
 //   img             its picture: src, alt text and ref, the line of reference under it (null: a placeholder)
-//   per             caries per tooth by year: [year, value]
+//   impact, impactRef  what it was and did to people, and its sources (checked 2026-10-08): The National Archives,
+//                   Sugar (education resource: sugar from Brazilian plantations under Elizabeth I and James I, worked by
+//                   enslaved Africans and forced indigenous labour; Paul Hentzner on Elizabeth I's black teeth, "a defect
+//                   the English seem subject to, from their too great use of sugar"); Mintz SW, Time, Sugar, and Sweetness
+//                   (no reliable figures before the 18th century; consumption in England and Wales rose about twenty
+//                   times, 1663-1775); York Historical Dictionary, manchet (the finest bread, of sifted wheat flour)
+//   why             the reason the record bears it out as it does: Moore WJ, Corbett ME (1975), The distribution of
+//                   dental caries in ancient British populations III, the 17th century, Caries Res 9:163-175, as Anderson
+//                   (2021, Br Dent J 230:440, PMC8033272) summarises it (more caries, and more of it at the contact
+//                   areas and in the fissures; the original's figures not read)
 (function () {
   "use strict";
   window.CARIES_EVENTS = [
     { id: "EV029", name: "Sugar and refined starch", note: "the spread of sugar and refined starch", from: 1500, to: 1700,
       img: { src: "img/rock-sugar.jpg", alt: "Crystals of rock sugar in a marbled bowl", ref: "Photograph. Source to be confirmed." },   // the team's picture, from Ali Qureshi's pop-up galleries (at d2672c3), cropped to the slot's 4:3
-      line: "Imported cane sugar and finely milled flour became more common in European diets, and caries rose over the same centuries.",
-      per: [[1100, 0.042], [1200, 0.096], [1500, 0.140], [1600, 0.168], [1700, 0.273]] },
+      impact: "Cane sugar reached England in growing amounts, from plantations in Brazil and then the Americas worked by enslaved Africans and forced indigenous labour. A visitor to Elizabeth I's court wrote that her teeth were black, \"a defect the English seem subject to, from their too great use of sugar\". Fine white bread, of sifted wheat flour, was still a luxury. England's sugar consumption rose about twenty times between 1663 and 1775.",
+      impactRef: "The National Archives, Sugar; Mintz, Time, Sugar, and Sweetness.",
+      why: "Studies of British skulls find caries rising in the 17th century, with more of it in the fissures of the chewing surfaces and where teeth touch (Moore and Corbett 1975)." },
   ];
 })();

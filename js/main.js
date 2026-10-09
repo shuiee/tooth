@@ -39,7 +39,6 @@
       onPlay: on => showPlaying(on),   // the radial pauses itself when a caries point is picked
       onSelect: picks => popup.show(picks),   // the time periods clicked (one, or two compared), or null
       onCompare: id => popup.mark(id),   // of two compared, the one the molar shows now
-      onRoom: w => popup.width(w),   // the pop-up widens into the room the diagram leaves it, so the page's margins match
       cover: () => popup.cover(),   // the radial keeps its labels clear of the pop-up
       controls,   // and of Pause, Replay and Fast forward
       menu,   // and of the filter menu
