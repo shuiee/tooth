@@ -95,29 +95,43 @@
     return svg(W, ya + 46, s, "Adults by number of carious teeth, " + rs.map(r => r.p).join(" and "));
   }
 
-  // the supporting chart: the share of adults with a carious tooth by age at death, one line per period clicked
+  // the supporting chart: the share of adults with a carious tooth by age at death, one line per period clicked; each
+  // point answers the pointer with a note (the period and age band, its share, the adults behind it, the change from
+  // the band before), as the metals' line graph does, in place of values written on the chart
   function ageChart(ps, cols, W) {
-    const H = 220, l = 38, r = ps.length > 1 || W >= 420 ? 92 : 74, t = 14, b = 34, ages = CA.ages, lo = 20, hi = 90;
-    const X = j => l + (W - l - r) * j / (ages.length - 1), Y = v => t + (H - t - b) * (hi - v) / (hi - lo);
+    // the scale runs 20% to 88% for every period (the highest value in the data is 86.2%, industrial, 45–49), its top
+    // close under the slide's line; the points start a little in from the axis, so the first age band is clear of "20%",
+    // and the axis's name sits well below the bands
+    const H = 224, l = 38, r = ps.length > 1 || W >= 420 ? 92 : 74, t = 4, b = 48, ages = CA.ages, lo = 20, hi = 88;
+    const x0 = l + tw(ages[0], 11) / 2 + 6;   // the first band's label starts 6 px right of the axis, 14 px clear of "20%"
+    const X = j => x0 + (W - r - x0) * j / (ages.length - 1), Y = v => t + (H - t - b) * (hi - v) / (hi - lo);
     let s = "";
     [20, 40, 60, 80].forEach(v => { s += L(l, Y(v), W - r, Y(v), "rgba(26,26,24,.1)") + T(l - 8, Y(v) + 4, v + "%", { a: "end", s: 11, c: "#8a8983" }); });
-    // the age bands under the axis (every other one where they would crowd)
-    const step = (W - l - r) / (ages.length - 1) < tw("18–24", 11) + 8 ? 2 : 1;
-    ages.forEach((a, j) => { if (j % step === 0 || j === ages.length - 1) s += T(X(j), H - b + 16, a, { a: "middle", s: 11, c: "#55544f" }); });
-    s += T((l + W - r) / 2, H - 2, "Age at Death", { a: "middle", s: 11, c: "#8a8983", i: true });
+    // the age bands under the axis (every other one, or every third, where they would crowd)
+    const sp = (W - r - x0) / (ages.length - 1), step = [1, 2, 3, 4].find(k => k * sp >= tw("18–24", 11) + 8) || 4;
+    // (a band next to the last left out where the two would meet)
+    const last = ages.length - 1, clear = j => X(last) - X(j) >= (tw(ages[j], 11) + tw(ages[last], 11)) / 2 + 8;
+    ages.forEach((a, j) => { if ((j % step === 0 && (j === last || clear(j))) || j === last) s += T(X(j), H - b + 20, a, { a: "middle", s: 11, c: "#55544f" }); });
+    s += T((x0 + W - r) / 2, H - 3, "Age at Death", { a: "middle", s: 11, c: "#8a8983", i: true });
     ps.forEach((p, k) => { const c = cols[k], pts = p.cells.map((cl, j) => [X(j), Y(cl[0])]);
       s += "<polyline points='" + pts.map(q => fx(q[0]) + "," + fx(q[1])).join(" ") + "' fill='none' stroke='" + c + "' stroke-width='" + (k ? 2.6 : 2) + "' stroke-linejoin='round'/>";
-      pts.forEach(q => { s += "<circle cx='" + fx(q[0]) + "' cy='" + fx(q[1]) + "' r='3' fill='" + c + "' stroke='#f3f2ee' stroke-width='1'/>"; });
+      pts.forEach((q, j) => { s += "<circle class='ca-dot' data-k='" + k + "' data-j='" + j + "' cx='" + fx(q[0]) + "' cy='" + fx(q[1]) + "' r='3' fill='" + c + "' stroke='#f3f2ee' stroke-width='1'/>"; });
       const end = pts[pts.length - 1], v = p.cells[p.cells.length - 1][0];
       // the line's name and its last value, at its end (pushed apart if the two would meet)
       let ey = end[1] + 4; if (ps.length > 1 && k === 1) { const o = Y(ps[0].cells[ps[0].cells.length - 1][0]) + 4; if (Math.abs(ey - o) < 32) ey = o + (ey >= o ? 32 : -32); }
-      s += T(end[0] + 10, ey - 6, ps.length > 1 ? title(p.p) : "", { s: 11.5, c, w: 600 }) + T(end[0] + 10, ey + 7, r0(v) + "% at 60+", { s: 11.5, c });
-      // the youngest's value, at the line's start
-      const up = ps.length < 2 || p.cells[0][0] >= ps[1 - k].cells[0][0];   // above the point, or below it for the lower of two
-      s += T(pts[0][0] + 8, pts[0][1] + (up ? -9 : 17), r0(p.cells[0][0]) + "%", { s: 11, c, w: 600 }); });
+      s += T(end[0] + 10, ey - 6, ps.length > 1 ? title(p.p) : "", { s: 11.5, c, w: 600 }) + T(end[0] + 10, ey + 7, r0(v) + "% at 60+", { s: 11.5, c }); });
     // two compared: the gap at 18–24, between the two first points
-    if (ps.length > 1) { const a = Y(ps[0].cells[0][0]), z = Y(ps[1].cells[0][0]), x = X(0); if (Math.abs(a - z) > 30) s += L(x, Math.min(a, z) + 20, x, Math.max(a, z) - 20, "#8a8983", 1, "2 3"); }
-    return svg(W, H, s, "Share of adults with at least one carious tooth by age at death, " + ps.map(p => p.p).join(" and "));
+    if (ps.length > 1) { const a = Y(ps[0].cells[0][0]), z = Y(ps[1].cells[0][0]), x = X(0); if (Math.abs(a - z) > 16) s += L(x, Math.min(a, z) + 7, x, Math.max(a, z) - 7, "#8a8983", 1, "2 3"); }
+    // what the pointer finds: a ring round each point
+    ps.forEach((p, k) => p.cells.forEach((cl, j) => { s += "<circle class='ca-hit' data-k='" + k + "' data-j='" + j + "' cx='" + fx(X(j)) + "' cy='" + fx(Y(cl[0])) + "' r='10' fill='transparent'/>"; }));
+    const html = "<div class='ca'>" + svg(W, H, s, "Share of adults with at least one carious tooth by age at death, " + ps.map(p => p.p).join(" and ")) + "<p class='pd-hint'>Hover a point to read it.</p></div>";
+    const note = (k, j) => { const p = ps[k], cl = p.cells[j], pv = j ? p.cells[j - 1] : null, d = pv ? cl[0] - pv[0] : 0;
+      return "<b>" + esc(title(p.p)) + ", died " + esc(ages[j]) + "</b><br>" + cl[0].toFixed(1) + "% had at least one carious tooth<br><span class='m'>" + cl[1].toLocaleString("en-GB") + " adults in the band" +
+        (pv ? "; " + (Math.abs(d) < 0.05 ? "the same as at " + esc(ages[j - 1]) : (d > 0 ? "up " : "down ") + Math.abs(d).toFixed(1) + " points from " + esc(ages[j - 1])) : "") + "</span>"; };
+    const wire = el => el.querySelectorAll(".ca-hit").forEach(h => { const k = +h.dataset.k, j = +h.dataset.j, dot = el.querySelector(".ca-dot[data-k='" + k + "'][data-j='" + j + "']");
+      h.addEventListener("pointermove", ev => { if (dot) dot.setAttribute("r", "5"); tip(note(k, j), ev); });
+      h.addEventListener("pointerleave", () => { if (dot) dot.setAttribute("r", "3"); tip(null); }); });
+    return { html, wire };
   }
   // the human events of the team's list (js/caries-data.js, CARIES_EVENTS; context, not data) whose years overlap the
   // period clicked, the narrowest first: each its picture on the left (a placeholder until it has one) and on the right

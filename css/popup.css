@@ -334,7 +334,8 @@
 .lc-row{cursor:default}
 .lc-row.on rect:first-child{fill:rgba(26,26,24,.05)}
 .lc-b{margin-top:8px}
-.lc .pd-hint,.wp .pd-hint,.iv .pd-hint{min-height:0}
+.lc .pd-hint,.wp .pd-hint,.iv .pd-hint,.ca .pd-hint{min-height:0}
+.ca-hit{cursor:default}
 .ls-row,.ls-col{transition:opacity .25s}
 .ls-row.dim,.ls-col.dim{opacity:.25}
 .ls-b{margin-top:14px}
