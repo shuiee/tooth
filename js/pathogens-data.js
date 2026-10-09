@@ -4,6 +4,10 @@
    (SPAAM community, CC-BY 4.0): European dental samples, 100-1800 CE; disease labels from pathogen_reference.csv.
      centuries  the start year of each century with samples (the 800s have none)
      genomes    genomes sequenced per century (the radial's pathogens line counts the same)
+     sites      the sites those genomes come from, per century: counted from AncientMetagenomeDir itself (its
+                ancientsinglegenome-hostassociated samples table, read 2026-10-08) with the team's selection, European
+                teeth and dental calculus, century = floor((1950 - sample_age) / 100) x 100, which gives back the
+                genomes above exactly. The index gives sample_age "to the closest century" before 1950 (its schema)
      taxa       each pathogen: its name as the prototype's pathogen strand gave it, its kind (bacteria, virus, parasite;
                 "other" is not a disease agent), and per century [genomes it was found in, % of that century's genomes]
      colours    each kind's colour, as on the prototype ("other" in its grey)
@@ -13,8 +17,17 @@
                 first pandemic 5th to 7th c.; the prototype gives it as the documented 541 to 750); taxa, the organisms
                 whose record the event concerns; band, also shaded across the strand. No numbers are kept with them: the
                 pop-up reads each organism's share from the counts above. img: its pictures, src, alt text and ref, the line of reference under each (null:
-                a placeholder; the team's, from Ali Qureshi's pop-up galleries at d2672c3, cropped to 4:3). eventsHead
-                and eventsLine: the heading and line over the events (2026-10-07).
+                a placeholder; the team's, from Ali Qureshi's pop-up galleries at d2672c3, cropped to 4:3).
+                impact, impactRef: what it did to people, and its source (context, checked 2026-10-08): the first
+                pandemic, Mordechai L, Eisenberg M, Newfield TP, Izdebski A, Kay JE, Poinar H (2019), The Justinianic
+                Plague: an inconsequential pandemic?, PNAS 116(51):25546-25554 (its abstract and significance
+                statement); the Black Death, 30% to 60% of Europe's people, as Wikipedia's Black Death article cites
+                Aberth (2010, pp. 9-13) and Alchon (2003, p. 21), to be checked against the books; leprosy, Carole
+                Rawcliffe, The Lost Hospitals of London: Leprosaria, Gresham College lecture, 5 March 2012 ("a bare
+                minimum of 300 hospitals and refuges were set up in England" between the late 11th century and 1350).
+                dating: where the record's dates and the event's part, why (from the index, above): the 19 plague
+                genomes of the 400s are all listed at 1500 BP (Keller 2019, 17; Feldman 2016 and Guellil 2022, one
+                each), studies of the first pandemic's burials, so the rounding places them before 541.
 
    How the molar draws it (radial.js, pathogenCounts()): the % is how often a pathogen turns up among the genomes
    recovered, not how common the disease was (counts are not prevalence). Each pathogen adds particles to its kind's
@@ -26,6 +39,7 @@
   window.PATHOGENS_DATA = {
     centuries: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800],
     genomes: { 100: 3, 200: 2, 300: 3, 400: 22, 500: 5, 600: 20, 700: 11, 900: 14, 1000: 7, 1100: 10, 1200: 11, 1300: 51, 1400: 9, 1500: 54, 1600: 22, 1700: 13, 1800: 10 },
+    sites: { 100: 3, 200: 2, 300: 2, 400: 9, 500: 4, 600: 8, 700: 5, 900: 12, 1000: 7, 1100: 9, 1200: 8, 1300: 27, 1400: 6, 1500: 20, 1600: 11, 1700: 7, 1800: 4 },
     taxa: [
       { taxon: "Salmonella enterica", name: "enteric fever", kind: "bacteria", total: 14, disease: "enteric fever · typhoid & paratyphoid", cells: { 100: [1, 33.33], 1100: [1, 10.0], 1300: [8, 15.69], 1800: [4, 40.0] } },
       { taxon: "Plasmodium falciparum", name: "falciparum malaria", kind: "parasite", total: 10, disease: "malaria", cells: { 100: [2, 66.67], 200: [1, 50.0], 1100: [1, 10.0], 1300: [1, 1.96], 1500: [3, 5.56], 1700: [1, 7.69], 1800: [1, 10.0] } },
@@ -49,18 +63,22 @@
     colours: { bacteria: "#b0362f", virus: "#2f55b0", parasite: "#16907a", other: "#8a8983" },
     events: [
       { label: "First plague pandemic", note: "the first plague pandemic", short: "Plague pandemic", from: 541, to: 750, taxa: ["Yersinia pestis"], band: true,
+        impact: "Plague returned in waves around the Mediterranean and across Europe for two centuries. Older estimates put its deaths in the tens of millions, a quarter to a half of the Mediterranean's people; a 2019 review of the written, archaeological and environmental evidence found that it does not support tolls that high.",
+        impactRef: "Mordechai et al. 2019, PNAS 116(51).",
+        dating: "Its dates are also coarse: the index gives each sample's age to the nearest century, so the 19 plague genomes from the pandemic's burials are listed at about 450 CE, before its documented start in 541, and are counted in the 400s.",
         img: { src: "img/plague-541-engraving.jpg", alt: "A modern illustration in the style of an engraving: plague dead in a city street, 541 CE",
           ref: "Modern illustration in the style of an engraving. Source to be confirmed." } },
       { label: "Black Death", note: "the Black Death", short: "Black Death", from: 1347, to: 1351, taxa: ["Yersinia pestis"], band: true,
+        impact: "Plague spread across Europe within five years and killed an estimated 30% to 60% of its people.",
+        impactRef: "Estimates from Aberth 2010 and Alchon 2003.",
         img: { src: "img/black-death.jpg", alt: "An etching of the plague in Florence, 1348: a procession with a banner passes the dead and dying in the street",
           ref: "Luigi Sabatelli the elder, The plague of Florence, 1348, etching. Wellcome Collection, M0000786, public domain." } },
       { label: "Medieval leprosy", note: "the years of medieval leprosy", short: "Medieval leprosy", from: 1000, to: 1400, taxa: ["Mycobacterium leprae"],
+        impact: "Communities set up hospitals and refuges for people with leprosy: between the late 11th century and 1350, at least 300 were founded in England alone.",
+        impactRef: "Rawcliffe 2012, Gresham College lecture.",
         img: { src: "img/medieval-leprosy.jpg", alt: "An illuminated manuscript painting: a haloed friar and his brothers tending sick people covered in sores",
           ref: "Illuminated manuscript, 15th century. Source to be confirmed." } },
     ],
-    // the events' heading and line, the team's (2026-10-07), once on the slide above them
-    eventsHead: "Disease in the genome record",
-    eventsLine: "Pathogen DNA recovered from a tooth shows that the person carried the infection when they died, a record of exposure to disease rather than of diet or dental treatment.",
     kinds: [["bacteria", "Bacteria"], ["virus", "Viruses"], ["parasite", "Parasites"], ["other", "Not disease agents"]],
   };
 })();

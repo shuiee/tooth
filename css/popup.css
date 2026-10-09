@@ -269,6 +269,13 @@
 .pp-ev figcaption{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
 .pp-ev figcaption>b{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink)}
 .pp-ev figcaption p{margin:0}
+.pp-ev figcaption p+p{margin-top:6px}
+.pp-evr{font-size:10.5px;font-style:italic;color:var(--ink-3)}   /* an event's figure's source */
+/* how the century's genomes bear the event out: a rule at the left, in the ink where they agree, the record's colour
+   where they contradict it */
+.pp-evv{padding-left:9px;border-left:2px solid rgba(26,26,24,.28)}
+.pp-evv.no{border-left-color:var(--c,#b0362f)}
+.pp-evv.no b{color:var(--c,#b0362f)}
 .pp-ev figcaption p b{font-weight:600;color:var(--ink)}
 .pp-evk{display:block;margin-bottom:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .pp-evk i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}

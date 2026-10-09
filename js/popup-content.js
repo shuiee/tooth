@@ -274,7 +274,8 @@
       let s = "";
       // the events the prototype shaded across the strand, behind everything
       const evs = (PD.events || []).filter(e => e.band);
-      evs.forEach(e => { const y0 = Math.max(0, yYear(e.from)), y1 = Math.min(H, Math.max(yYear(e.to + 1), yYear(e.from) + 2.5)); if (y1 > y0) s += "<rect x='" + fx(gutW - 6) + "' y='" + fx(y0) + "' width='" + fx(Wg - gutW + 6) + "' height='" + fx(y1 - y0) + "' fill='#1a1a18' fill-opacity='.05'/>"; });
+      evs.forEach(e => { const y0 = Math.max(0, yYear(e.from)), y1 = Math.min(H, Math.max(yYear(e.to + 1), yYear(e.from) + 2.5)); if (y1 > y0) s += "<rect x='0' y='" + fx(y0) + "' width='" + fx(Wg) + "' height='" + fx(y1 - y0) + "' fill='#1a1a18' fill-opacity='.05'/>" +
+        [y0, y1].filter(y => y > 0.5 && y < H - 0.5).map(y => L(0, y, Wg, y, "rgba(26,26,24,.28)", 0.8, "3 3")).join(""); });
       // the century clicked, in the record's colour
       sel.forEach(i => { s += "<rect x='0' y='" + fx(yRow(i) - pitch / 2) + "' width='" + fx(Wg) + "' height='" + pitch + "' fill='" + col + "' fill-opacity='.13'/>"; });
       // the ribbon's two edges, dotted, darker where they come towards the reader, fading out at the ends shown
@@ -352,7 +353,10 @@
             e.addEventListener("pointermove", ev => tip("<b>" + esc(cap(hl.name)) + "</b>, " + r.c + "s<br>" + (d ? d.k + " of " + r.n + " genomes, " + pc(d.v) : "none of " + r.n + " genomes"), ev));
             e.addEventListener("pointerleave", () => tip(null)); e.addEventListener("click", () => { tip(null); select(null, true); }); });
         };
-        const hintOf = l => !l ? "Click an organism's dots to pull its share of each century out of the strand."
+        // the bands in view, named in the hint (the years of historical events, from the records of the time)
+        const inView = evs.filter(e => e.from < D.cents[b] + 100 && e.to >= D.cents[a]);
+        const hintOf = l => !l ? "Click an organism's dots to pull its share of each century out of the strand." +
+            (inView.length ? " The grey band" + (inView.length > 1 ? "s mark " : " marks ") + andList(inView.map(e => e.note + " (" + e.from + "–" + e.to + ")")) + ", from historical records." : "")
           : "<b>" + esc(cap(l.name)) + "</b>" + (l.taxon ? " <i>" + esc(l.taxon) + "</i>, " + PART[l.kind] : ", genomes the index does not name") + ": " + l.total + " of " + D.total + " genomes in the record, found in " +
             R.filter(r => r.cells.some(d => d.l === l)).length + " of " + D.sampled + " sampled centuries. <button class='pd-back' type='button'>Back to the strand</button>";
         const select = (l, anim) => { st.hl = l; shown = l; paint(l, !!l); pull(l, anim && !REDUCED); hint.innerHTML = hintOf(l); const bk = hint.querySelector("button"); if (bk) bk.addEventListener("click", () => select(null, true)); };
@@ -410,15 +414,30 @@
   // those of the century's leading organism first, then by date
   function eventsOf(rs) { const lead = e => rs.some(r => r.lead.some(d => e.taxa.includes(d.l.taxon)) && over(e, r)) ? 0 : 1;
     return (PD.events || []).filter(e => rs.some(r => over(e, r))).sort((p, q) => lead(p) - lead(q) || p.from - q.from); }
+  // how a century's genomes bear out an event (its organism l in century r): the largest share agrees, a smaller share
+  // partly agrees, none disagrees; with the reasons the record gives (its size, its sites, its dating)
+  function evRead(e, l, r) {
+    const d = r.cells.find(x => x.l === l), lead = d && r.lead.includes(d), ldr = andList(r.lead.map(x => x.l.name)), n = r.n, sites = (PD.sites || {})[r.c];
+    if (!d) return { k: "no", lead: "None of the " + r.c + "s' " + n + " genomes is " + l.name + ", which contradicts the historical record.",
+      text: "<b>Contradicts the historical record.</b> The " + r.c + "s " + evVerb(e, [{ from: r.c, to: r.c + 100 }], true) + " " + e.note + ", yet none of their " + n + " genomes" + (sites ? ", from " + word(sites) + " sites," : "") + " is " + l.name + ". " +
+        "The record holds only the teeth that have been excavated and sequenced. " + esc(e.dating || "") };
+    if (lead) return { k: "yes", lead: cap(l.name) + " leads the " + r.c + "s' genomes, with " + pc(d.v) + ".",
+      text: "<b>Agrees with the historical record.</b> " + cap(l.name) + " is the largest share of the " + r.c + "s' genomes" + (n < 10 ? ", though with only " + n + " genomes each one moves the share by " + Math.round(100 / n) + " points." : ".") };
+    return { k: "part", lead: cap(l.name) + " is " + pc(d.v) + " of the " + r.c + "s' genomes, behind " + ldr + ".",
+      text: "<b>Partly agrees with the historical record.</b> " + cap(l.name) + " is present, behind " + ldr + ", which make" + (r.lead.length > 1 ? "" : "s") + " up " + pc(r.max) + (r.lead.length > 1 ? " each" : "") + " of the century's genomes." +
+        (n < 15 ? " With only " + n + " genomes, one more or fewer could change the order." : "") };
+  }
   function eventsHTML(evs, rs) {
     const D = strandData();
-    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + (PD.eventsLine ? "<p class='pp-evi'>" + (PD.eventsHead ? "<b>" + esc(PD.eventsHead) + "</b>" : "") + esc(PD.eventsLine) + "</p>" : "") + evs.map(e => {
+    return "<div class='pp-evs" + (evs.length > 1 ? " sc" : "") + "'>" + evs.map(e => {
       const ls = e.taxa.map(t => D.lanes.find(l => l.taxon === t)).filter(Boolean), on = rs.filter(r => over(e, r));
       return "<figure class='pp-ev'>" + evPics(e) + "<figcaption>" + ls.map(l => "<span class='pp-evk'><i style='background:" + colOf(l) + "'></i>" + esc(KINDS[l.kind] ? cap(KINDS[l.kind]) : "") + "</span>").join("") +
         "<b>" + esc(title(e.label)) + "</b><span class='pp-evd'>" + e.from + "–" + e.to + "</span>" +
+        // what it did to people (context, with its source), then the genomes, then how they bear it out
+        (e.impact ? "<p>" + esc(e.impact) + (e.impactRef ? " <span class='pp-evr'>" + esc(e.impactRef) + "</span>" : "") + "</p>" : "") +
         ls.map(l => "<p><i>" + esc(l.taxon) + "</i>, the cause of " + esc(diseaseOf(l)) + ", made up " + andList(on.map(r => { const d = r.cells.find(x => x.l === l);
-          return d ? B(pc(d.v)) + " of the " + r.c + "s' " + r.n + " genomes (" + d.k + ")" : "none of the " + r.c + "s' " + r.n + " genomes"; })) + ".</p>").join("") + "</figcaption></figure>"; }).join("") +
-      "<p class='pp-evn'>Event dates are historical context. Percentages are shares of the genomes recovered from each century." + (evs.some(e => !e.img) ? " Pictures to come." : "") + "</p></div>";
+          return d ? B(pc(d.v)) + " of the " + r.c + "s' " + r.n + " genomes (" + d.k + ")" : "none of the " + r.c + "s' " + r.n + " genomes"; })) + ".</p>").join("") +
+        ls.map(l => on.map(r => { const v = evRead(e, l, r); return "<p class='pp-evv " + v.k + "'>" + v.text + "</p>"; }).join("")).join("") + "</figcaption></figure>"; }).join("") + "</div>";
   }
 
   // the slides' lines of text, from the counts
@@ -455,8 +474,10 @@
   function pathLead3(evs, rs) {
     const on = e => rs.filter(r => over(e, r)), groups = [];
     evs.forEach(e => { const k = on(e).map(r => r.c).join("|"), g = groups.find(x => x.k === k); if (g) g.evs.push(e); else groups.push({ k, rs: on(e), evs: [e] }); });
+    const D = strandData(), reads = [];
+    evs.forEach(e => e.taxa.map(t => D.lanes.find(l => l.taxon === t)).filter(Boolean).forEach(l => on(e).forEach(r => { const t = evRead(e, l, r).lead; if (!reads.includes(t)) reads.push(t); })));
     return groups.map(g => cap(andList(g.rs.map(r => "the " + r.c + "s"))) + " " +
-      andList(g.evs.map(e => evVerb(e, g.rs.map(r => ({ from: r.c, to: r.c + 100 })), true) + " " + e.note + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>");
+      andList(g.evs.map(e => evVerb(e, g.rs.map(r => ({ from: r.c, to: r.c + 100 })), true) + " " + e.note + " (" + e.from + "–" + e.to + ")")) + ".").join("<br>") + (reads.length ? "<br>" + reads.join(" ") : "");
   }
 
   P.CONTENT.pathogens = pick => {
