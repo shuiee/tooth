@@ -174,10 +174,12 @@
       { items: [["p", [["A bioarchaeologist trained on this data might infer a", 1.6], ["<b>short-lived,</b>", 0.9], ["<b>well-fed,</b>", 0.9], ["<b>low-stress</b>", 1.0], ["person of high status.", 0]]]] },
       { items: [["p", "Each of those inferences <b>could be wrong</b>, because dental treatment changes what the teeth show."]] },
       { items: [["p", "Teeth still record diet, childhood stress, metals and disease. <b>Fillings, crowns and veneers can now cover that record.</b>"]] },
-      // the end: once that has gone, both molars scatter and fade, then in large type the statement, then the last
-      // question, which stays (until Rewind, Play or Replay)
+      // the end: once that has gone, both molars scatter and fade, then in large type, one after the other and each in
+      // the same place in the middle of the page, two statements and the closing question, which stays (until Rewind,
+      // Play or Replay)
       { big: true, items: [["p", "A tooth keeps its record long after death. <b>Dental treatment edits that record</b> during life."]] },
-      { big: true, items: [["p", "What a tooth shows now <b>depends on its treatment</b>."]], last: true } ];
+      { big: true, items: [["p", "What a tooth shows now <b>depends on its treatment</b>."]] },
+      { big: true, items: [["p", "What truths does a tooth tell?"]], last: true } ];
     let story = null, split = 0, stL = null;   // story: { on, t0, out, back: what the radial showed }; split: 0 one molar, 1 two
     const RT = { ri: -1, pg: -1, rep: 0, reb: 0, pr: [0, 0, 0, 0, 0, 0], last: -1, at: -1e9, pulse: 0, formT: 0, gone: 0 };   // the second molar: its repair period, projection (0 to 1), repaired share, patch radii, its last period and when it changed, the swell; formT: how far it has formed (seconds); gone: the end's scattering (0 to 1)
     // the second molar from scratch (the look ahead's start, and Replay): it forms out of the first again, with no repair,
