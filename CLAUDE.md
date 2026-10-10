@@ -68,7 +68,7 @@ Then go to <http://localhost:8770>. Opening `index.html` straight from disk also
 
 | Path | What it is |
 |---|---|
-| `img/favicon.svg` | The page's icon: the radial in miniature, a circle in each record's colour round the hub |
+| `img/favicon.svg` | The page's icon: a molar in outline (two cusps, two roots), paper filled with an ink edge, so it reads on light and dark tabs |
 | `index.html` | The page: the `#radial` host, the filter menu, the Play/Pause and Replay buttons (icons, centred at the foot of the page), the Fast forward button (bottom right) and Rewind (bottom left, shown only in the look ahead), and the scripts in load order |
 | `js/main.js` | Mounts the diagram, wires Pause, Replay, Fast forward and Rewind (the look ahead, `story()`), resize and the pop-up, and holds the `onOpen` hook (null for now) |
 | `js/popup.js` | The pop-up for a clicked time period (`window.ToothPopup`): the card (its header: the period, the record's name and an X; three slides under it, stepped with arrows and dots; the source), its motion, one card for two periods compared (`pick.pair`); `SLIDES`, the template's placeholders, for records whose `CONTENT` is not written yet |
